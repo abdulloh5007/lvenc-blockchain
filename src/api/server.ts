@@ -69,6 +69,8 @@ const mintLimiter = rateLimit({
 });
 
 // Middleware
+// Trust proxy for nginx reverse proxy (needed for rate limiting behind nginx)
+app.set('trust proxy', 1);
 app.use(cors(config.api.cors));
 app.use(express.json({ limit: '5mb' })); // Increased for IPFS uploads
 app.use(apiLimiter);
