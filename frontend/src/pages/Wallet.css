@@ -1,0 +1,382 @@
+.wallet-page {
+    padding: 24px;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.wallet-content {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 24px;
+}
+
+@media (max-width: 1000px) {
+    .wallet-content {
+        grid-template-columns: 1fr;
+    }
+}
+
+.message {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.message.success {
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid var(--success);
+    color: var(--success);
+}
+
+.message.error {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid var(--error);
+    color: var(--error);
+}
+
+.message button {
+    background: none;
+    border: none;
+    color: inherit;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 0 4px;
+}
+
+/* Wallets list */
+.wallets-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.wallet-card {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    background: var(--bg-glass);
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.wallet-card:hover {
+    border-color: var(--accent-primary);
+}
+
+.wallet-card.selected {
+    border-color: var(--accent-primary);
+    background: rgba(99, 102, 241, 0.1);
+    box-shadow: var(--shadow-glow);
+}
+
+.wallet-avatar {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--accent-gradient);
+    border-radius: 12px;
+    font-size: 20px;
+    font-weight: 700;
+    color: white;
+}
+
+.wallet-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.wallet-label {
+    font-weight: 600;
+    font-size: 15px;
+    margin-bottom: 4px;
+}
+
+.wallet-address {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.wallet-balance {
+    text-align: right;
+    margin-right: 12px;
+}
+
+.balance-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--success);
+}
+
+.balance-symbol {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-left: 4px;
+}
+
+.wallet-actions {
+    display: flex;
+    gap: 4px;
+}
+
+/* Forms */
+.wallet-main {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.wallet-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.create-form,
+.send-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.form-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background: var(--bg-glass);
+    border-radius: 8px;
+}
+
+.form-label {
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+/* New wallet card */
+.new-wallet-card {
+    border: 1px solid var(--success) !important;
+}
+
+.new-wallet-info {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.info-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.info-row .label {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.warning-box {
+    padding: 12px;
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid var(--warning);
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--warning);
+}
+
+.private-key-box {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.private-key {
+    padding: 12px;
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+    font-size: 11px;
+    word-break: break-all;
+    color: var(--text-primary);
+}
+
+/* Auto fee info */
+.auto-fee-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: var(--bg-glass);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    transition: border-color 0.3s ease;
+}
+
+.auto-fee-info.low {
+    border-color: var(--success);
+}
+
+.auto-fee-info.medium {
+    border-color: var(--warning);
+}
+
+.auto-fee-info.high {
+    border-color: #f97316;
+}
+
+.auto-fee-info.critical {
+    border-color: var(--error);
+}
+
+.fee-main {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.fee-label {
+    font-size: 14px;
+    color: var(--text-muted);
+}
+
+.fee-value {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--accent-primary);
+}
+
+.fee-details {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.congestion-badge {
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-weight: 600;
+}
+
+.congestion-badge.low {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--success);
+}
+
+.congestion-badge.medium {
+    background: rgba(245, 158, 11, 0.15);
+    color: var(--warning);
+}
+
+.congestion-badge.high {
+    background: rgba(249, 115, 22, 0.15);
+    color: #f97316;
+}
+
+.congestion-badge.critical {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--error);
+}
+
+.fee-hint {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+/* Seed phrase display */
+.seed-phrase-box {
+    background: var(--bg-glass);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 12px;
+    margin: 12px 0;
+}
+
+.seed-phrase-box .label {
+    display: block;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+}
+
+.seed-words {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.seed-word {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-primary);
+}
+
+.word-num {
+    color: var(--text-muted);
+    font-size: 10px;
+    min-width: 14px;
+}
+
+/* Seed input textarea */
+.seed-input {
+    margin-bottom: 12px;
+}
+
+.seed-input label {
+    display: block;
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+}
+
+.seed-input textarea {
+    width: 100%;
+    padding: 12px;
+    background: var(--bg-glass);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--text-primary);
+    resize: none;
+    transition: border-color 0.2s;
+}
+
+.seed-input textarea:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+}
+
+.seed-input textarea::placeholder {
+    color: var(--text-muted);
+}
+
+/* Import form */
+.import-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.import-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.import-actions .btn {
+    flex: 1;
+}

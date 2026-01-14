@@ -1,0 +1,181 @@
+.transactions-page {
+    padding: 24px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.transactions-content {
+    display: grid;
+    grid-template-columns: 1fr 350px;
+    gap: 24px;
+}
+
+@media (max-width: 900px) {
+    .transactions-content {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Empty state */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 48px;
+    text-align: center;
+}
+
+.empty-state .empty-icon {
+    color: var(--text-muted);
+    margin-bottom: 16px;
+}
+
+.empty-state p {
+    font-size: 16px;
+    font-weight: 500;
+    margin-bottom: 8px;
+}
+
+.empty-hint {
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+/* Pending list */
+.pending-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.tx-card {
+    padding: 20px;
+    background: var(--bg-glass);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    transition: all 0.2s ease;
+}
+
+.tx-card:hover {
+    border-color: var(--accent-primary);
+}
+
+.tx-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.tx-id {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.tx-status {
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.tx-status.pending {
+    background: rgba(245, 158, 11, 0.15);
+    color: var(--warning);
+}
+
+.tx-status.confirmed {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--success);
+}
+
+/* Transaction flow */
+.tx-flow {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 12px;
+}
+
+.tx-party {
+    flex: 1;
+}
+
+.party-label {
+    display: block;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+}
+
+.party-address {
+    font-size: 13px;
+    color: var(--text-primary);
+}
+
+.tx-arrow-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.tx-amount-badge {
+    padding: 6px 12px;
+    background: var(--accent-gradient);
+    border-radius: 16px;
+    font-size: 13px;
+    font-weight: 700;
+    color: white;
+}
+
+.tx-arrow {
+    color: var(--accent-primary);
+}
+
+.tx-time {
+    font-size: 12px;
+    color: var(--text-muted);
+    text-align: right;
+}
+
+/* Info card */
+.tx-info {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.info-step {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+.step-number {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--accent-gradient);
+    border-radius: 50%;
+    font-size: 14px;
+    font-weight: 700;
+    color: white;
+    flex-shrink: 0;
+}
+
+.step-content h4 {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.step-content p {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.5;
+}

@@ -1,0 +1,130 @@
+.dashboard {
+    padding: 24px;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.page-header {
+    margin-bottom: 32px;
+}
+
+.page-header h1 {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.page-header p {
+    color: var(--text-muted);
+    font-size: 14px;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 32px;
+}
+
+.dashboard-content {
+    display: grid;
+    grid-template-columns: 1fr 400px;
+    gap: 24px;
+}
+
+@media (max-width: 1000px) {
+    .dashboard-content {
+        grid-template-columns: 1fr;
+    }
+}
+
+.loading-state,
+.empty-state {
+    color: var(--text-muted);
+    text-align: center;
+    padding: 32px;
+}
+
+/* Blocks list */
+.blocks-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.block-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    background: var(--bg-glass);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    transition: all 0.2s ease;
+}
+
+.block-item:hover {
+    border-color: var(--accent-primary);
+    transform: translateX(4px);
+}
+
+.block-index {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--accent-primary);
+    min-width: 50px;
+}
+
+.block-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.block-hash {
+    font-size: 14px;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.block-meta {
+    display: flex;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.block-nonce {
+    font-size: 12px;
+    color: var(--text-secondary);
+    text-align: right;
+}
+
+/* Block detail */
+.block-detail {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.detail-row:last-child {
+    border-bottom: none;
+}
+
+.detail-row .label {
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.detail-row .value {
+    font-size: 14px;
+    color: var(--text-primary);
+    max-width: 200px;
+}
