@@ -10,6 +10,7 @@
     flex-direction: column;
     z-index: 100;
     transition: width 0.3s ease;
+    overflow: visible;
 }
 
 .sidebar.collapsed {
@@ -138,6 +139,8 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
+    overflow: visible;
+    position: relative;
 }
 
 .footer-btn {
@@ -168,6 +171,12 @@
 /* Language Dropdown */
 .lang-select {
     position: relative;
+    overflow: visible;
+}
+
+.lang-menu-container {
+    position: relative;
+    overflow: visible;
 }
 
 .lang-dropdown {
@@ -181,6 +190,7 @@
     border-radius: 8px;
     padding: 4px;
     box-shadow: var(--shadow-md);
+    z-index: 1000;
 }
 
 .sidebar.collapsed .lang-dropdown {
@@ -257,6 +267,11 @@
 }
 
 .mobile-only {
+    display: none !important;
+}
+
+/* Hide X close button on desktop */
+.sidebar-header .collapse-btn:first-of-type {
     display: none;
 }
 

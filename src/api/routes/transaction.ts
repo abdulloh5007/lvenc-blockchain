@@ -3,39 +3,29 @@ import { Blockchain, Transaction } from '../../blockchain/index.js';
 import { Wallet } from '../../wallet/index.js';
 import { storage } from '../../storage/index.js';
 import { config } from '../../config.js';
+import { isBlacklisted, checkTransferRate, validateTransaction } from '../../security/index.js';
 
 export function createTransactionRoutes(blockchain: Blockchain): Router {
     const router = Router();
 
-    // Create and send transaction
     router.post('/send', (req: Request, res: Response) => {
         const { fromAddress, toAddress, amount, privateKey, fee } = req.body;
-
-        // Validate input
         if (!fromAddress || !toAddress || !amount || !privateKey) {
-            res.status(400).json({
-                success: false,
-                error: 'Missing required fields: fromAddress, toAddress, amount, privateKey',
-            });
+            res.status(400).json({ success: false, error: 'Missing required fields' });
             return;
         }
-
-        if (amount <= 0) {
-            res.status(400).json({
-                success: false,
-                error: 'Amount must be positive',
-            });
+        if (isBlacklisted(fromAddress) || isBlacklisted(toAddress)) {
+            res.status(403).json({ success: false, error: 'Address is blacklisted' });
             return;
         }
-
-        // Use provided fee or default to minFee
+        if (!checkTransferRate(fromAddress)) {
+            res.status(429).json({ success: false, error: 'Transfer rate limit exceeded' });
+            return;
+        }
         const txFee = fee !== undefined ? Number(fee) : config.blockchain.minFee;
-
-        if (txFee < config.blockchain.minFee) {
-            res.status(400).json({
-                success: false,
-                error: `Minimum fee is ${config.blockchain.minFee} ${config.blockchain.coinSymbol}`,
-            });
+        const validation = validateTransaction(fromAddress, toAddress, Number(amount), txFee);
+        if (!validation.valid) {
+            res.status(400).json({ success: false, error: validation.error });
             return;
         }
 

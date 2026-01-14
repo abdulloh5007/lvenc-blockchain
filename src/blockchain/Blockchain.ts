@@ -2,6 +2,7 @@ import { Block, BlockData } from './Block.js';
 import { Transaction, TransactionData } from './Transaction.js';
 import { config } from '../config.js';
 import { logger } from '../utils/logger.js';
+import { SafeMath, acquireTxLock, releaseTxLock, validateTransaction, addCheckpoint, validateAgainstCheckpoint, validateBlockTimestamp } from '../security/index.js';
 
 export interface BlockchainData {
     chain: BlockData[];
@@ -82,41 +83,39 @@ export class Blockchain {
      * Add a transaction to the pending pool
      */
     addTransaction(transaction: Transaction): boolean {
-        // Limit pending transactions to prevent memory issues
         if (this.pendingTransactions.length >= config.blockchain.maxPendingTx) {
-            throw new Error(`Transaction pool is full (max ${config.blockchain.maxPendingTx}). Mine some blocks first!`);
+            throw new Error(`Transaction pool is full (max ${config.blockchain.maxPendingTx})`);
         }
-
-        // Check minimum fee (skip for system transactions)
         if (transaction.fromAddress !== null && transaction.fee < config.blockchain.minFee) {
             throw new Error(`Minimum fee is ${config.blockchain.minFee} ${config.blockchain.coinSymbol}`);
         }
-
-        // Validate transaction
         if (!transaction.fromAddress && !transaction.toAddress) {
             throw new Error('Transaction must have from or to address');
         }
-
         if (!transaction.isValid()) {
             throw new Error('Cannot add invalid transaction');
         }
-
-        // Check sender balance (amount + fee)
         if (transaction.fromAddress) {
-            const balance = this.getBalance(transaction.fromAddress);
-            const totalCost = transaction.getTotalCost();
-            if (balance < totalCost) {
-                throw new Error(`Insufficient balance. Have: ${balance}, Need: ${totalCost} (${transaction.amount} + ${transaction.fee} fee)`);
+            if (!acquireTxLock(transaction.fromAddress)) {
+                throw new Error('Transaction in progress for this address');
             }
+            try {
+                const availableBalance = this.getAvailableBalance(transaction.fromAddress);
+                const totalCost = transaction.getTotalCost();
+                if (availableBalance < totalCost) {
+                    throw new Error(`Insufficient balance. Available: ${availableBalance}, Need: ${totalCost}`);
+                }
+                this.pendingTransactions.push(transaction);
+            } finally {
+                releaseTxLock(transaction.fromAddress);
+            }
+        } else {
+            this.pendingTransactions.push(transaction);
         }
-
-        this.pendingTransactions.push(transaction);
-        logger.info(`📝 Transaction added: ${transaction.amount} ${config.blockchain.coinSymbol} + ${transaction.fee} fee (${this.pendingTransactions.length}/${config.blockchain.maxPendingTx})`);
-
+        logger.info(`📝 Transaction added: ${transaction.amount} ${config.blockchain.coinSymbol} + ${transaction.fee} fee`);
         if (this.onTransactionAdded) {
             this.onTransactionAdded(transaction);
         }
-
         return true;
     }
 
@@ -202,30 +201,14 @@ export class Blockchain {
     /**
      * Mine pending transactions
      */
-    minePendingTransactions(minerAddress: string): Block {
-        // Sort pending transactions by fee (highest first) for priority
+    async minePendingTransactions(minerAddress: string): Promise<Block> {
         const sortedByFee = [...this.pendingTransactions].sort((a, b) => b.fee - a.fee);
-
-        // Take only maxTxPerBlock transactions
         const txToInclude = sortedByFee.slice(0, config.blockchain.maxTxPerBlock);
         const remainingTx = sortedByFee.slice(config.blockchain.maxTxPerBlock);
-
-        // Calculate total fees collected
-        const totalFees = txToInclude.reduce((sum, tx) => sum + tx.fee, 0);
-
-        // Calculate current reward with halving
+        const totalFees = txToInclude.reduce((sum, tx) => SafeMath.add(sum, tx.fee), 0);
         const currentReward = this.getCurrentReward();
-        const totalReward = currentReward + totalFees;
-
-        // Create mining reward transaction (block reward + fees)
-        const rewardTx = new Transaction(
-            null,
-            minerAddress,
-            totalReward,
-            0 // reward has no fee
-        );
-
-        // Create new block with selected transactions
+        const totalReward = SafeMath.add(currentReward, totalFees);
+        const rewardTx = new Transaction(null, minerAddress, totalReward, 0);
         const block = new Block(
             this.chain.length,
             Date.now(),
@@ -234,31 +217,19 @@ export class Blockchain {
             this.difficulty,
             minerAddress
         );
-
-        // Mine the block
-        block.mineBlock();
-
-        // Add to chain
+        await block.mineBlock();
         this.chain.push(block);
-
-        // Keep remaining transactions in pool
+        addCheckpoint(block.index, block.hash);
         this.pendingTransactions = remainingTx;
-
-        // Update balance cache
         this.updateBalanceCache();
-
-        // Check if halving just occurred
         const halvingInfo = this.getHalvingInfo();
         if (halvingInfo.blocksUntilHalving === config.blockchain.halvingInterval) {
             logger.info(`🎊 HALVING! New reward: ${halvingInfo.currentReward} ${config.blockchain.coinSymbol}`);
         }
-
         logger.info(`💰 Block ${block.index} mined! Reward: ${currentReward} + ${totalFees} fees = ${totalReward} ${config.blockchain.coinSymbol} (${txToInclude.length} tx, ${remainingTx.length} remaining)`);
-
         if (this.onBlockMined) {
             this.onBlockMined(block);
         }
-
         return block;
     }
 
@@ -287,6 +258,24 @@ export class Blockchain {
 
         this.balanceCache.set(address, balance);
         return balance;
+    }
+
+    /**
+     * Get available balance (confirmed balance minus pending outgoing transactions)
+     * This prevents double-spending by accounting for unconfirmed transactions
+     */
+    getAvailableBalance(address: string): number {
+        const confirmedBalance = this.getBalance(address);
+
+        // Subtract all pending outgoing transactions (amount + fee)
+        let pendingOutgoing = 0;
+        for (const tx of this.pendingTransactions) {
+            if (tx.fromAddress === address) {
+                pendingOutgoing += tx.amount + tx.fee;
+            }
+        }
+
+        return confirmedBalance - pendingOutgoing;
     }
 
     /**

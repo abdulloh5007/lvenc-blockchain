@@ -1,181 +1,315 @@
 .transactions-page {
     padding: 24px;
-    max-width: 1200px;
+    max-width: 1000px;
     margin: 0 auto;
 }
 
-.transactions-content {
-    display: grid;
-    grid-template-columns: 1fr 350px;
-    gap: 24px;
+/* Section */
+.transactions-section {
+    margin-top: 24px;
 }
 
-@media (max-width: 900px) {
-    .transactions-content {
-        grid-template-columns: 1fr;
-    }
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-color);
 }
 
-/* Empty state */
+.section-header svg {
+    color: var(--accent-primary);
+}
+
+.section-header span {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.pending-badge {
+    padding: 2px 10px;
+    background: var(--accent-gradient);
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 700;
+    color: white;
+}
+
+/* Loading & Empty */
+.loading-state {
+    text-align: center;
+    padding: 40px;
+    color: var(--text-muted);
+}
+
 .empty-state {
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 48px;
+    padding: 60px 24px;
     text-align: center;
+    background: var(--bg-glass);
+    border: 1px dashed var(--border-color);
+    border-radius: 12px;
 }
 
 .empty-state .empty-icon {
     color: var(--text-muted);
-    margin-bottom: 16px;
-}
-
-.empty-state p {
-    font-size: 16px;
-    font-weight: 500;
-    margin-bottom: 8px;
-}
-
-.empty-hint {
-    font-size: 13px;
-    color: var(--text-muted);
-}
-
-/* Pending list */
-.pending-list {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-}
-
-.tx-card {
-    padding: 20px;
-    background: var(--bg-glass);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    transition: all 0.2s ease;
-}
-
-.tx-card:hover {
-    border-color: var(--accent-primary);
-}
-
-.tx-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 16px;
-}
-
-.tx-id {
-    font-size: 13px;
-    color: var(--text-secondary);
-}
-
-.tx-status {
-    padding: 4px 10px;
-    border-radius: 12px;
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.tx-status.pending {
-    background: rgba(245, 158, 11, 0.15);
-    color: var(--warning);
-}
-
-.tx-status.confirmed {
-    background: rgba(16, 185, 129, 0.15);
-    color: var(--success);
-}
-
-/* Transaction flow */
-.tx-flow {
-    display: flex;
-    align-items: center;
-    gap: 16px;
+    opacity: 0.4;
     margin-bottom: 12px;
 }
 
-.tx-party {
-    flex: 1;
-}
-
-.party-label {
-    display: block;
-    font-size: 11px;
+.empty-state p {
     color: var(--text-muted);
-    margin-bottom: 4px;
+    font-size: 14px;
 }
 
-.party-address {
+/* Compact Transaction Rows */
+.transactions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.tx-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: var(--bg-glass);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.tx-row:hover {
+    background: var(--bg-tertiary);
+    border-color: var(--accent-primary);
+}
+
+.tx-addresses {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+}
+
+.tx-from,
+.tx-to {
     font-size: 13px;
     color: var(--text-primary);
 }
 
-.tx-arrow-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-}
-
-.tx-amount-badge {
-    padding: 6px 12px;
-    background: var(--accent-gradient);
-    border-radius: 16px;
-    font-size: 13px;
-    font-weight: 700;
-    color: white;
+.tx-from {
+    color: var(--text-secondary);
 }
 
 .tx-arrow {
     color: var(--accent-primary);
-}
-
-.tx-time {
-    font-size: 12px;
-    color: var(--text-muted);
-    text-align: right;
-}
-
-/* Info card */
-.tx-info {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-}
-
-.info-step {
-    display: flex;
-    gap: 12px;
-    align-items: flex-start;
-}
-
-.step-number {
-    width: 28px;
-    height: 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--accent-gradient);
-    border-radius: 50%;
-    font-size: 14px;
-    font-weight: 700;
-    color: white;
     flex-shrink: 0;
 }
 
-.step-content h4 {
+.tx-amount-compact {
     font-size: 14px;
     font-weight: 600;
-    margin-bottom: 4px;
+    color: var(--accent-primary);
+    margin: 0 16px;
+    white-space: nowrap;
 }
 
-.step-content p {
+.tx-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.tx-status-dot.pending {
+    background: var(--warning);
+    box-shadow: 0 0 8px var(--warning);
+}
+
+.tx-status-dot.confirmed {
+    background: var(--success);
+}
+
+/* Modal */
+.tx-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+}
+
+.tx-modal {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    width: 100%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow: auto;
+    animation: modalIn 0.2s ease;
+}
+
+@keyframes modalIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.tx-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.tx-modal-header h3 {
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.tx-modal-close {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 6px;
+    transition: all 0.15s;
+}
+
+.tx-modal-close:hover {
+    color: var(--text-primary);
+    background: var(--bg-glass);
+}
+
+.tx-modal-content {
+    padding: 20px;
+}
+
+.tx-detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 12px 0;
+    gap: 16px;
+}
+
+.tx-detail-row:not(:last-child) {
+    border-bottom: 1px solid var(--border-color);
+}
+
+.tx-detail-label {
     font-size: 13px;
     color: var(--text-muted);
-    line-height: 1.5;
+    flex-shrink: 0;
+}
+
+.tx-detail-value {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-align: right;
+    min-width: 0;
+}
+
+.tx-detail-value span {
+    font-size: 13px;
+    color: var(--text-primary);
+    word-break: break-all;
+}
+
+.copy-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    flex-shrink: 0;
+    transition: all 0.15s;
+}
+
+.copy-btn:hover {
+    color: var(--accent-primary);
+}
+
+.tx-detail-divider {
+    height: 1px;
+    background: var(--border-color);
+    margin: 8px 0;
+}
+
+.tx-detail-amount {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--accent-primary);
+}
+
+.tx-detail-fee {
+    font-size: 13px;
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+}
+
+.tx-status-badge {
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.tx-status-badge.pending {
+    background: rgba(245, 158, 11, 0.15);
+    color: var(--warning);
+}
+
+.tx-status-badge.confirmed {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--success);
+}
+
+.tx-detail-time {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+    .transactions-page {
+        padding: 16px;
+    }
+
+    .tx-row {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .tx-addresses {
+        width: 100%;
+    }
+
+    .tx-amount-compact {
+        margin: 0;
+        margin-left: auto;
+    }
 }

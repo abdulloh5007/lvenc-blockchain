@@ -3,6 +3,7 @@ import * as bip39 from 'bip39';
 import { sha256, publicKeyToAddress } from '../utils/crypto.js';
 import { Transaction } from '../blockchain/Transaction.js';
 import { logger } from '../utils/logger.js';
+import { secureRandom } from '../security/index.js';
 
 const ec = new elliptic.ec('secp256k1');
 
@@ -42,12 +43,13 @@ export class Wallet {
                 this.privateKey = privateKeyOrMnemonic;
             }
         } else {
-            this.mnemonic = bip39.generateMnemonic(160);
+            const entropy = secureRandom(32);
+            this.mnemonic = bip39.entropyToMnemonic(entropy.toString('hex'));
             const seed = bip39.mnemonicToSeedSync(this.mnemonic);
             const privateKeyHex = sha256(seed.toString('hex')).substring(0, 64);
             this.keyPair = ec.keyFromPrivate(privateKeyHex, 'hex');
             this.privateKey = privateKeyHex;
-            logger.info(`🔑 New wallet created with 15-word mnemonic`);
+            logger.info(`🔑 New wallet created with 24-word mnemonic (secure entropy)`);
         }
 
         this.publicKey = this.keyPair.getPublic('hex');

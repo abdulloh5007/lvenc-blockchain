@@ -1,18 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Clock, Inbox, ArrowRight, BookOpen } from 'lucide-react';
-import { Card } from '../components';
+import { FileText, Clock, Inbox, ArrowRight, X, Copy, CheckCircle } from 'lucide-react';
 import { useI18n } from '../contexts';
 import { transaction } from '../api/client';
 import type { Transaction } from '../api/client';
 import './Transactions.css';
 
-const formatHash = (hash: string) => hash ? `${hash.substring(0, 10)}...${hash.substring(hash.length - 6)}` : 'N/A';
+const formatHash = (hash: string, short = true) => {
+    if (!hash) return 'N/A';
+    return short ? `${hash.substring(0, 8)}...${hash.slice(-6)}` : hash;
+};
 const formatTime = (timestamp: number) => new Date(timestamp).toLocaleString();
 
 export const TransactionsPage: React.FC = () => {
     const { t } = useI18n();
     const [pending, setPending] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(true);
+    const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
+    const [copied, setCopied] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchPending = async () => {
@@ -25,57 +29,135 @@ export const TransactionsPage: React.FC = () => {
         return () => clearInterval(interval);
     }, []);
 
+    const copyToClipboard = (text: string, field: string) => {
+        navigator.clipboard.writeText(text);
+        setCopied(field);
+        setTimeout(() => setCopied(null), 2000);
+    };
+
     return (
         <div className="transactions-page fade-in">
             <div className="page-header">
                 <h1><FileText className="header-icon" /> {t('transactions.title')}</h1>
-                <p>{t('transactions.subtitle')}</p>
             </div>
 
-            <div className="transactions-content">
-                <Card title={`${t('transactions.pending')} (${pending.length})`} icon={<Clock size={20} />} className="pending-card">
-                    {loading ? (
-                        <p className="loading-state">{t('common.loading')}</p>
-                    ) : pending.length === 0 ? (
-                        <div className="empty-state">
-                            <Inbox size={48} className="empty-icon" />
-                            <p>{t('transactions.noTransactions')}</p>
-                        </div>
-                    ) : (
-                        <div className="pending-list">
-                            {pending.map((tx) => (
-                                <div key={tx.id} className="tx-card">
-                                    <div className="tx-header">
-                                        <span className="tx-id font-mono">{formatHash(tx.id)}</span>
-                                        <span className="tx-status pending">{t('wallet.pending')}</span>
-                                    </div>
-                                    <div className="tx-flow">
-                                        <div className="tx-party">
-                                            <span className="party-label">{t('transactions.from')}</span>
-                                            <span className="party-address font-mono">{tx.fromAddress ? formatHash(tx.fromAddress) : 'System'}</span>
-                                        </div>
-                                        <div className="tx-arrow-container">
-                                            <div className="tx-amount-badge">{tx.amount} EDU</div>
-                                            <ArrowRight className="tx-arrow" />
-                                        </div>
-                                        <div className="tx-party">
-                                            <span className="party-label">{t('transactions.to')}</span>
-                                            <span className="party-address font-mono">{formatHash(tx.toAddress)}</span>
-                                        </div>
-                                    </div>
-                                    <div className="tx-time">{formatTime(tx.timestamp)}</div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </Card>
+            <div className="transactions-section">
+                <div className="section-header">
+                    <Clock size={18} />
+                    <span>{t('transactions.pending')}</span>
+                    <span className="pending-badge">{pending.length}</span>
+                </div>
 
-                <Card title={t('transactions.aboutTx')} icon={<BookOpen size={20} />} className="info-card">
-                    <div className="tx-info">
-                        <p>{t('transactions.txDesc')}</p>
+                {loading ? (
+                    <div className="loading-state">{t('common.loading')}</div>
+                ) : pending.length === 0 ? (
+                    <div className="empty-state">
+                        <Inbox size={48} className="empty-icon" />
+                        <p>{t('transactions.noTransactions')}</p>
                     </div>
-                </Card>
+                ) : (
+                    <div className="transactions-list">
+                        {pending.map((tx) => (
+                            <div
+                                key={tx.id}
+                                className="tx-row"
+                                onClick={() => setSelectedTx(tx)}
+                            >
+                                <div className="tx-addresses">
+                                    <span className="tx-from font-mono">
+                                        {tx.fromAddress ? formatHash(tx.fromAddress) : 'System'}
+                                    </span>
+                                    <ArrowRight size={14} className="tx-arrow" />
+                                    <span className="tx-to font-mono">{formatHash(tx.toAddress)}</span>
+                                </div>
+                                <div className="tx-amount-compact">{tx.amount} EDU</div>
+                                <span className="tx-status-dot pending"></span>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
+
+            {/* Transaction Detail Modal */}
+            {selectedTx && (
+                <div className="tx-modal-overlay" onClick={() => setSelectedTx(null)}>
+                    <div className="tx-modal" onClick={e => e.stopPropagation()}>
+                        <div className="tx-modal-header">
+                            <h3>{t('transactions.details') || 'Transaction Details'}</h3>
+                            <button className="tx-modal-close" onClick={() => setSelectedTx(null)}>
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className="tx-modal-content">
+                            <div className="tx-detail-row">
+                                <span className="tx-detail-label">ID</span>
+                                <div className="tx-detail-value">
+                                    <span className="font-mono">{formatHash(selectedTx.id, false)}</span>
+                                    <button
+                                        className="copy-btn"
+                                        onClick={() => copyToClipboard(selectedTx.id, 'id')}
+                                    >
+                                        {copied === 'id' ? <CheckCircle size={14} /> : <Copy size={14} />}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="tx-detail-row">
+                                <span className="tx-detail-label">{t('transactions.from')}</span>
+                                <div className="tx-detail-value">
+                                    <span className="font-mono">
+                                        {selectedTx.fromAddress || 'System (Mining Reward)'}
+                                    </span>
+                                    {selectedTx.fromAddress && (
+                                        <button
+                                            className="copy-btn"
+                                            onClick={() => copyToClipboard(selectedTx.fromAddress!, 'from')}
+                                        >
+                                            {copied === 'from' ? <CheckCircle size={14} /> : <Copy size={14} />}
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="tx-detail-row">
+                                <span className="tx-detail-label">{t('transactions.to')}</span>
+                                <div className="tx-detail-value">
+                                    <span className="font-mono">{selectedTx.toAddress}</span>
+                                    <button
+                                        className="copy-btn"
+                                        onClick={() => copyToClipboard(selectedTx.toAddress, 'to')}
+                                    >
+                                        {copied === 'to' ? <CheckCircle size={14} /> : <Copy size={14} />}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="tx-detail-divider"></div>
+
+                            <div className="tx-detail-row">
+                                <span className="tx-detail-label">{t('transactions.amount') || 'Amount'}</span>
+                                <span className="tx-detail-amount">{selectedTx.amount} EDU</span>
+                            </div>
+
+                            <div className="tx-detail-row">
+                                <span className="tx-detail-label">{t('transactions.fee') || 'Fee'}</span>
+                                <span className="tx-detail-fee">{selectedTx.fee || 0} EDU</span>
+                            </div>
+
+                            <div className="tx-detail-row">
+                                <span className="tx-detail-label">{t('transactions.status') || 'Status'}</span>
+                                <span className="tx-status-badge pending">{t('wallet.pending')}</span>
+                            </div>
+
+                            <div className="tx-detail-row">
+                                <span className="tx-detail-label">{t('transactions.time') || 'Time'}</span>
+                                <span className="tx-detail-time">{formatTime(selectedTx.timestamp)}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

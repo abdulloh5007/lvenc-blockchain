@@ -1,6 +1,7 @@
 import { NFT, NFTData, NFTMetadata } from './NFT.js';
 import { NFTCollection, NFTCollectionData } from './NFTCollection.js';
 import { logger } from '../utils/logger.js';
+import { lockMetadata, isMetadataLocked, setRoyalty, enforceRoyalty, isDustingAttack } from '../security/index.js';
 
 export class NFTManager {
     private nfts: Map<string, NFT> = new Map();
@@ -9,7 +10,6 @@ export class NFTManager {
 
     constructor() { }
 
-    // Collections
     createCollection(
         name: string,
         symbol: string,
@@ -32,13 +32,16 @@ export class NFTManager {
         return Array.from(this.collections.values());
     }
 
-    // NFTs
     mint(
         creator: string,
         metadata: NFTMetadata,
         collectionId: string | null = null,
         royalty: number = 5
     ): NFT | null {
+        if (royalty < 0 || royalty > 25) {
+            logger.warn(`Invalid royalty: ${royalty}%`);
+            return null;
+        }
         if (collectionId) {
             const collection = this.collections.get(collectionId);
             if (!collection) {
@@ -51,10 +54,13 @@ export class NFTManager {
             }
             collection.incrementMinted();
         }
-
         this.tokenCounter++;
         const nft = new NFT(this.tokenCounter, creator, metadata, collectionId, royalty);
         this.nfts.set(nft.id, nft);
+        lockMetadata(nft.id);
+        if (collectionId) {
+            setRoyalty(collectionId, creator, royalty);
+        }
         logger.info(`🖼️ NFT minted: #${nft.tokenId} "${metadata.name}" by ${creator.slice(0, 10)}...`);
         return nft;
     }
@@ -79,11 +85,16 @@ export class NFTManager {
         return this.getAllNFTs().filter(nft => nft.creator === creator);
     }
 
-    transfer(nftId: string, to: string, transactionId: string): boolean {
+    transfer(nftId: string, to: string, transactionId: string, salePrice: number = 0): boolean {
         const nft = this.nfts.get(nftId);
         if (!nft) {
             logger.warn(`NFT not found: ${nftId}`);
             return false;
+        }
+        if (nft.collectionId && salePrice > 0) {
+            if (!enforceRoyalty(nft.collectionId, salePrice, salePrice * (nft.royalty / 100))) {
+                return false;
+            }
         }
         const from = nft.owner;
         nft.transfer(to, transactionId);

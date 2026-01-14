@@ -19,7 +19,18 @@ import { createNetworkRoutes } from './routes/network.js';
 import { createNFTRoutes } from './routes/nft.js';
 import { createIPFSRoutes } from './routes/ipfs.js';
 import { createAdminRoutes } from './routes/admin.js';
-import { apiKeyAuth } from './middleware/index.js';
+import {
+    apiKeyAuth,
+    inputValidation,
+    securityHeaders,
+    bruteForceProtection,
+    csrfProtection,
+    csrfTokenHandler,
+    sessionSecurity,
+    jsonDepthLimiter,
+    connectionTimeout,
+    checkRpcLimit
+} from './middleware/index.js';
 import { NFTManager } from '../nft/index.js';
 
 // Initialize blockchain
@@ -76,9 +87,34 @@ app.use(cors(config.api.cors));
 app.use(express.json({ limit: '5mb' })); // Increased for IPFS uploads
 app.use(apiLimiter);
 
+// Security middleware - protects against various attacks
+app.use(securityHeaders);       // XSS, Clickjacking, CSP headers
+app.use(inputValidation);       // Injection attack protection
+app.use(bruteForceProtection);  // Brute force / credential stuffing protection
+app.use(sessionSecurity);       // Session fixation protection
+app.use(csrfProtection);        // CSRF protection for browser requests
+
+// DoS protection middleware
+app.use(jsonDepthLimiter(10));     // Prevent deeply nested JSON attacks
+app.use(connectionTimeout(30000)); // Slowloris protection (30s timeout)
+
+// RPC method rate limiting
+app.use((req: Request, res: Response, next: NextFunction) => {
+    const ip = req.ip || req.socket.remoteAddress || 'unknown';
+    const method = `${req.method}:${req.path.split('/')[2] || 'root'}`;
+    if (!checkRpcLimit(ip, method)) {
+        res.status(429).json({ success: false, error: 'RPC method rate limit exceeded' });
+        return;
+    }
+    next();
+});
+
 // Request logging
 app.use((req: Request, _res: Response, next: NextFunction) => {
     logger.debug(`${req.method} ${req.path}`);
+    if (req.method === 'POST' || req.method === 'PUT') {
+        logger.debug(`Body: ${JSON.stringify(req.body)}`);
+    }
     next();
 });
 
@@ -94,6 +130,9 @@ app.get('/health', (_req: Request, res: Response) => {
         },
     });
 });
+
+// CSRF token endpoint for browser clients
+app.get('/api/csrf-token', csrfTokenHandler);
 
 // API Info
 app.get('/api', (_req: Request, res: Response) => {
@@ -192,7 +231,7 @@ app.post('/api/faucet', (req: Request, res: Response) => {
     }
 
     try {
-        const tx = faucetWallet.createTransaction(address, amount);
+        const tx = faucetWallet.createTransaction(address, amount, 0.1); // Add minimum fee
         blockchain.addTransaction(tx);
         storage.saveBlockchain(blockchain.toJSON());
 

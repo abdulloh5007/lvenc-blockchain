@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Sparkles, Image, Plus, X, Upload, Globe } from 'lucide-react';
-import { Card, Button, Input } from '../components';
+import { Card, Button, Input, CustomSelect } from '../components';
 import { useWallets } from '../hooks';
 import { nft, ipfs } from '../api/client';
 import type { NFTMetadata, NFTAttribute, IPFSStatus } from '../api/client';
@@ -167,14 +167,18 @@ export const NFTMint: React.FC = () => {
                     <div className="mint-form">
                         <div className="form-group">
                             <label>Кошелёк создателя *</label>
-                            <select value={selectedWallet} onChange={e => setSelectedWallet(e.target.value)}>
-                                <option value="">Выберите кошелёк</option>
-                                {wallets.map(w => (
-                                    <option key={w.address} value={w.address}>
-                                        {w.label || 'Wallet'} ({w.address.slice(0, 10)}...)
-                                    </option>
-                                ))}
-                            </select>
+                            <CustomSelect
+                                options={[
+                                    { value: '', label: 'Выберите кошелёк' },
+                                    ...wallets.map(w => ({
+                                        value: w.address,
+                                        label: `${w.label || 'Wallet'} (${w.address.slice(0, 10)}...)`
+                                    }))
+                                ]}
+                                value={selectedWallet}
+                                onChange={setSelectedWallet}
+                                placeholder="Выберите кошелёк"
+                            />
                         </div>
 
                         <Input label="Название *" placeholder="My Cool NFT" value={name} onChange={e => setName(e.target.value)} />

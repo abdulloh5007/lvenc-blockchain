@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { Wallet } from '../../wallet/index.js';
 import { Blockchain } from '../../blockchain/index.js';
 import { storage } from '../../storage/index.js';
+import { isBlacklisted, checkTransferRate } from '../../security/index.js';
 
 export function createWalletRoutes(blockchain: Blockchain): Router {
     const router = Router();

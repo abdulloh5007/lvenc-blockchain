@@ -225,6 +225,7 @@ export const nft = {
             method: 'POST',
             body: JSON.stringify({ name, symbol, creator, description, image, maxSupply }),
         }),
+    getNFTsByCollection: (collectionId: string) => fetchApi<NFTData[]>(`/nft/collection/${collectionId}/nfts`),
 };
 
 // IPFS Types
@@ -257,4 +258,9 @@ export const ipfs = {
             method: 'POST',
         }),
     listPins: () => fetchApi<{ pins: string[]; count: number }>('/ipfs/pins'),
+};
+
+export const api = {
+    nft,
+    ipfs,
 };

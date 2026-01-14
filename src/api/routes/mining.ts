@@ -6,32 +6,19 @@ export function createMiningRoutes(blockchain: Blockchain): Router {
     const router = Router();
 
     // Mine pending transactions
-    router.post('/mine', (req: Request, res: Response) => {
+    router.post('/mine', async (req: Request, res: Response) => {
         const { minerAddress } = req.body;
-
         if (!minerAddress) {
-            res.status(400).json({
-                success: false,
-                error: 'Miner address is required',
-            });
+            res.status(400).json({ success: false, error: 'Miner address is required' });
             return;
         }
-
-        // Check if there's anything to mine
         if (blockchain.pendingTransactions.length === 0) {
-            res.status(400).json({
-                success: false,
-                error: 'No pending transactions to mine',
-            });
+            res.status(400).json({ success: false, error: 'No pending transactions to mine' });
             return;
         }
-
         try {
-            const block = blockchain.minePendingTransactions(minerAddress);
-
-            // Save blockchain state
+            const block = await blockchain.minePendingTransactions(minerAddress);
             storage.saveBlockchain(blockchain.toJSON());
-
             res.json({
                 success: true,
                 data: {

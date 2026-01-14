@@ -12,23 +12,16 @@ export function createAdminRoutes(blockchain: Blockchain): Router {
     const router = Router();
 
     // Mine a new block
-    router.post('/mine', (req: Request, res: Response) => {
+    router.post('/mine', async (req: Request, res: Response) => {
         const { minerAddress } = req.body;
-
         if (!minerAddress) {
-            res.status(400).json({
-                success: false,
-                error: 'Miner address is required',
-            });
+            res.status(400).json({ success: false, error: 'Miner address is required' });
             return;
         }
-
         try {
-            const block = blockchain.minePendingTransactions(minerAddress);
+            const block = await blockchain.minePendingTransactions(minerAddress);
             storage.saveBlockchain(blockchain.toJSON());
-
             logger.info(`⛏️ Admin mined block #${block.index}`);
-
             res.json({
                 success: true,
                 data: {

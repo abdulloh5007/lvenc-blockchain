@@ -11,7 +11,8 @@
         "overview": "Обзор",
         "walletGroup": "Кошелёк",
         "nftGroup": "NFT",
-        "networkGroup": "Сеть"
+        "networkGroup": "Сеть",
+        "collections": "Коллекции"
     },
     "common": {
         "connected": "Подключено",
@@ -27,7 +28,46 @@
         "close": "Закрыть",
         "noData": "Нет данных",
         "blocks": "блоков",
-        "tx": "тр."
+        "tx": "тр.",
+        "search": "Поиск..."
+    },
+    "collections": {
+        "title": "NFT Коллекции",
+        "create": "Создать коллекцию",
+        "search": "Поиск коллекций...",
+        "empty": "Коллекций пока нет.",
+        "noResults": "Коллекции не найдены.",
+        "createFirst": "Создайте первую коллекцию",
+        "minted": "Создано",
+        "supply": "Всего",
+        "items": "Элементов",
+        "maxSupply": "Макс. кол-во",
+        "detail": {
+            "mintNft": "Создать NFT",
+            "backTo": "Вернуться к коллекциям",
+            "createdBy": "Создатель",
+            "date": "Дата",
+            "itemsIn": "NFT в коллекции",
+            "noItems": "NFT в этой коллекции пока нет.",
+            "beFirst": "Создайте первый!"
+        },
+        "modal": {
+            "title": "Создать коллекцию",
+            "name": "Название коллекции",
+            "namePlaceholder": "напр. Crypto Punks",
+            "symbol": "Символ",
+            "symbolPlaceholder": "напр. PUNK",
+            "description": "Описание",
+            "descPlaceholder": "Опишите вашу NFT коллекцию...",
+            "image": "Изображение коллекции",
+            "clickUpload": "Нажмите для загрузки",
+            "supported": "Форматы: JPG, PNG, GIF",
+            "maxSupply": "Макс. кол-во",
+            "creatorWallet": "Кошелёк создателя",
+            "cancel": "Отмена",
+            "creating": "Создание...",
+            "createBtn": "Создать коллекцию"
+        }
     },
     "dashboard": {
         "title": "Панель управления",
@@ -67,11 +107,11 @@
         "privateKey": "Приватный ключ",
         "seedPhrase": "Seed-фраза",
         "words": "слов",
-        "enterSeed": "Введите 15 слов seed-фразы...",
-        "enterSeedWords": "Введите 15 секретных слов в правильном порядке",
-        "fillAllWords": "Заполните все 15 слов",
+        "enterSeed": "Введите 24 слов seed-фразы...",
+        "enterSeedWords": "Введите 24 секретных слов в правильном порядке",
+        "fillAllWords": "Заполните все 24 слов",
         "invalidWords": "Неверные слова",
-        "pasteHint": "Совет: Вставьте все 15 слов в первое поле для автозаполнения",
+        "pasteHint": "Совет: Вставьте все 24 слов в первое поле для автозаполнения",
         "saveSeed": "Сохраните seed-фразу! Она больше не будет показана.",
         "seedCopied": "Seed-фраза скопирована!",
         "copySeed": "Скопировать seed-фразу",

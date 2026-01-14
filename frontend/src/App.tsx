@@ -1,32 +1,45 @@
-import { useState } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { Sidebar } from './components';
 import { ThemeProvider, I18nProvider } from './contexts';
-import { Dashboard, BlocksPage, WalletPage, TransactionsPage, MiningPage, NetworkPage, NFTGallery, NFTMint } from './pages';
+import {
+  Dashboard,
+  BlocksPage,
+  WalletPage,
+  TransactionsPage,
+  MiningPage,
+  NetworkPage,
+  NFTGallery,
+  NFTMint,
+  NFTCollections,
+  NFTCollectionDetail
+} from './pages';
 import './App.css';
 
 function App() {
-  const [currentPage, setCurrentPage] = useState('dashboard');
-
-  const renderPage = () => {
-    switch (currentPage) {
-      case 'dashboard': return <Dashboard />;
-      case 'blocks': return <BlocksPage />;
-      case 'wallet': return <WalletPage />;
-      case 'transactions': return <TransactionsPage />;
-      case 'mining': return <MiningPage />;
-      case 'network': return <NetworkPage />;
-      case 'nft': return <NFTGallery />;
-      case 'nft-mint': return <NFTMint />;
-      default: return <Dashboard />;
-    }
-  };
-
   return (
     <ThemeProvider>
       <I18nProvider>
         <div className="app-layout">
-          <Sidebar currentPage={currentPage} onNavigate={setCurrentPage} />
-          <main className="main-content">{renderPage()}</main>
+          <Sidebar />
+          <main className="main-content">
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/blocks" element={<BlocksPage />} />
+              <Route path="/wallet" element={<WalletPage />} />
+              <Route path="/transactions" element={<TransactionsPage />} />
+              <Route path="/mining" element={<MiningPage />} />
+              <Route path="/network" element={<NetworkPage />} />
+
+              {/* NFT Routes */}
+              <Route path="/nft" element={<NFTGallery />} />
+              <Route path="/nft/mint" element={<NFTMint />} />
+              <Route path="/nft/collections" element={<NFTCollections />} />
+              <Route path="/nft/collections/:id" element={<NFTCollectionDetail />} />
+
+              {/* Fallback */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </main>
         </div>
       </I18nProvider>
     </ThemeProvider>

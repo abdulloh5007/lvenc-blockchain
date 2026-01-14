@@ -11,7 +11,7 @@ interface SeedImportModalProps {
     onImport: (mnemonic: string) => Promise<void>;
 }
 
-const WORD_COUNT = 15;
+const WORD_COUNT = 24;
 
 export const SeedImportModal: React.FC<SeedImportModalProps> = ({ isOpen, onClose, onImport }) => {
     const { t } = useI18n();
@@ -102,6 +102,10 @@ export const SeedImportModal: React.FC<SeedImportModalProps> = ({ isOpen, onClos
 
     if (!isOpen) return null;
 
+    // Split words into two columns: 1-12 and 13-24
+    const firstColumn = words.slice(0, 12);
+    const secondColumn = words.slice(12, 24);
+
     return (
         <div className="seed-modal-overlay" onClick={onClose}>
             <div className="seed-modal" onClick={e => e.stopPropagation()}>
@@ -112,27 +116,54 @@ export const SeedImportModal: React.FC<SeedImportModalProps> = ({ isOpen, onClos
 
                 <p className="seed-modal-desc">{t('wallet.enterSeedWords')}</p>
 
-                <div className="seed-grid">
-                    {words.map((word, index) => (
-                        <div key={index} className={`seed-input-wrapper ${word && !validateWord(word) ? 'invalid' : ''} ${word && validateWord(word) ? 'valid' : ''}`}>
-                            <span className="seed-num">{index + 1}</span>
-                            <input
-                                ref={el => { inputRefs.current[index] = el; }}
-                                type="text"
-                                value={word}
-                                onChange={e => handleChange(index, e.target.value)}
-                                onPaste={e => handlePaste(index, e)}
-                                onKeyDown={e => handleKeyDown(index, e)}
-                                placeholder=""
-                                autoComplete="off"
-                                autoCorrect="off"
-                                autoCapitalize="off"
-                                spellCheck={false}
-                            />
-                            {word && validateWord(word) && <CheckCircle size={14} className="word-valid-icon" />}
-                            {word && !validateWord(word) && <AlertCircle size={14} className="word-invalid-icon" />}
-                        </div>
-                    ))}
+                <div className="seed-grid-columns">
+                    <div className="seed-column">
+                        {firstColumn.map((word, index) => (
+                            <div key={index} className={`seed-input-wrapper ${word && !validateWord(word) ? 'invalid' : ''} ${word && validateWord(word) ? 'valid' : ''}`}>
+                                <span className="seed-num">{index + 1}</span>
+                                <input
+                                    ref={el => { inputRefs.current[index] = el; }}
+                                    type="text"
+                                    value={word}
+                                    onChange={e => handleChange(index, e.target.value)}
+                                    onPaste={e => handlePaste(index, e)}
+                                    onKeyDown={e => handleKeyDown(index, e)}
+                                    placeholder=""
+                                    autoComplete="off"
+                                    autoCorrect="off"
+                                    autoCapitalize="off"
+                                    spellCheck={false}
+                                />
+                                {word && validateWord(word) && <CheckCircle size={14} className="word-valid-icon" />}
+                                {word && !validateWord(word) && <AlertCircle size={14} className="word-invalid-icon" />}
+                            </div>
+                        ))}
+                    </div>
+                    <div className="seed-column">
+                        {secondColumn.map((word, index) => {
+                            const actualIndex = index + 12;
+                            return (
+                                <div key={actualIndex} className={`seed-input-wrapper ${word && !validateWord(word) ? 'invalid' : ''} ${word && validateWord(word) ? 'valid' : ''}`}>
+                                    <span className="seed-num">{actualIndex + 1}</span>
+                                    <input
+                                        ref={el => { inputRefs.current[actualIndex] = el; }}
+                                        type="text"
+                                        value={word}
+                                        onChange={e => handleChange(actualIndex, e.target.value)}
+                                        onPaste={e => handlePaste(actualIndex, e)}
+                                        onKeyDown={e => handleKeyDown(actualIndex, e)}
+                                        placeholder=""
+                                        autoComplete="off"
+                                        autoCorrect="off"
+                                        autoCapitalize="off"
+                                        spellCheck={false}
+                                    />
+                                    {word && validateWord(word) && <CheckCircle size={14} className="word-valid-icon" />}
+                                    {word && !validateWord(word) && <AlertCircle size={14} className="word-invalid-icon" />}
+                                </div>
+                            );
+                        })}
+                    </div>
                 </div>
 
                 {error && <div className="seed-error"><AlertCircle size={16} /> {error}</div>}

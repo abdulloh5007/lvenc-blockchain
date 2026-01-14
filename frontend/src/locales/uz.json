@@ -11,7 +11,8 @@
         "overview": "Ko'rinish",
         "walletGroup": "Hamyon",
         "nftGroup": "NFT",
-        "networkGroup": "Tarmoq"
+        "networkGroup": "Tarmoq",
+        "collections": "To'plamlar"
     },
     "common": {
         "connected": "Ulangan",
@@ -27,7 +28,46 @@
         "close": "Yopish",
         "noData": "Ma'lumot yo'q",
         "blocks": "blok",
-        "tx": "tr."
+        "tx": "tr.",
+        "search": "Qidirish..."
+    },
+    "collections": {
+        "title": "NFT To'plamlar",
+        "create": "To'plam yaratish",
+        "search": "To'plamlarni qidirish...",
+        "empty": "To'plamlar hali yo'q.",
+        "noResults": "To'plamlar topilmadi.",
+        "createFirst": "Birinchi to'plamni yarating",
+        "minted": "Yaratilgan",
+        "supply": "Jami",
+        "items": "Elementlar",
+        "maxSupply": "Maks. soni",
+        "detail": {
+            "mintNft": "NFT yaratish",
+            "backTo": "To'plamlarga qaytish",
+            "createdBy": "Yaratuvchi",
+            "date": "Sana",
+            "itemsIn": "To'plamdagi NFT",
+            "noItems": "Bu to'plamda hali NFT yo'q.",
+            "beFirst": "Birinchi bo'ling!"
+        },
+        "modal": {
+            "title": "To'plam yaratish",
+            "name": "To'plam nomi",
+            "namePlaceholder": "masalan: Crypto Punks",
+            "symbol": "Belgi",
+            "symbolPlaceholder": "masalan: PUNK",
+            "description": "Tavsif",
+            "descPlaceholder": "NFT to'plamingizni tasvirlang...",
+            "image": "To'plam rasmi",
+            "clickUpload": "Yuklash uchun bosing",
+            "supported": "Formatlar: JPG, PNG, GIF",
+            "maxSupply": "Maks. soni",
+            "creatorWallet": "Yaratuvchi hamyoni",
+            "cancel": "Bekor qilish",
+            "creating": "Yaratilmoqda...",
+            "createBtn": "To'plam yaratish"
+        }
     },
     "dashboard": {
         "title": "Boshqaruv paneli",
@@ -67,11 +107,11 @@
         "privateKey": "Maxfiy kalit",
         "seedPhrase": "Seed-fraza",
         "words": "so'z",
-        "enterSeed": "15 so'zlik seed-frazani kiriting...",
-        "enterSeedWords": "15 maxfiy so'zni to'g'ri tartibda kiriting",
-        "fillAllWords": "Barcha 15 so'zni to'ldiring",
+        "enterSeed": "24 so'zlik seed-frazani kiriting...",
+        "enterSeedWords": "24 maxfiy so'zni to'g'ri tartibda kiriting",
+        "fillAllWords": "Barcha 24 so'zni to'ldiring",
         "invalidWords": "Noto'g'ri so'zlar",
-        "pasteHint": "Maslahat: Avto-to'ldirish uchun birinchi maydoniga 15 so'zni joylashtiring",
+        "pasteHint": "Maslahat: Avto-to'ldirish uchun birinchi maydoniga 24 so'zni joylashtiring",
         "saveSeed": "Seed-frazani saqlang! U boshqa ko'rsatilmaydi.",
         "seedCopied": "Seed-fraza nusxalandi!",
         "copySeed": "Seed-frazani nusxalash",

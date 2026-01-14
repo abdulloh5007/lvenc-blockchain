@@ -11,7 +11,8 @@
         "overview": "Overview",
         "walletGroup": "Wallet",
         "nftGroup": "NFT",
-        "networkGroup": "Network"
+        "networkGroup": "Network",
+        "collections": "Collections"
     },
     "common": {
         "connected": "Connected",
@@ -27,7 +28,46 @@
         "close": "Close",
         "noData": "No data",
         "blocks": "blocks",
-        "tx": "tx"
+        "tx": "tx",
+        "search": "Search..."
+    },
+    "collections": {
+        "title": "NFT Collections",
+        "create": "Create Collection",
+        "search": "Search collections...",
+        "empty": "No collections created yet.",
+        "noResults": "No collections found matching your search.",
+        "createFirst": "Create Your First Collection",
+        "minted": "Minted",
+        "supply": "Supply",
+        "items": "Items",
+        "maxSupply": "Max Supply",
+        "detail": {
+            "mintNft": "Mint NFT",
+            "backTo": "Back to Collections",
+            "createdBy": "Created by",
+            "date": "Date",
+            "itemsIn": "Items in Collection",
+            "noItems": "No NFTs minted in this collection yet.",
+            "beFirst": "Be the first to mint!"
+        },
+        "modal": {
+            "title": "Create New Collection",
+            "name": "Collection Name",
+            "namePlaceholder": "e.g. Crypto Punks",
+            "symbol": "Symbol",
+            "symbolPlaceholder": "e.g. PUNK",
+            "description": "Description",
+            "descPlaceholder": "Describe your NFT collection...",
+            "image": "Collection Image",
+            "clickUpload": "Click to upload image",
+            "supported": "Supported: JPG, PNG, GIF",
+            "maxSupply": "Max Supply",
+            "creatorWallet": "Creator Wallet",
+            "cancel": "Cancel",
+            "creating": "Creating...",
+            "createBtn": "Create Collection"
+        }
     },
     "dashboard": {
         "title": "Dashboard",
@@ -67,11 +107,11 @@
         "privateKey": "Private Key",
         "seedPhrase": "Seed Phrase",
         "words": "words",
-        "enterSeed": "Enter your 15-word seed phrase...",
-        "enterSeedWords": "Enter your 15 secret words in correct order",
-        "fillAllWords": "Please fill in all 15 words",
+        "enterSeed": "Enter your 24-word seed phrase...",
+        "enterSeedWords": "Enter your 24 secret words in correct order",
+        "fillAllWords": "Please fill in all 24 words",
         "invalidWords": "Invalid words",
-        "pasteHint": "Tip: Paste all 15 words in the first field to auto-fill",
+        "pasteHint": "Tip: Paste all 24 words in the first field to auto-fill",
         "saveSeed": "Save your seed phrase! It will not be shown again.",
         "seedCopied": "Seed phrase copied!",
         "copySeed": "Copy Seed Phrase",

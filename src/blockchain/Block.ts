@@ -1,6 +1,7 @@
 import { sha256, hashMeetsDifficulty } from '../utils/crypto.js';
 import { Transaction, TransactionData } from './Transaction.js';
 import { logger } from '../utils/logger.js';
+import { miningService } from '../mining/index.js';
 
 export interface BlockData {
     index: number;
@@ -60,30 +61,20 @@ export class Block implements BlockData {
     }
 
     /**
-     * Mine the block with Proof of Work
+     * Mine the block with Proof of Work (runs in separate worker thread)
      */
-    mineBlock(): void {
+    async mineBlock(): Promise<void> {
         const log = logger.child('Mining');
         log.info(`⛏️  Mining block ${this.index} with difficulty ${this.difficulty}...`);
-
-        const startTime = Date.now();
-        let hashesCalculated = 0;
-
-        while (!hashMeetsDifficulty(this.hash, this.difficulty)) {
-            this.nonce++;
-            this.hash = this.calculateHash();
-            hashesCalculated++;
-
-            // Log progress every 100000 hashes
-            if (hashesCalculated % 100000 === 0) {
-                const elapsed = (Date.now() - startTime) / 1000;
-                const hashRate = Math.floor(hashesCalculated / elapsed);
-                log.debug(`Hash rate: ${hashRate} H/s, Nonce: ${this.nonce}`);
-            }
-        }
-
-        const elapsed = (Date.now() - startTime) / 1000;
-        log.info(`✨ Block mined! Hash: ${this.hash.substring(0, 16)}... Time: ${elapsed.toFixed(2)}s, Nonce: ${this.nonce}`);
+        const blockData = this.index.toString() +
+            this.timestamp.toString() +
+            this.transactions.map(tx => JSON.stringify(tx.toJSON())).join('') +
+            this.previousHash +
+            this.difficulty.toString();
+        const result = await miningService.mine(blockData, this.difficulty);
+        this.hash = result.hash;
+        this.nonce = result.nonce;
+        log.info(`✨ Block mined in worker! Hash: ${this.hash.substring(0, 16)}... Nonce: ${this.nonce}`);
     }
 
     /**

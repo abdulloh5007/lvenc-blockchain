@@ -1,11 +1,11 @@
-import { useState } from 'react';
-import { LayoutDashboard, Blocks, Wallet, FileText, Pickaxe, Globe, Image, Sparkles, Sun, Moon, Languages, ChevronLeft, ChevronRight, Menu, X } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { LayoutDashboard, Blocks, Wallet, FileText, Pickaxe, Globe, Image, Sparkles, Sun, Moon, Languages, ChevronLeft, ChevronRight, Menu, X, Library } from 'lucide-react';
 import { useTheme, useI18n } from '../contexts';
 import './Sidebar.css';
 
 interface SidebarProps {
-    currentPage: string;
-    onNavigate: (page: string) => void;
+    onNavigate?: (page: string) => void; // Optional for backward compatibility if needed
 }
 
 const navGroups = [
@@ -13,101 +13,111 @@ const navGroups = [
         title: 'Overview',
         titleKey: 'nav.overview',
         items: [
-            { id: 'dashboard', labelKey: 'nav.dashboard', icon: LayoutDashboard },
-            { id: 'blocks', labelKey: 'nav.blocks', icon: Blocks },
-            { id: 'transactions', labelKey: 'nav.transactions', icon: FileText },
+            { id: '/', labelKey: 'nav.dashboard', icon: LayoutDashboard },
+            { id: '/blocks', labelKey: 'nav.blocks', icon: Blocks },
+            { id: '/transactions', labelKey: 'nav.transactions', icon: FileText },
         ],
     },
     {
         title: 'Wallet',
         titleKey: 'nav.walletGroup',
         items: [
-            { id: 'wallet', labelKey: 'nav.wallet', icon: Wallet },
-            { id: 'mining', labelKey: 'nav.mining', icon: Pickaxe },
+            { id: '/wallet', labelKey: 'nav.wallet', icon: Wallet },
+            { id: '/mining', labelKey: 'nav.mining', icon: Pickaxe },
         ],
     },
     {
         title: 'NFT',
         titleKey: 'nav.nftGroup',
         items: [
-            { id: 'nft', labelKey: 'nav.nft', icon: Image },
-            { id: 'nft-mint', labelKey: 'nav.nftMint', icon: Sparkles },
+            { id: '/nft', labelKey: 'nav.nft', icon: Image },
+            { id: '/nft/collections', labelKey: 'nav.collections', icon: Library },
+            { id: '/nft/mint', labelKey: 'nav.nftMint', icon: Sparkles },
         ],
     },
     {
         title: 'Network',
         titleKey: 'nav.networkGroup',
         items: [
-            { id: 'network', labelKey: 'nav.network', icon: Globe },
+            { id: '/network', labelKey: 'nav.network', icon: Globe },
         ],
     },
 ];
 
-export const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate }) => {
+export const Sidebar: React.FC<SidebarProps> = () => {
     const [collapsed, setCollapsed] = useState(false);
     const [mobileOpen, setMobileOpen] = useState(false);
     const [langMenuOpen, setLangMenuOpen] = useState(false);
     const { theme, setTheme } = useTheme();
     const { locale, locales, t, setLocale } = useI18n();
+    const navigate = useNavigate();
+    const location = useLocation();
+    const langMenuRef = useRef<HTMLDivElement>(null);
+
+    // Close language menu when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (langMenuRef.current && !langMenuRef.current.contains(event.target as Node)) {
+                setLangMenuOpen(false);
+            }
+        };
+
+        if (langMenuOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [langMenuOpen]);
 
     const toggleTheme = () => {
         setTheme(theme === 'dark' ? 'light' : 'dark');
     };
 
-    const handleNavigate = (page: string) => {
-        onNavigate(page);
-        setMobileOpen(false); // Close mobile menu on navigate
-    };
-
-    // Translation with fallback
-    const translate = (key: string, fallback: string) => {
-        const result = t(key);
-        return result && result !== key ? result : fallback;
+    const handleNavigate = (path: string) => {
+        navigate(path);
+        setMobileOpen(false);
     };
 
     return (
         <>
-            {/* Mobile menu button */}
-            <button className="mobile-menu-btn" onClick={() => setMobileOpen(!mobileOpen)}>
-                {mobileOpen ? <X size={24} /> : <Menu size={24} />}
+            {/* Mobile Menu Button */}
+            <button className="mobile-menu-toggle" onClick={() => setMobileOpen(true)}>
+                <Menu size={24} />
             </button>
 
-            {/* Overlay for mobile */}
-            {mobileOpen && <div className="sidebar-overlay" onClick={() => setMobileOpen(false)} />}
+            {/* Mobile Overlay */}
+            <div className={`mobile-overlay ${mobileOpen ? 'open' : ''}`} onClick={() => setMobileOpen(false)} />
 
-            <aside className={`sidebar ${collapsed ? 'collapsed' : ''} ${mobileOpen ? 'mobile-open' : ''}`}>
+            <div className={`sidebar ${collapsed ? 'collapsed' : ''} ${mobileOpen ? 'mobile-open' : ''}`}>
                 <div className="sidebar-header">
-                    <div className="logo">
-                        <span className="logo-icon">⛓️</span>
-                        {!collapsed && <span className="logo-text">EDU Chain</span>}
-                    </div>
-                    <button className="collapse-btn desktop-only" onClick={() => setCollapsed(!collapsed)}>
-                        {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+                    {!collapsed && <span className="logo-text">EDU Chain</span>}
+                    <button className="collapse-btn" onClick={() => setMobileOpen(false)}>
+                        <X size={24} />
                     </button>
-                    <button className="close-mobile-btn mobile-only" onClick={() => setMobileOpen(false)}>
-                        <X size={20} />
+                    <button className="collapse-btn desktop-only" onClick={() => setCollapsed(!collapsed)}>
+                        {collapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
                     </button>
                 </div>
 
                 <nav className="sidebar-nav">
                     {navGroups.map((group, groupIndex) => (
                         <div key={groupIndex} className="nav-group">
-                            {!collapsed && (
-                                <div className="nav-group-title">
-                                    {translate(group.titleKey, group.title)}
-                                </div>
-                            )}
+                            {!collapsed && <h3 className="group-title">{t(group.titleKey) || group.title}</h3>}
                             {group.items.map((item) => {
-                                const IconComponent = item.icon;
+                                // Exact match for paths, but allow startsWith only if it's not a parent of another nav item
+                                const isActive = location.pathname === item.id ||
+                                    (item.id !== '/' && item.id !== '/nft' && location.pathname.startsWith(item.id + '/'));
                                 return (
                                     <button
                                         key={item.id}
-                                        className={`nav-item ${currentPage === item.id ? 'active' : ''}`}
+                                        className={`nav-item ${isActive ? 'active' : ''}`}
                                         onClick={() => handleNavigate(item.id)}
-                                        title={collapsed ? t(item.labelKey) : undefined}
+                                        title={collapsed ? (t(item.labelKey) || item.labelKey) : ''}
                                     >
-                                        <span className="nav-icon"><IconComponent size={18} /></span>
-                                        {!collapsed && <span className="nav-label">{t(item.labelKey)}</span>}
+                                        <item.icon size={20} />
+                                        {!collapsed && <span>{t(item.labelKey) || item.labelKey}</span>}
                                     </button>
                                 );
                             })}
@@ -116,32 +126,44 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate }) => 
                 </nav>
 
                 <div className="sidebar-footer">
-                    <button className="footer-btn" onClick={toggleTheme} title={t(`theme.${theme}`)}>
-                        {theme === 'dark' ? <Moon size={18} /> : <Sun size={18} />}
-                        {!collapsed && <span>{theme === 'dark' ? t('theme.dark') : t('theme.light')}</span>}
-                    </button>
-
-                    <div className="lang-select">
-                        <button className="footer-btn" onClick={() => setLangMenuOpen(!langMenuOpen)}>
-                            <Languages size={18} />
-                            {!collapsed && <span>{t(`language.${locale}`)}</span>}
+                    <div className="footer-actions">
+                        <div className="lang-menu-container" ref={langMenuRef}>
+                            <button
+                                className="footer-btn"
+                                onClick={() => setLangMenuOpen(!langMenuOpen)}
+                                title={t('common.language') || 'Language'}
+                            >
+                                <Languages size={20} />
+                                {!collapsed && <span className="lang-code">{locale.toUpperCase()}</span>}
+                            </button>
+                            {langMenuOpen && (
+                                <div className="lang-dropdown">
+                                    {locales.map(l => (
+                                        <button
+                                            key={l}
+                                            className={`lang-option ${locale === l ? 'active' : ''}`}
+                                            onClick={() => {
+                                                setLocale(l);
+                                                setLangMenuOpen(false);
+                                            }}
+                                        >
+                                            {l.toUpperCase()}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                        <button
+                            className="footer-btn"
+                            onClick={toggleTheme}
+                            title={theme === 'dark' ? t('theme.light') : t('theme.dark')}
+                        >
+                            {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+                            {!collapsed && <span>{theme === 'dark' ? t('theme.light') : t('theme.dark')}</span>}
                         </button>
-                        {langMenuOpen && (
-                            <div className="lang-dropdown" onMouseLeave={() => setLangMenuOpen(false)}>
-                                {locales.map(loc => (
-                                    <button
-                                        key={loc}
-                                        className={`lang-option ${locale === loc ? 'active' : ''}`}
-                                        onClick={() => { setLocale(loc); setLangMenuOpen(false); }}
-                                    >
-                                        {t(`language.${loc}`)}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
                     </div>
                 </div>
-            </aside>
+            </div>
         </>
     );
 };

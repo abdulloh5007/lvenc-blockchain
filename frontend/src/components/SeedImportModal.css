@@ -16,7 +16,7 @@
     border: 1px solid var(--border-color);
     border-radius: 16px;
     width: 100%;
-    max-width: 520px;
+    max-width: 560px;
     max-height: 90vh;
     overflow-y: auto;
     animation: slideUp 0.3s ease-out;
@@ -76,11 +76,18 @@
     font-size: 14px;
 }
 
-.seed-grid {
+/* Two-column layout for seed words */
+.seed-grid-columns {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
     padding: 16px 24px;
+}
+
+.seed-column {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
 .seed-input-wrapper {
@@ -119,7 +126,7 @@
 
 .seed-input-wrapper input {
     width: 100%;
-    padding: 10px 28px 10px 28px;
+    padding: 10px 28px 10px 32px;
     background: transparent;
     border: none;
     font-family: var(--font-mono);
@@ -176,7 +183,7 @@
 }
 
 @media (max-width: 520px) {
-    .seed-grid {
-        grid-template-columns: repeat(2, 1fr);
+    .seed-grid-columns {
+        grid-template-columns: 1fr;
     }
 }

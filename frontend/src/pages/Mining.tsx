@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Pickaxe, Rocket, Trophy, Info, Scissors, Zap, Timer, Hash } from 'lucide-react';
-import { Card, Button } from '../components';
+import { Card, Button, CustomSelect } from '../components';
 import { useWallets, useBlockchain } from '../hooks';
 import { useI18n } from '../contexts';
 import { mining } from '../api/client';
@@ -46,12 +46,18 @@ export const MiningPage: React.FC = () => {
                     <div className="mining-form">
                         <div className="form-group">
                             <label>{t('mining.selectWallet')}</label>
-                            <select className="select" value={selectedWallet} onChange={(e) => setSelectedWallet(e.target.value)}>
-                                <option value="">{t('wallet.selectWallet')}...</option>
-                                {wallets.map((w) => (
-                                    <option key={w.address} value={w.address}>{w.label || 'Wallet'} ({w.balance || 0} EDU)</option>
-                                ))}
-                            </select>
+                            <CustomSelect
+                                options={[
+                                    { value: '', label: `${t('wallet.selectWallet')}...` },
+                                    ...wallets.map(w => ({
+                                        value: w.address,
+                                        label: `${w.label || 'Wallet'} (${w.balance || 0} EDU)`
+                                    }))
+                                ]}
+                                value={selectedWallet}
+                                onChange={setSelectedWallet}
+                                placeholder={t('wallet.selectWallet')}
+                            />
                         </div>
                         <Button onClick={handleMine} loading={loading} className="mine-button">
                             <Pickaxe size={18} /> {loading ? t('common.loading') : t('mining.mineBlock')}

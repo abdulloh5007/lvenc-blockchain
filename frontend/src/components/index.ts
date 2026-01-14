@@ -5,3 +5,4 @@ export { Button } from './Button';
 export { Input, Textarea } from './Input';
 export { SeedImportModal } from './SeedImportModal';
 export { NFTCard } from './NFTCard';
+export { CustomSelect } from './CustomSelect';

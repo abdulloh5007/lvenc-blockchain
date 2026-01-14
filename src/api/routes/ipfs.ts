@@ -86,18 +86,33 @@ export function createIPFSRoutes(): Router {
                 buffer = Buffer.from(data, 'base64');
             }
 
-            // Upload to Lighthouse
-            const response = await lighthouse.uploadBuffer(
-                buffer,
-                LIGHTHOUSE_API_KEY,
-                filename || 'file'
-            );
+            // Upload to Lighthouse using direct API call
 
-            if (!response.data || !response.data.Hash) {
+            // Use fetch to directly call Lighthouse API
+            const formData = new FormData();
+            const blob = new Blob([buffer], { type: mimeType });
+            formData.append('file', blob, filename || 'file');
+
+            const response = await fetch('https://node.lighthouse.storage/api/v0/add', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${LIGHTHOUSE_API_KEY}`,
+                },
+                body: formData
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Lighthouse upload failed: ${errorText}`);
+            }
+
+            const result = await response.json() as { Hash?: string };
+            const cid = result.Hash;
+
+            if (!cid) {
                 throw new Error('Upload failed - no hash returned');
             }
 
-            const cid = response.data.Hash;
             const ipfsUrl = `ipfs://${cid}`;
             const gatewayUrl = `${IPFS_GATEWAY_URL}/${cid}`;
 
