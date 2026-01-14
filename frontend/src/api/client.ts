@@ -1,4 +1,5 @@
-const API_BASE = 'http://localhost:3001/api';
+// Use environment variable, fallback to localhost for development
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
 export interface ApiResponse<T> {
     success: boolean;
