@@ -19,6 +19,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@lighthouse-web3/sdk": "^0.4.3",
     "bip39": "^3.1.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",

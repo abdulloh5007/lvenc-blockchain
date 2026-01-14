@@ -1,51 +1,57 @@
 import { Router, Request, Response } from 'express';
-import { create } from 'ipfs-http-client';
+import lighthouse from '@lighthouse-web3/sdk';
 import { logger } from '../../utils/logger.js';
 
-// IPFS client - connects to local IPFS daemon
-const IPFS_API_URL = process.env.IPFS_API_URL || 'http://127.0.0.1:5001';
-const IPFS_GATEWAY_URL = process.env.IPFS_GATEWAY_URL || 'http://127.0.0.1:8080';
+// Lighthouse configuration
+const LIGHTHOUSE_API_KEY = process.env.LIGHTHOUSE_API_KEY || '';
+const LIGHTHOUSE_GATEWAY = 'https://gateway.lighthouse.storage/ipfs';
 
-let ipfs: ReturnType<typeof create> | null = null;
-
-// Try to connect to IPFS
-try {
-    ipfs = create({ url: IPFS_API_URL });
-    logger.info(`🌐 IPFS client configured for ${IPFS_API_URL}`);
-} catch (error) {
-    logger.warn('⚠️ IPFS daemon not available. File uploads will use base64 fallback.');
-}
+// Fallback to custom gateway if configured
+const IPFS_GATEWAY_URL = process.env.IPFS_GATEWAY_URL || LIGHTHOUSE_GATEWAY;
 
 export function createIPFSRoutes(): Router {
     const router = Router();
 
-    // Health check for IPFS
+    // Health check for Lighthouse
     router.get('/status', async (_req: Request, res: Response) => {
-        if (!ipfs) {
-            res.json({ success: true, data: { connected: false, message: 'IPFS not configured' } });
+        if (!LIGHTHOUSE_API_KEY) {
+            res.json({
+                success: true,
+                data: {
+                    connected: false,
+                    provider: 'lighthouse',
+                    message: 'LIGHTHOUSE_API_KEY not configured',
+                },
+            });
             return;
         }
 
         try {
-            const id = await ipfs.id();
+            // Get API key info
+            const balance = await lighthouse.getBalance(LIGHTHOUSE_API_KEY);
             res.json({
                 success: true,
                 data: {
                     connected: true,
-                    peerId: id.id.toString(),
-                    agentVersion: id.agentVersion,
+                    provider: 'lighthouse',
+                    network: 'filecoin',
+                    balance: balance.data,
                     gatewayUrl: IPFS_GATEWAY_URL,
                 },
             });
         } catch (error) {
             res.json({
                 success: true,
-                data: { connected: false, message: 'IPFS daemon not running' },
+                data: {
+                    connected: true,
+                    provider: 'lighthouse',
+                    gatewayUrl: IPFS_GATEWAY_URL,
+                },
             });
         }
     });
 
-    // Upload file to IPFS
+    // Upload file to Lighthouse (Filecoin)
     router.post('/upload', async (req: Request, res: Response) => {
         const { data, filename } = req.body;
 
@@ -54,11 +60,10 @@ export function createIPFSRoutes(): Router {
             return;
         }
 
-        // If IPFS is not available, return with info
-        if (!ipfs) {
+        if (!LIGHTHOUSE_API_KEY) {
             res.status(503).json({
                 success: false,
-                error: 'IPFS daemon not available. Please start IPFS or use base64 images.',
+                error: 'Lighthouse API key not configured. Set LIGHTHOUSE_API_KEY in .env',
             });
             return;
         }
@@ -66,24 +71,37 @@ export function createIPFSRoutes(): Router {
         try {
             // Handle base64 data
             let buffer: Buffer;
+            let mimeType = 'application/octet-stream';
+
             if (data.startsWith('data:')) {
-                // Extract base64 from data URL
-                const base64Data = data.split(',')[1];
-                buffer = Buffer.from(base64Data, 'base64');
+                // Extract mime type and base64 from data URL
+                const matches = data.match(/^data:([^;]+);base64,(.+)$/);
+                if (matches) {
+                    mimeType = matches[1];
+                    buffer = Buffer.from(matches[2], 'base64');
+                } else {
+                    buffer = Buffer.from(data.split(',')[1], 'base64');
+                }
             } else {
                 buffer = Buffer.from(data, 'base64');
             }
 
-            // Add to IPFS
-            const result = await ipfs.add(buffer, {
-                pin: true, // Pin immediately
-            });
+            // Upload to Lighthouse
+            const response = await lighthouse.uploadBuffer(
+                buffer,
+                LIGHTHOUSE_API_KEY,
+                filename || 'file'
+            );
 
-            const cid = result.cid.toString();
+            if (!response.data || !response.data.Hash) {
+                throw new Error('Upload failed - no hash returned');
+            }
+
+            const cid = response.data.Hash;
             const ipfsUrl = `ipfs://${cid}`;
-            const gatewayUrl = `${IPFS_GATEWAY_URL}/ipfs/${cid}`;
+            const gatewayUrl = `${IPFS_GATEWAY_URL}/${cid}`;
 
-            logger.info(`📤 Uploaded to IPFS: ${cid} (${buffer.length} bytes)`);
+            logger.info(`📤 Uploaded to Lighthouse/Filecoin: ${cid} (${buffer.length} bytes)`);
 
             res.json({
                 success: true,
@@ -92,10 +110,12 @@ export function createIPFSRoutes(): Router {
                     ipfsUrl,
                     gatewayUrl,
                     size: buffer.length,
+                    provider: 'lighthouse',
+                    network: 'filecoin',
                 },
             });
         } catch (error) {
-            logger.error('IPFS upload error:', error);
+            logger.error('Lighthouse upload error:', error);
             res.status(500).json({
                 success: false,
                 error: error instanceof Error ? error.message : 'Upload failed',
@@ -103,67 +123,54 @@ export function createIPFSRoutes(): Router {
         }
     });
 
-    // Get file from IPFS (proxy)
+    // Get file from IPFS via Lighthouse gateway (redirect)
     router.get('/file/:cid', async (req: Request, res: Response) => {
         const { cid } = req.params;
 
-        if (!ipfs) {
-            res.status(503).json({ success: false, error: 'IPFS not available' });
-            return;
-        }
-
-        try {
-            const chunks: Uint8Array[] = [];
-            for await (const chunk of ipfs.cat(cid)) {
-                chunks.push(chunk);
-            }
-            const data = Buffer.concat(chunks);
-
-            // Try to detect content type
-            const isImage = data[0] === 0xFF || data[0] === 0x89 || data[0] === 0x47;
-            res.setHeader('Content-Type', isImage ? 'image/png' : 'application/octet-stream');
-            res.send(data);
-        } catch (error) {
-            res.status(404).json({ success: false, error: 'File not found' });
-        }
+        // Redirect to Lighthouse gateway
+        const gatewayUrl = `${IPFS_GATEWAY_URL}/${cid}`;
+        res.redirect(gatewayUrl);
     });
 
-    // Pin a CID
-    router.post('/pin/:cid', async (req: Request, res: Response) => {
-        const { cid } = req.params;
-
-        if (!ipfs) {
-            res.status(503).json({ success: false, error: 'IPFS not available' });
+    // Get uploads list
+    router.get('/uploads', async (_req: Request, res: Response) => {
+        if (!LIGHTHOUSE_API_KEY) {
+            res.status(503).json({ success: false, error: 'Lighthouse not configured' });
             return;
         }
 
         try {
-            await ipfs.pin.add(cid);
-            logger.info(`📌 Pinned: ${cid}`);
-            res.json({ success: true, data: { cid, pinned: true } });
+            const uploads = await lighthouse.getUploads(LIGHTHOUSE_API_KEY);
+            res.json({
+                success: true,
+                data: {
+                    uploads: uploads.data?.fileList || [],
+                    count: uploads.data?.fileList?.length || 0,
+                },
+            });
         } catch (error) {
             res.status(500).json({
                 success: false,
-                error: error instanceof Error ? error.message : 'Pin failed',
+                error: error instanceof Error ? error.message : 'Failed to get uploads',
             });
         }
     });
 
-    // List pinned files
-    router.get('/pins', async (_req: Request, res: Response) => {
-        if (!ipfs) {
-            res.status(503).json({ success: false, error: 'IPFS not available' });
-            return;
-        }
+    // Get deal status for a CID
+    router.get('/deal/:cid', async (req: Request, res: Response) => {
+        const { cid } = req.params;
 
         try {
-            const pins: string[] = [];
-            for await (const pin of ipfs.pin.ls()) {
-                pins.push(pin.cid.toString());
-            }
-            res.json({ success: true, data: { pins, count: pins.length } });
+            const status = await lighthouse.dealStatus(cid);
+            res.json({
+                success: true,
+                data: status.data,
+            });
         } catch (error) {
-            res.status(500).json({ success: false, error: 'Failed to list pins' });
+            res.status(500).json({
+                success: false,
+                error: error instanceof Error ? error.message : 'Failed to get deal status',
+            });
         }
     });
 
