@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express, { Express, Request, Response, NextFunction, Router } from 'express';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
