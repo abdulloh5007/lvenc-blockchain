@@ -17,6 +17,8 @@ import { createMiningRoutes } from './routes/mining.js';
 import { createNetworkRoutes } from './routes/network.js';
 import { createNFTRoutes } from './routes/nft.js';
 import { createIPFSRoutes } from './routes/ipfs.js';
+import { createAdminRoutes } from './routes/admin.js';
+import { apiKeyAuth } from './middleware/index.js';
 import { NFTManager } from '../nft/index.js';
 
 // Initialize blockchain
@@ -132,6 +134,9 @@ v1Router.use('/ipfs', createIPFSRoutes());
 
 // Apply mint rate limit to NFT mint endpoint
 v1Router.post('/nft/mint', mintLimiter);
+
+// Admin routes (API Key protected)
+v1Router.use('/admin', apiKeyAuth, createAdminRoutes(blockchain));
 
 // Mount V1 API
 app.use('/api/v1', v1Router);
