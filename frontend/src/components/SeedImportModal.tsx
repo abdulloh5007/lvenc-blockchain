@@ -93,7 +93,8 @@ export const SeedImportModal: React.FC<SeedImportModalProps> = ({ isOpen, onClos
             await onImport(words.join(' '));
             onClose();
         } catch (err) {
-            setError(t('wallet.invalidMnemonic'));
+            const errorMsg = err instanceof Error ? err.message : t('wallet.invalidMnemonic');
+            setError(errorMsg);
         }
         setLoading(false);
     };

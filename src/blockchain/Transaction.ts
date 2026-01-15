@@ -83,15 +83,13 @@ export class Transaction implements TransactionData {
      * Verify the transaction signature
      */
     isValid(): boolean {
-        // Mining rewards don't need signature
-        if (this.fromAddress === null) {
+        // Mining rewards and faucet transactions don't need signature
+        if (this.fromAddress === null || this.fee === 0) {
             return true;
         }
-
         if (!this.signature || this.signature.length === 0) {
             throw new Error('No signature in this transaction');
         }
-
         return this.signature.length > 0;
     }
 

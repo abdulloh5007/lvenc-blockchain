@@ -1,7 +1,8 @@
 import { sha256, hashMeetsDifficulty } from '../utils/crypto.js';
 import { Transaction, TransactionData } from './Transaction.js';
 import { logger } from '../utils/logger.js';
-import { miningService } from '../mining/index.js';
+
+export type ConsensusType = 'pow' | 'pos';
 
 export interface BlockData {
     index: number;
@@ -12,6 +13,10 @@ export interface BlockData {
     nonce: number;
     difficulty: number;
     miner?: string;
+    // PoS fields
+    consensusType?: ConsensusType;
+    validator?: string;
+    signature?: string;
 }
 
 export class Block implements BlockData {
@@ -23,6 +28,10 @@ export class Block implements BlockData {
     public nonce: number;
     public difficulty: number;
     public miner?: string;
+    // PoS fields
+    public consensusType: ConsensusType;
+    public validator?: string;
+    public signature?: string;
 
     constructor(
         index: number,
@@ -30,7 +39,8 @@ export class Block implements BlockData {
         transactions: Transaction[],
         previousHash: string,
         difficulty: number,
-        miner?: string
+        miner?: string,
+        consensusType: ConsensusType = 'pow'
     ) {
         this.index = index;
         this.timestamp = timestamp;
@@ -38,6 +48,7 @@ export class Block implements BlockData {
         this.previousHash = previousHash;
         this.difficulty = difficulty;
         this.miner = miner;
+        this.consensusType = consensusType;
         this.nonce = 0;
         this.hash = this.calculateHash();
     }
@@ -61,20 +72,14 @@ export class Block implements BlockData {
     }
 
     /**
-     * Mine the block with Proof of Work (runs in separate worker thread)
+     * Sign block as PoS validator (instant, no mining needed)
      */
-    async mineBlock(): Promise<void> {
-        const log = logger.child('Mining');
-        log.info(`⛏️  Mining block ${this.index} with difficulty ${this.difficulty}...`);
-        const blockData = this.index.toString() +
-            this.timestamp.toString() +
-            this.transactions.map(tx => JSON.stringify(tx.toJSON())).join('') +
-            this.previousHash +
-            this.difficulty.toString();
-        const result = await miningService.mine(blockData, this.difficulty);
-        this.hash = result.hash;
-        this.nonce = result.nonce;
-        log.info(`✨ Block mined in worker! Hash: ${this.hash.substring(0, 16)}... Nonce: ${this.nonce}`);
+    signAsValidator(validatorAddress: string, signFn: (hash: string) => string): void {
+        this.consensusType = 'pos';
+        this.validator = validatorAddress;
+        this.hash = this.calculateHash();
+        this.signature = signFn(this.hash);
+        logger.child('PoS').info(`✅ Block ${this.index} validated by ${validatorAddress.slice(0, 10)}...`);
     }
 
     /**
@@ -102,6 +107,9 @@ export class Block implements BlockData {
             nonce: this.nonce,
             difficulty: this.difficulty,
             miner: this.miner,
+            consensusType: this.consensusType,
+            validator: this.validator,
+            signature: this.signature,
         };
     }
 
@@ -116,10 +124,13 @@ export class Block implements BlockData {
             transactions,
             data.previousHash,
             data.difficulty,
-            data.miner
+            data.miner,
+            data.consensusType || 'pow'
         );
         block.nonce = data.nonce;
         block.hash = data.hash;
+        block.validator = data.validator;
+        block.signature = data.signature;
         return block;
     }
 
@@ -132,24 +143,21 @@ export class Block implements BlockData {
         difficulty: number
     ): Block {
         const genesisTransaction = new Transaction(
-            null,  // From system
+            null,
             faucetAddress,
             genesisAmount,
-            0  // Genesis timestamp
+            0
         );
-
         const genesis = new Block(
             0,
-            0,  // Genesis timestamp
+            0,
             [genesisTransaction],
-            '0'.repeat(64),  // No previous hash
+            '0'.repeat(64),
             difficulty,
-            'GENESIS'
+            'GENESIS',
+            'pos'
         );
-
-        // Don't mine genesis - set fixed hash
         genesis.hash = genesis.calculateHash();
-
         return genesis;
     }
 }

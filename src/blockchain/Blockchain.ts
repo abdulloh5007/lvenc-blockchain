@@ -3,30 +3,31 @@ import { Transaction, TransactionData } from './Transaction.js';
 import { config } from '../config.js';
 import { logger } from '../utils/logger.js';
 import { SafeMath, acquireTxLock, releaseTxLock, validateTransaction, addCheckpoint, validateAgainstCheckpoint, validateBlockTimestamp } from '../security/index.js';
+import { stakingPool } from '../staking/index.js';
 
 export interface BlockchainData {
     chain: BlockData[];
     pendingTransactions: TransactionData[];
     difficulty: number;
-    miningReward: number;
+    validatorReward: number;
 }
 
 export class Blockchain {
     public chain: Block[];
     public pendingTransactions: Transaction[];
     public difficulty: number;
-    public miningReward: number;
+    public validatorReward: number;
+    public lastFinalizedIndex: number;
     private balanceCache: Map<string, number>;
-
-    // Event callbacks
+    private static readonly FINALITY_DEPTH = 32;
     public onBlockMined?: (block: Block) => void;
     public onTransactionAdded?: (tx: Transaction) => void;
-
     constructor() {
         this.difficulty = config.blockchain.difficulty;
-        this.miningReward = config.blockchain.miningReward;
+        this.validatorReward = config.blockchain.validatorReward;
         this.pendingTransactions = [];
         this.balanceCache = new Map();
+        this.lastFinalizedIndex = 0;
         this.chain = [];
     }
 
@@ -53,7 +54,7 @@ export class Blockchain {
         this.chain = data.chain.map(blockData => Block.fromJSON(blockData));
         this.pendingTransactions = data.pendingTransactions.map(tx => Transaction.fromJSON(tx));
         this.difficulty = data.difficulty;
-        this.miningReward = data.miningReward;
+        this.validatorReward = data.validatorReward;
         this.updateBalanceCache();
         logger.info(`📦 Loaded ${this.chain.length} blocks from storage`);
     }
@@ -86,7 +87,9 @@ export class Blockchain {
         if (this.pendingTransactions.length >= config.blockchain.maxPendingTx) {
             throw new Error(`Transaction pool is full (max ${config.blockchain.maxPendingTx})`);
         }
-        if (transaction.fromAddress !== null && transaction.fee < config.blockchain.minFee) {
+        const genesisAddress = this.chain[0]?.transactions[0]?.toAddress;
+        const isFaucetTx = transaction.fromAddress === genesisAddress;
+        if (transaction.fromAddress !== null && transaction.fee < config.blockchain.minFee && !isFaucetTx) {
             throw new Error(`Minimum fee is ${config.blockchain.minFee} ${config.blockchain.coinSymbol}`);
         }
         if (!transaction.fromAddress && !transaction.toAddress) {
@@ -127,7 +130,7 @@ export class Blockchain {
         const halvings = Math.floor(this.chain.length / config.blockchain.halvingInterval);
         // After 64 halvings, reward becomes effectively 0
         if (halvings >= 64) return 0;
-        return Math.floor(config.blockchain.miningReward / Math.pow(2, halvings));
+        return Math.floor(config.blockchain.validatorReward / Math.pow(2, halvings));
     }
 
     /**
@@ -146,6 +149,42 @@ export class Blockchain {
             blocksUntilHalving,
             halvingsDone: currentHalvings,
             halvingInterval,
+        };
+    }
+
+    /**
+     * Get PoS reward with Solana-style gradual inflation reduction
+     * Start: 10 EDU, Min: 1 EDU, reduces by 0.5% every 100,000 blocks
+     */
+    getPoSReward(): number {
+        const INITIAL_REWARD = 10;
+        const MIN_REWARD = 1;
+        const REDUCTION_INTERVAL = 100000; // blocks
+        const REDUCTION_RATE = 0.995; // 0.5% reduction
+        const reductions = Math.floor(this.chain.length / REDUCTION_INTERVAL);
+        const reward = INITIAL_REWARD * Math.pow(REDUCTION_RATE, reductions);
+        return Math.max(MIN_REWARD, Math.round(reward * 100) / 100);
+    }
+
+    /**
+     * Get PoS inflation info
+     */
+    getInflationInfo() {
+        const currentReward = this.getPoSReward();
+        const blocksPerYear = 365 * 24 * 60 * 2; // ~2 blocks/min with 30s intervals
+        const rewardsPerYear = currentReward * blocksPerYear;
+        const currentBlock = this.chain.length;
+        const reductionInterval = 100000;
+        const nextReductionBlock = (Math.floor(currentBlock / reductionInterval) + 1) * reductionInterval;
+        const blocksUntilReduction = nextReductionBlock - currentBlock;
+        return {
+            currentReward,
+            minReward: 1,
+            initialReward: 10,
+            reductionRate: '0.5%',
+            reductionInterval: 100000,
+            blocksUntilNextReduction: blocksUntilReduction,
+            estimatedYearlyInflation: rewardsPerYear,
         };
     }
 
@@ -199,52 +238,60 @@ export class Blockchain {
     }
 
     /**
-     * Mine pending transactions
+     * Create PoS block (instant, no mining needed)
      */
-    async minePendingTransactions(minerAddress: string): Promise<Block> {
+    createPoSBlock(validatorAddress: string, signFn: (hash: string) => string): Block {
         const sortedByFee = [...this.pendingTransactions].sort((a, b) => b.fee - a.fee);
         const txToInclude = sortedByFee.slice(0, config.blockchain.maxTxPerBlock);
         const remainingTx = sortedByFee.slice(config.blockchain.maxTxPerBlock);
         const totalFees = txToInclude.reduce((sum, tx) => SafeMath.add(sum, tx.fee), 0);
-        const currentReward = this.getCurrentReward();
-        const totalReward = SafeMath.add(currentReward, totalFees);
-        const rewardTx = new Transaction(null, minerAddress, totalReward, 0);
+        // Solana-style gradual inflation reduction
+        // Start: 10 EDU, Min: 1 EDU, reduces by 0.5% every 100,000 blocks
+        const validatorReward = this.getPoSReward();
+        const totalReward = SafeMath.add(validatorReward, totalFees);
+        const rewardTx = new Transaction(null, validatorAddress, totalReward, 0);
         const block = new Block(
             this.chain.length,
             Date.now(),
             [rewardTx, ...txToInclude],
             this.getLatestBlock().hash,
-            this.difficulty,
-            minerAddress
+            0, // No difficulty in PoS
+            undefined,
+            'pos'
         );
-        await block.mineBlock();
+        block.signAsValidator(validatorAddress, signFn);
         this.chain.push(block);
         addCheckpoint(block.index, block.hash);
         this.pendingTransactions = remainingTx;
         this.updateBalanceCache();
-        const halvingInfo = this.getHalvingInfo();
-        if (halvingInfo.blocksUntilHalving === config.blockchain.halvingInterval) {
-            logger.info(`🎊 HALVING! New reward: ${halvingInfo.currentReward} ${config.blockchain.coinSymbol}`);
-        }
-        logger.info(`💰 Block ${block.index} mined! Reward: ${currentReward} + ${totalFees} fees = ${totalReward} ${config.blockchain.coinSymbol} (${txToInclude.length} tx, ${remainingTx.length} remaining)`);
+        this.updateFinality();
+        logger.info(`🏦 PoS Block ${block.index} validated! Reward: ${totalReward} ${config.blockchain.coinSymbol}`);
         if (this.onBlockMined) {
             this.onBlockMined(block);
         }
         return block;
     }
+    private updateFinality(): void {
+        const newFinalized = this.chain.length - Blockchain.FINALITY_DEPTH;
+        if (newFinalized > this.lastFinalizedIndex) {
+            this.lastFinalizedIndex = newFinalized;
+            logger.info(`🔒 Block #${newFinalized} finalized (irreversible)`);
+        }
+    }
+    getLastFinalizedBlock(): Block | null {
+        if (this.lastFinalizedIndex <= 0 || this.lastFinalizedIndex >= this.chain.length) return null;
+        return this.chain[this.lastFinalizedIndex];
+    }
 
     /**
-     * Get balance of an address
+     * Get TOTAL balance from blockchain (raw, not considering staking)
      */
-    getBalance(address: string): number {
+    getTotalBalance(address: string): number {
         // Check cache first
         if (this.balanceCache.has(address)) {
             return this.balanceCache.get(address)!;
         }
-
         let balance = 0;
-
-        // Go through all blocks
         for (const block of this.chain) {
             for (const tx of block.transactions) {
                 if (tx.fromAddress === address) {
@@ -255,27 +302,31 @@ export class Blockchain {
                 }
             }
         }
-
         this.balanceCache.set(address, balance);
         return balance;
     }
 
     /**
-     * Get available balance (confirmed balance minus pending outgoing transactions)
-     * This prevents double-spending by accounting for unconfirmed transactions
+     * Get AVAILABLE balance (total - staked)
+     */
+    getBalance(address: string): number {
+        const totalBalance = this.getTotalBalance(address);
+        const stakedAmount = stakingPool.getStake(address);
+        return Math.max(0, totalBalance - stakedAmount);
+    }
+
+    /**
+     * Get available balance for spending (confirmed - pending - staked)
      */
     getAvailableBalance(address: string): number {
-        const confirmedBalance = this.getBalance(address);
-
-        // Subtract all pending outgoing transactions (amount + fee)
+        const availableBalance = this.getBalance(address);
         let pendingOutgoing = 0;
         for (const tx of this.pendingTransactions) {
             if (tx.fromAddress === address) {
                 pendingOutgoing += tx.amount + tx.fee;
             }
         }
-
-        return confirmedBalance - pendingOutgoing;
+        return Math.max(0, availableBalance - pendingOutgoing);
     }
 
     /**
@@ -390,19 +441,19 @@ export class Blockchain {
             }
         }
 
-        const halvingInfo = this.getHalvingInfo();
+        const inflationInfo = this.getInflationInfo();
 
         return {
             blocks: this.chain.length,
             transactions: totalTransactions,
             pendingTransactions: this.pendingTransactions.length,
-            difficulty: this.difficulty,
+            consensusType: 'pos' as const,
             latestBlockHash: this.getLatestBlock()?.hash || 'none',
-            miningReward: halvingInfo.currentReward,
-            initialReward: config.blockchain.miningReward,
-            nextHalvingBlock: halvingInfo.nextHalvingBlock,
-            blocksUntilHalving: halvingInfo.blocksUntilHalving,
-            halvingsDone: halvingInfo.halvingsDone,
+            validatorReward: inflationInfo.currentReward,
+            initialReward: inflationInfo.initialReward,
+            minReward: inflationInfo.minReward,
+            blocksUntilNextReduction: inflationInfo.blocksUntilNextReduction,
+            reductionInterval: inflationInfo.reductionInterval,
             coinSymbol: config.blockchain.coinSymbol,
             totalSupply: totalAmount,
         };
@@ -416,7 +467,7 @@ export class Blockchain {
             chain: this.chain.map(block => block.toJSON()),
             pendingTransactions: this.pendingTransactions.map(tx => tx.toJSON()),
             difficulty: this.difficulty,
-            miningReward: this.miningReward,
+            validatorReward: this.validatorReward,
         };
     }
 }

@@ -1,41 +1,41 @@
+const isTestnet = process.env.NETWORK_MODE !== 'mainnet';
 export const config = {
-    // Blockchain settings
+    network_mode: isTestnet ? 'testnet' : 'mainnet',
+    isTestnet,
     blockchain: {
-        difficulty: 5,              // Number of leading zeros required in hash (5 = ~10-30 sec)
-        miningReward: 50,           // Initial reward for mining a block
-        halvingInterval: 100,       // Halve reward every N blocks (Bitcoin: 210000)
-        genesisAmount: 1000000,     // Initial coins in genesis block
-        coinName: 'EDU',            // Name of the coin
-        coinSymbol: 'EDU',
-        maxTxPerBlock: 10,          // Maximum transactions per block (Bitcoin: ~2000)
-        maxPendingTx: 100,          // Maximum pending transactions
-        minFee: 0.1,                // Minimum transaction fee
+        difficulty: 5,
+        validatorReward: 50,
+        halvingInterval: 100,
+        genesisAmount: 1000000,
+        coinName: isTestnet ? 'tEDU' : 'EDU',
+        coinSymbol: isTestnet ? 'tEDU' : 'EDU',
+        addressPrefix: isTestnet ? 'tEDU' : 'EDU',
+        maxTxPerBlock: 10,
+        maxPendingTx: 100,
+        minFee: 0.1,
     },
-
-    // Network settings
     network: {
-        p2pPort: 6001,              // WebSocket P2P port
-        apiPort: 3001,              // REST API port
-        initialPeers: [],           // Initial peer nodes to connect
+        p2pPort: 6001,
+        apiPort: 3001,
+        initialPeers: [],
     },
-
-    // Storage settings
     storage: {
-        dataDir: './data',          // Data storage directory
+        dataDir: isTestnet ? './data/testnet' : './data/mainnet',
         blocksFile: 'blocks.json',
         walletsDir: 'wallets',
     },
-
-    // API settings
     api: {
         rateLimit: {
-            windowMs: 60000,          // 1 minute
-            maxRequests: 100,         // Max requests per window
+            windowMs: 60000,
+            maxRequests: 100,
         },
         cors: {
-            origin: '*',              // CORS origin
+            origin: '*',
         },
     },
+    faucet: {
+        enabled: isTestnet,
+        amount: 100,
+    },
 };
-
 export type Config = typeof config;

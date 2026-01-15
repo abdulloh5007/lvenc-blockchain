@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Blocks, Wallet, FileText, Pickaxe, Globe, Image, Sparkles, Sun, Moon, Languages, ChevronLeft, ChevronRight, Menu, X, Library } from 'lucide-react';
+import { LayoutDashboard, Blocks, Wallet, FileText, Globe, Image, Sparkles, Sun, Moon, Languages, ChevronLeft, ChevronRight, Menu, X, Library, Coins } from 'lucide-react';
 import { useTheme, useI18n } from '../contexts';
 import './Sidebar.css';
 
@@ -23,7 +23,7 @@ const navGroups = [
         titleKey: 'nav.walletGroup',
         items: [
             { id: '/wallet', labelKey: 'nav.wallet', icon: Wallet },
-            { id: '/mining', labelKey: 'nav.mining', icon: Pickaxe },
+            { id: '/staking', labelKey: 'nav.staking', icon: Coins },
         ],
     },
     {

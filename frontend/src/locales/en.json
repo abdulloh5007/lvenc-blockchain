@@ -5,6 +5,7 @@
         "wallet": "Wallet",
         "transactions": "Transactions",
         "mining": "Mining",
+        "staking": "Staking",
         "network": "Network",
         "nft": "NFT",
         "nftMint": "Mint NFT",
@@ -75,9 +76,10 @@
         "totalBlocks": "Total Blocks",
         "totalTx": "Total Transactions",
         "miningReward": "Mining Reward",
-        "nextHalving": "Next Halving",
+        "validatorReward": "Validator Reward",
+        "nextReduction": "Next Reduction",
         "totalSupply": "Total Supply",
-        "halvingsDone": "Halvings Done",
+        "minReward": "Min Reward",
         "recentBlocks": "Recent Blocks",
         "latestBlock": "Latest Block",
         "noBlocks": "No blocks yet. Start mining!",
@@ -207,5 +209,19 @@
         "en": "English",
         "ru": "Русский",
         "uz": "O'zbek"
+    },
+    "staking": {
+        "title": "Staking",
+        "subtitle": "Stake EDU to become a validator and earn rewards",
+        "stake": "Stake",
+        "unstake": "Unstake",
+        "claim": "Claim",
+        "validators": "Validators",
+        "totalStaked": "Total Staked",
+        "yourStake": "Your Stake",
+        "amount": "Amount",
+        "unstakeAmount": "Unstake Amount",
+        "reward": "Block Reward",
+        "noValidators": "No validators yet. Be the first!"
     }
 }

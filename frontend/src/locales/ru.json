@@ -5,6 +5,7 @@
         "wallet": "Кошелёк",
         "transactions": "Транзакции",
         "mining": "Майнинг",
+        "staking": "Стейкинг",
         "network": "Сеть",
         "nft": "NFT",
         "nftMint": "Минтинг NFT",
@@ -75,9 +76,10 @@
         "totalBlocks": "Всего блоков",
         "totalTx": "Всего транзакций",
         "miningReward": "Награда за майнинг",
-        "nextHalving": "Следующий халвинг",
+        "validatorReward": "Награда валидатора",
+        "nextReduction": "До снижения",
         "totalSupply": "Общая эмиссия",
-        "halvingsDone": "Халвингов прошло",
+        "minReward": "Мин. награда",
         "recentBlocks": "Последние блоки",
         "latestBlock": "Последний блок",
         "noBlocks": "Блоков пока нет. Начните майнинг!",
@@ -207,5 +209,19 @@
         "en": "English",
         "ru": "Русский",
         "uz": "O'zbek"
+    },
+    "staking": {
+        "title": "Стейкинг",
+        "subtitle": "Стейкайте EDU чтобы стать валидатором и получать награды",
+        "stake": "Стейк",
+        "unstake": "Анстейк",
+        "claim": "Забрать",
+        "validators": "Валидаторы",
+        "totalStaked": "Всего в стейке",
+        "yourStake": "Ваш стейк",
+        "amount": "Сумма",
+        "unstakeAmount": "Сумма анстейка",
+        "reward": "Награда за блок",
+        "noValidators": "Валидаторов пока нет. Будьте первым!"
     }
 }

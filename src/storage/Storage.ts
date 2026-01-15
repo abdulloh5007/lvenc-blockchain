@@ -2,18 +2,40 @@ import fs from 'fs';
 import path from 'path';
 import { config } from '../config.js';
 import { BlockchainData } from '../blockchain/index.js';
-import { WalletData } from '../wallet/index.js';
+import {
+    StakeInfo,
+    ValidatorInfo,
+    UnstakeRequest,
+    Delegation,
+    PendingStake,
+    PendingDelegation
+} from '../staking/StakingPool.js';
 import { logger } from '../utils/logger.js';
+
+export interface StakingData {
+    currentEpoch?: number;
+    epochStartBlock?: number;
+    epochStartTime?: number;
+    stakes: StakeInfo[];
+    validators: ValidatorInfo[];
+    delegations?: Record<string, Delegation[]>;
+    validatorDelegations?: Record<string, number>;
+    pendingStakes?: PendingStake[];
+    pendingDelegations?: PendingDelegation[];
+    pendingUnstakes?: Record<string, UnstakeRequest[]>;
+    // Legacy compatibility
+    unstakeRequests?: Record<string, UnstakeRequest[]>;
+}
 
 export class Storage {
     private dataDir: string;
     private blocksPath: string;
-    private walletsDir: string;
+    private stakingPath: string;
 
     constructor() {
         this.dataDir = config.storage.dataDir;
         this.blocksPath = path.join(this.dataDir, config.storage.blocksFile);
-        this.walletsDir = path.join(this.dataDir, config.storage.walletsDir);
+        this.stakingPath = path.join(this.dataDir, 'staking.json');
         this.ensureDirectories();
     }
 
@@ -21,12 +43,8 @@ export class Storage {
         if (!fs.existsSync(this.dataDir)) {
             fs.mkdirSync(this.dataDir, { recursive: true });
         }
-        if (!fs.existsSync(this.walletsDir)) {
-            fs.mkdirSync(this.walletsDir, { recursive: true });
-        }
     }
 
-    // Blockchain storage
     saveBlockchain(data: BlockchainData): void {
         fs.writeFileSync(this.blocksPath, JSON.stringify(data, null, 2));
         logger.debug('💾 Blockchain saved to disk');
@@ -45,47 +63,22 @@ export class Storage {
         }
     }
 
-    // Wallet storage
-    saveWallet(wallet: WalletData): void {
-        const walletPath = path.join(this.walletsDir, `${wallet.address}.json`);
-        fs.writeFileSync(walletPath, JSON.stringify(wallet, null, 2));
-        logger.debug(`💾 Wallet ${wallet.address.substring(0, 10)}... saved`);
+    saveStaking(data: StakingData): void {
+        fs.writeFileSync(this.stakingPath, JSON.stringify(data, null, 2));
+        logger.debug('💾 Staking data saved to disk');
     }
 
-    loadWallet(address: string): WalletData | null {
-        const walletPath = path.join(this.walletsDir, `${address}.json`);
-        if (!fs.existsSync(walletPath)) {
+    loadStaking(): StakingData | null {
+        if (!fs.existsSync(this.stakingPath)) {
             return null;
         }
         try {
-            const content = fs.readFileSync(walletPath, 'utf-8');
+            const content = fs.readFileSync(this.stakingPath, 'utf-8');
             return JSON.parse(content);
         } catch (error) {
-            logger.error('Failed to load wallet:', error);
+            logger.error('Failed to load staking:', error);
             return null;
         }
-    }
-
-    listWallets(): WalletData[] {
-        if (!fs.existsSync(this.walletsDir)) {
-            return [];
-        }
-        const files = fs.readdirSync(this.walletsDir);
-        return files
-            .filter(f => f.endsWith('.json'))
-            .map(f => {
-                const content = fs.readFileSync(path.join(this.walletsDir, f), 'utf-8');
-                return JSON.parse(content);
-            });
-    }
-
-    deleteWallet(address: string): boolean {
-        const walletPath = path.join(this.walletsDir, `${address}.json`);
-        if (fs.existsSync(walletPath)) {
-            fs.unlinkSync(walletPath);
-            return true;
-        }
-        return false;
     }
 }
 

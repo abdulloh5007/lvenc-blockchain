@@ -27,13 +27,13 @@ export interface BlockchainStats {
     blocks: number;
     transactions: number;
     pendingTransactions: number;
-    difficulty: number;
+    consensusType: 'pos';
     latestBlockHash: string;
-    miningReward: number;
+    validatorReward: number;
     initialReward: number;
-    nextHalvingBlock: number;
-    blocksUntilHalving: number;
-    halvingsDone: number;
+    minReward: number;
+    blocksUntilNextReduction: number;
+    reductionInterval: number;
     coinSymbol: string;
     totalSupply: number;
 }
@@ -57,6 +57,17 @@ export const blockchain = {
     validate: () => fetchApi<{ valid: boolean; blocks: number }>('/blockchain/validate'),
     getFee: () => fetchApi<FeeInfo>('/blockchain/fee'),
 };
+export interface NetworkInfo {
+    network: 'testnet' | 'mainnet';
+    isTestnet: boolean;
+    symbol: string;
+    addressPrefix: string;
+    faucetEnabled: boolean;
+}
+export const networkApi = {
+    getInfo: () => fetchApi<NetworkInfo>('/network-info'),
+};
+
 
 // Dynamic Fee Info
 export interface FeeInfo {
@@ -82,21 +93,8 @@ export interface WalletInfo {
 }
 
 export const wallet = {
-    create: (label?: string) => fetchApi<WalletInfo>('/wallet/new', {
-        method: 'POST',
-        body: JSON.stringify({ label }),
-    }),
     getBalance: (address: string) => fetchApi<{ address: string; balance: number; symbol: string }>(`/wallet/${address}/balance`),
     getTransactions: (address: string) => fetchApi<{ address: string; transactions: Transaction[]; count: number }>(`/wallet/${address}/transactions`),
-    list: () => fetchApi<WalletInfo[]>('/wallet'),
-    import: (mnemonic: string, label?: string) => fetchApi<WalletInfo>('/wallet/import', {
-        method: 'POST',
-        body: JSON.stringify({ mnemonic, label }),
-    }),
-    validateMnemonic: (mnemonic: string) => fetchApi<{ valid: boolean }>('/wallet/validate-mnemonic', {
-        method: 'POST',
-        body: JSON.stringify({ mnemonic }),
-    }),
 };
 
 // Transactions
@@ -111,40 +109,48 @@ export interface Transaction {
 }
 
 export const transaction = {
-    send: (fromAddress: string, toAddress: string, amount: number, privateKey: string, fee: number = 0.1) =>
+    send: (from: string, to: string, amount: number, fee: number, signature: string, publicKey: string, timestamp: number) =>
         fetchApi<{ transactionId: string; from: string; to: string; amount: number; fee: number; status: string }>('/transaction/send', {
             method: 'POST',
-            body: JSON.stringify({ fromAddress, toAddress, amount, privateKey, fee }),
+            body: JSON.stringify({ from, to, amount, fee, signature, publicKey, timestamp }),
         }),
     get: (id: string) => fetchApi<{ transaction: Transaction; blockIndex: number | null; confirmed: boolean }>(`/transaction/${id}`),
     getPending: () => fetchApi<{ transactions: Transaction[]; count: number }>('/transaction/pool/pending'),
 };
 
-// Mining
-export interface MiningInfo {
-    difficulty: number;
-    reward: number;
-    pendingTransactions: number;
-    lastBlockHash: string;
+
+
+// Staking (PoS)
+export interface ValidatorInfo {
+    address: string;
+    stake: number;
+    blocksCreated: number;
+    slashCount: number;
+    isActive: boolean;
 }
 
-export interface MineResult {
-    message: string;
-    block: {
-        index: number;
-        hash: string;
-        transactions: number;
-        nonce: number;
-        reward: number;
-    };
+export interface StakeInfo {
+    address: string;
+    stake: number;
+    unstakeRequests: { amount: number; availableAt: number }[];
+    isValidator: boolean;
 }
 
-export const mining = {
-    mine: (minerAddress: string) => fetchApi<MineResult>('/mining/mine', {
+export const staking = {
+    stake: (address: string, amount: number) => fetchApi<{ message: string; totalStake: number; validators: number }>('/staking/stake', {
         method: 'POST',
-        body: JSON.stringify({ minerAddress }),
+        body: JSON.stringify({ address, amount }),
     }),
-    getInfo: () => fetchApi<MiningInfo>('/mining/info'),
+    unstake: (address: string, amount: number) => fetchApi<{ message: string; availableAt: string; remainingStake: number }>('/staking/unstake', {
+        method: 'POST',
+        body: JSON.stringify({ address, amount }),
+    }),
+    claim: (address: string) => fetchApi<{ message: string; amount: number }>('/staking/claim', {
+        method: 'POST',
+        body: JSON.stringify({ address }),
+    }),
+    getValidators: () => fetchApi<{ validators: ValidatorInfo[]; totalStaked: number; count: number }>('/staking/validators'),
+    getStake: (address: string) => fetchApi<StakeInfo>(`/staking/${address}`),
 };
 
 // Network

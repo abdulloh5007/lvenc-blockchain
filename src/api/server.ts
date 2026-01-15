@@ -5,7 +5,7 @@ import rateLimit from 'express-rate-limit';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './swagger.js';
 import { config } from '../config.js';
-import { Blockchain } from '../blockchain/index.js';
+import { Blockchain, Transaction, Block } from '../blockchain/index.js';
 import { P2PServer } from '../network/index.js';
 import { storage } from '../storage/index.js';
 import { Wallet } from '../wallet/index.js';
@@ -14,11 +14,12 @@ import { logger } from '../utils/logger.js';
 import { createBlockchainRoutes } from './routes/blockchain.js';
 import { createWalletRoutes } from './routes/wallet.js';
 import { createTransactionRoutes } from './routes/transaction.js';
-import { createMiningRoutes } from './routes/mining.js';
 import { createNetworkRoutes } from './routes/network.js';
 import { createNFTRoutes } from './routes/nft.js';
 import { createIPFSRoutes } from './routes/ipfs.js';
 import { createAdminRoutes } from './routes/admin.js';
+import { createStakingRoutes } from './routes/staking.js';
+import { initBlockProducer, stakingPool } from '../staking/index.js';
 import {
     apiKeyAuth,
     inputValidation,
@@ -35,18 +36,22 @@ import { NFTManager } from '../nft/index.js';
 
 // Initialize blockchain
 const blockchain = new Blockchain();
-
 // Try to load existing blockchain from storage
 const savedData = storage.loadBlockchain();
 if (savedData) {
     blockchain.loadFromData(savedData);
 } else {
-    // Create faucet wallet and genesis block
     const faucetWallet = new Wallet(undefined, 'Faucet');
-    storage.saveWallet(faucetWallet.export());
     blockchain.initialize(faucetWallet.address);
     storage.saveBlockchain(blockchain.toJSON());
     logger.info(`💧 Faucet wallet created: ${faucetWallet.address}`);
+    logger.warn(`⚠️ FAUCET MNEMONIC (save this): ${faucetWallet.mnemonic}`);
+}
+// Load staking data
+const savedStaking = storage.loadStaking();
+if (savedStaking) {
+    stakingPool.loadFromData(savedStaking);
+    logger.info(`📊 Loaded staking data: ${savedStaking.stakes?.length || 0} stakers`);
 }
 
 // Initialize NFT Manager
@@ -169,10 +174,10 @@ const v1Router = Router();
 v1Router.use('/blockchain', createBlockchainRoutes(blockchain));
 v1Router.use('/wallet', createWalletRoutes(blockchain));
 v1Router.use('/transaction', createTransactionRoutes(blockchain));
-v1Router.use('/mining', createMiningRoutes(blockchain));
 v1Router.use('/network', createNetworkRoutes(p2pServer));
 v1Router.use('/nft', createNFTRoutes(nftManager));
 v1Router.use('/ipfs', createIPFSRoutes());
+v1Router.use('/staking', createStakingRoutes(blockchain));
 
 // Apply mint rate limit to NFT mint endpoint
 v1Router.post('/nft/mint', mintLimiter);
@@ -189,108 +194,80 @@ app.use('/api/v1', v1Router);
 app.use('/api/blockchain', createBlockchainRoutes(blockchain));
 app.use('/api/wallet', createWalletRoutes(blockchain));
 app.use('/api/transaction', createTransactionRoutes(blockchain));
-app.use('/api/mining', createMiningRoutes(blockchain));
 app.use('/api/network', createNetworkRoutes(p2pServer));
 app.use('/api/nft', createNFTRoutes(nftManager));
 app.use('/api/ipfs', createIPFSRoutes());
-
-// Faucet endpoint - get free coins for testing
-app.post('/api/faucet', (req: Request, res: Response) => {
-    const { address } = req.body;
-    const amount = 100; // Free 100 coins
-
-    if (!address) {
-        res.status(400).json({
-            success: false,
-            error: 'Address is required',
-        });
-        return;
-    }
-
-    // Find faucet wallet
-    const wallets = storage.listWallets();
-    const faucetData = wallets.find(w => w.label === 'Faucet');
-
-    if (!faucetData) {
-        res.status(500).json({
-            success: false,
-            error: 'Faucet wallet not found',
-        });
-        return;
-    }
-
-    const faucetWallet = Wallet.import(faucetData);
-    const faucetBalance = blockchain.getBalance(faucetWallet.address);
-
-    if (faucetBalance < amount) {
-        res.status(400).json({
-            success: false,
-            error: 'Faucet is empty. Mine some blocks first!',
-        });
-        return;
-    }
-
-    try {
-        const tx = faucetWallet.createTransaction(address, amount, 0.1); // Add minimum fee
-        blockchain.addTransaction(tx);
-        storage.saveBlockchain(blockchain.toJSON());
-
-        res.json({
-            success: true,
-            data: {
-                message: `Sent ${amount} EDU to ${address}`,
-                transactionId: tx.id,
-            },
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: error instanceof Error ? error.message : 'Faucet failed',
-        });
-    }
+app.use('/api/staking', createStakingRoutes(blockchain));
+app.get('/api/network-info', (_req: Request, res: Response) => {
+    res.json({
+        success: true,
+        data: {
+            network: config.network_mode,
+            isTestnet: config.isTestnet,
+            symbol: config.blockchain.coinSymbol,
+            addressPrefix: config.blockchain.addressPrefix,
+            faucetEnabled: config.faucet.enabled,
+        },
+    });
 });
-
-// V1 Faucet
-v1Router.post('/faucet', (req: Request, res: Response) => {
-    const { address } = req.body;
-    const amount = 100;
-
+app.post('/api/faucet', (req: Request, res: Response) => {
+    if (!config.faucet.enabled) {
+        res.status(403).json({ success: false, error: 'Faucet is only available on testnet' });
+        return;
+    }
+    const { address, amount = config.faucet.amount } = req.body;
     if (!address) {
         res.status(400).json({ success: false, error: 'Address is required' });
         return;
     }
-
-    const wallets = storage.listWallets();
-    const faucetData = wallets.find(w => w.label === 'Faucet');
-
-    if (!faucetData) {
-        res.status(500).json({ success: false, error: 'Faucet wallet not found' });
+    const genesisBlock = blockchain.chain[0];
+    const genesisAddress = genesisBlock?.transactions[0]?.toAddress;
+    if (!genesisAddress) {
+        res.status(500).json({ success: false, error: 'Genesis not found' });
         return;
     }
-
-    const faucetWallet = Wallet.import(faucetData);
-    const faucetBalance = blockchain.getBalance(faucetWallet.address);
-
-    if (faucetBalance < amount) {
+    const balance = blockchain.getBalance(genesisAddress);
+    if (balance < amount) {
         res.status(400).json({ success: false, error: 'Faucet is empty' });
         return;
     }
-
+    // Rate limit: 1 faucet request per address per minute
+    const faucetCooldowns: Map<string, number> = (global as any).__faucetCooldowns || new Map();
+    (global as any).__faucetCooldowns = faucetCooldowns;
+    const lastRequest = faucetCooldowns.get(address);
+    const now = Date.now();
+    if (lastRequest && now - lastRequest < 60000) {
+        const waitSec = Math.ceil((60000 - (now - lastRequest)) / 1000);
+        res.status(429).json({ success: false, error: `Wait ${waitSec} seconds before next faucet request` });
+        return;
+    }
     try {
-        const tx = faucetWallet.createTransaction(address, amount);
-        blockchain.addTransaction(tx);
+        const tx = new Transaction(genesisAddress, address, amount, 0);
+        // Create instant block for faucet (bypass pending pool - solves bootstrap problem)
+        const latestBlock = blockchain.getLatestBlock();
+        const faucetBlock = new Block(
+            latestBlock.index + 1,
+            Date.now(),
+            [tx],
+            latestBlock.hash,
+            blockchain.difficulty,
+            'FAUCET',
+            'pos'
+        );
+        faucetBlock.hash = faucetBlock.calculateHash();
+        blockchain.chain.push(faucetBlock);
+        // Invalidate balance cache
+        (blockchain as any).balanceCache?.clear();
         storage.saveBlockchain(blockchain.toJSON());
-        res.json({
-            success: true,
-            data: { message: `Sent ${amount} EDU to ${address}`, transactionId: tx.id },
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: error instanceof Error ? error.message : 'Faucet failed',
-        });
+        faucetCooldowns.set(address, now);
+        logger.info(`💧 Faucet: ${amount} ${config.blockchain.coinSymbol} → ${address} (instant block #${faucetBlock.index})`);
+        res.json({ success: true, data: { message: `Sent ${amount} ${config.blockchain.coinSymbol}`, transactionId: tx.id, blockIndex: faucetBlock.index } });
+    } catch (e) {
+        logger.error(`Faucet error: ${e instanceof Error ? e.message : e}`);
+        res.status(500).json({ success: false, error: e instanceof Error ? e.message : 'Failed' });
     }
 });
+
 
 // 404 handler
 app.use((_req: Request, res: Response) => {
@@ -315,6 +292,9 @@ app.listen(PORT, () => {
     logger.info(`🚀 API Server running on http://localhost:${PORT}`);
     logger.info(`📊 API v1 available at /api/v1`);
     logger.info(`📊 Blockchain stats:`, blockchain.getStats());
+    // Start PoS Block Producer
+    const blockProducer = initBlockProducer(blockchain);
+    blockProducer.start();
 });
 
 // Auto-save blockchain periodically

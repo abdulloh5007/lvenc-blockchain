@@ -5,6 +5,7 @@
         "wallet": "Hamyon",
         "transactions": "Tranzaksiyalar",
         "mining": "Mayning",
+        "staking": "Steyking",
         "network": "Tarmoq",
         "nft": "NFT",
         "nftMint": "NFT yaratish",
@@ -75,9 +76,10 @@
         "totalBlocks": "Jami bloklar",
         "totalTx": "Jami tranzaksiyalar",
         "miningReward": "Mayning mukofoti",
-        "nextHalving": "Keyingi halving",
+        "validatorReward": "Validator mukofoti",
+        "nextReduction": "Keyingi kamayish",
         "totalSupply": "Jami emissiya",
-        "halvingsDone": "Halvinglar soni",
+        "minReward": "Min mukofot",
         "recentBlocks": "So'nggi bloklar",
         "latestBlock": "Oxirgi blok",
         "noBlocks": "Bloklar yo'q. Mayningni boshlang!",
@@ -207,5 +209,19 @@
         "en": "English",
         "ru": "Русский",
         "uz": "O'zbek"
+    },
+    "staking": {
+        "title": "Steyking",
+        "subtitle": "EDU steyking qilib validator bo'ling va mukofot oling",
+        "stake": "Steyk",
+        "unstake": "Ansteyk",
+        "claim": "Olish",
+        "validators": "Validatorlar",
+        "totalStaked": "Jami steykda",
+        "yourStake": "Sizning steykingiz",
+        "amount": "Miqdor",
+        "unstakeAmount": "Ansteyk miqdori",
+        "reward": "Blok mukofoti",
+        "noValidators": "Validatorlar hali yo'q. Birinchi bo'ling!"
     }
 }

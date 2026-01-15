@@ -6,7 +6,7 @@ import {
   BlocksPage,
   WalletPage,
   TransactionsPage,
-  MiningPage,
+  StakingPage,
   NetworkPage,
   NFTGallery,
   NFTMint,
@@ -27,7 +27,7 @@ function App() {
               <Route path="/blocks" element={<BlocksPage />} />
               <Route path="/wallet" element={<WalletPage />} />
               <Route path="/transactions" element={<TransactionsPage />} />
-              <Route path="/mining" element={<MiningPage />} />
+              <Route path="/staking" element={<StakingPage />} />
               <Route path="/network" element={<NetworkPage />} />
 
               {/* NFT Routes */}
