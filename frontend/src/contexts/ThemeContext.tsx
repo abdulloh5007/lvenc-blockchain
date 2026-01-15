@@ -29,7 +29,7 @@ export const useTheme = () => {
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [theme, setThemeState] = useState<Theme>(() => {
         const saved = getCookie('theme') as Theme;
-        return saved || 'dark';
+        return saved || 'system';
     });
 
     const getSystemTheme = useCallback((): 'light' | 'dark' => {

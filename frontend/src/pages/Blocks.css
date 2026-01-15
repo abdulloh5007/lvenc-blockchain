@@ -212,3 +212,32 @@
 .miner-info .value {
     font-size: 13px;
 }
+
+/* Infinite scroll loading */
+.load-more-trigger {
+    padding: 16px;
+    min-height: 60px;
+}
+
+.loading-more {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: var(--text-muted);
+    font-size: 14px;
+}
+
+.spin {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}

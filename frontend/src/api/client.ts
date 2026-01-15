@@ -52,6 +52,13 @@ export interface Block {
 export const blockchain = {
     getStats: () => fetchApi<BlockchainStats>('/blockchain'),
     getChain: () => fetchApi<{ length: number; chain: Block[] }>('/blockchain/chain'),
+    getBlocks: (offset = 0, limit = 20) => fetchApi<{
+        blocks: Block[];
+        total: number;
+        offset: number;
+        limit: number;
+        hasMore: boolean;
+    }>(`/blockchain/blocks?offset=${offset}&limit=${limit}`),
     getLatest: () => fetchApi<Block>('/blockchain/latest'),
     getBlock: (hash: string) => fetchApi<Block>(`/blockchain/block/${hash}`),
     validate: () => fetchApi<{ valid: boolean; blocks: number }>('/blockchain/validate'),
@@ -124,7 +131,10 @@ export const transaction = {
 export interface ValidatorInfo {
     address: string;
     stake: number;
+    delegatedStake: number;
+    commission: number;
     blocksCreated: number;
+    totalRewards: number;
     slashCount: number;
     isActive: boolean;
 }
@@ -136,12 +146,46 @@ export interface StakeInfo {
     isValidator: boolean;
 }
 
+// Epoch Info
+export interface EpochInfo {
+    currentEpoch: number;
+    epochDuration: number;
+    startBlock: number;
+    endBlock: number;
+    currentBlock: number;
+    blocksRemaining: number;
+    progress: number;
+}
+
+// Delegation
+export interface Delegation {
+    delegator: string;
+    validator: string;
+    amount: number;
+    delegatedAt: number;
+    epochDelegated: number;
+}
+
 export const staking = {
-    stake: (address: string, amount: number) => fetchApi<{ message: string; totalStake: number; validators: number }>('/staking/stake', {
+    // Epoch
+    getEpoch: () => fetchApi<EpochInfo>('/staking/epoch'),
+
+    // Staking
+    stake: (address: string, amount: number) => fetchApi<{
+        message: string;
+        currentStake: number;
+        pendingStake: number;
+        effectiveEpoch: number;
+        validators: number
+    }>('/staking/stake', {
         method: 'POST',
         body: JSON.stringify({ address, amount }),
     }),
-    unstake: (address: string, amount: number) => fetchApi<{ message: string; availableAt: string; remainingStake: number }>('/staking/unstake', {
+    unstake: (address: string, amount: number) => fetchApi<{
+        message: string;
+        effectiveEpoch: number;
+        remainingStake: number
+    }>('/staking/unstake', {
         method: 'POST',
         body: JSON.stringify({ address, amount }),
     }),
@@ -149,8 +193,57 @@ export const staking = {
         method: 'POST',
         body: JSON.stringify({ address }),
     }),
-    getValidators: () => fetchApi<{ validators: ValidatorInfo[]; totalStaked: number; count: number }>('/staking/validators'),
-    getStake: (address: string) => fetchApi<StakeInfo>(`/staking/${address}`),
+
+    // Delegation
+    delegate: (delegator: string, validator: string, amount: number) => fetchApi<{
+        message: string;
+        effectiveEpoch: number;
+        delegations: Delegation[];
+    }>('/staking/delegate', {
+        method: 'POST',
+        body: JSON.stringify({ delegator, validator, amount }),
+    }),
+    undelegate: (delegator: string, validator: string, amount: number) => fetchApi<{
+        message: string;
+        transactionId: string;
+        remainingDelegations: Delegation[];
+    }>('/staking/undelegate', {
+        method: 'POST',
+        body: JSON.stringify({ delegator, validator, amount }),
+    }),
+    getDelegations: (address: string) => fetchApi<{
+        address: string;
+        delegations: Delegation[];
+        totalDelegated: number;
+    }>(`/staking/delegations/${address}`),
+
+    // Validators
+    getValidators: () => fetchApi<{
+        validators: (ValidatorInfo & { totalWeight: number })[];
+        totalStaked: number;
+        totalDelegated: number;
+        count: number
+    }>('/staking/validators'),
+    getValidator: (address: string) => fetchApi<{
+        validator: ValidatorInfo & { totalWeight: number };
+        delegators: { delegator: string; amount: number }[];
+    }>(`/staking/validator/${address}`),
+    setCommission: (address: string, commission: number) => fetchApi<{ message: string }>('/staking/commission', {
+        method: 'POST',
+        body: JSON.stringify({ address, commission }),
+    }),
+
+    // User staking info
+    getStake: (address: string) => fetchApi<{
+        address: string;
+        stake: number;
+        pendingStake: number;
+        unstakeRequests: any[];
+        delegations: Delegation[];
+        totalDelegated: number;
+        isValidator: boolean;
+        currentEpoch: number;
+    }>(`/staking/${address}`),
 };
 
 // Network

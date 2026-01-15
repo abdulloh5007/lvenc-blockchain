@@ -158,6 +158,21 @@ export class StakingPool {
             return false;
         }
 
+        // BOOTSTRAP MODE: If no active validators, first stake activates immediately
+        const activeValidators = this.getValidators();
+        if (activeValidators.length === 0) {
+            this.log.info(`🚀 BOOTSTRAP: No validators, activating stake immediately`);
+            this.stakes.set(address, {
+                address,
+                amount,
+                stakedAt: Date.now(),
+                lastReward: Date.now(),
+                epochStaked: this.currentEpoch,
+            });
+            this.updateValidator(address);
+            return true;
+        }
+
         const epochEffective = this.currentEpoch + 1;
         const existing = this.pendingStakes.get(address);
 

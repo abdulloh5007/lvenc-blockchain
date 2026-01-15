@@ -307,12 +307,13 @@ export class Blockchain {
     }
 
     /**
-     * Get AVAILABLE balance (total - staked)
+     * Get AVAILABLE balance (total - staked - pendingStaked)
      */
     getBalance(address: string): number {
         const totalBalance = this.getTotalBalance(address);
         const stakedAmount = stakingPool.getStake(address);
-        return Math.max(0, totalBalance - stakedAmount);
+        const pendingStake = stakingPool.getPendingStake(address);
+        return Math.max(0, totalBalance - stakedAmount - pendingStake);
     }
 
     /**

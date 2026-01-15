@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { wallet, networkApi } from '../api/client';
+import { usePinContext } from '../contexts';
 import { ec as EC } from 'elliptic';
 import { sha256 } from 'js-sha256';
 import wordlist from '../data/wordlist.json';
+
 const elliptic = new EC('secp256k1');
-const WALLETS_KEY = 'edu_wallets';
 let addressPrefix = 'tEDU';
+
 async function loadNetworkPrefix(): Promise<void> {
     try {
         const res = await networkApi.getInfo();
@@ -15,6 +17,7 @@ async function loadNetworkPrefix(): Promise<void> {
     } catch { }
 }
 loadNetworkPrefix();
+
 export interface LocalWallet {
     address: string;
     publicKey: string;
@@ -23,6 +26,7 @@ export interface LocalWallet {
     label: string;
     createdAt: number;
 }
+
 function generateMnemonic(): string {
     const words: string[] = [];
     const array = new Uint32Array(24);
@@ -33,9 +37,11 @@ function generateMnemonic(): string {
     }
     return words.join(' ');
 }
+
 function mnemonicToPrivateKey(mnemonic: string): string {
     return sha256(mnemonic);
 }
+
 function generateWallet(label: string = 'Wallet'): LocalWallet {
     const mnemonic = generateMnemonic();
     const privateKey = mnemonicToPrivateKey(mnemonic);
@@ -45,6 +51,7 @@ function generateWallet(label: string = 'Wallet'): LocalWallet {
     const address = addressPrefix + hash.substring(0, 40);
     return { address, publicKey, privateKey, mnemonic, label, createdAt: Date.now() };
 }
+
 function importFromMnemonic(mnemonic: string, label: string = 'Imported'): LocalWallet {
     const words = mnemonic.trim().toLowerCase().split(/\s+/);
     if (words.length !== 24) throw new Error('Mnemonic must be 24 words');
@@ -55,24 +62,32 @@ function importFromMnemonic(mnemonic: string, label: string = 'Imported'): Local
     const address = addressPrefix + hash.substring(0, 40);
     return { address, publicKey, privateKey, mnemonic: mnemonic.trim().toLowerCase(), label, createdAt: Date.now() };
 }
-function loadWallets(): LocalWallet[] {
-    try {
-        const data = localStorage.getItem(WALLETS_KEY);
-        return data ? JSON.parse(data) : [];
-    } catch {
-        return [];
-    }
-}
-function saveWallets(wallets: LocalWallet[]): void {
-    localStorage.setItem(WALLETS_KEY, JSON.stringify(wallets));
-}
+
 export interface WalletWithBalance extends LocalWallet {
     balance: number;
 }
+
 export function useWallets() {
+    const { getDecryptedData, saveData, confirmPin } = usePinContext();
     const [wallets, setWallets] = useState<WalletWithBalance[]>([]);
     const [loading, setLoading] = useState(true);
     const [error] = useState<string | null>(null);
+
+    // Load wallets from encrypted storage
+    const loadWallets = useCallback((): LocalWallet[] => {
+        try {
+            const data = getDecryptedData();
+            return data ? JSON.parse(data) : [];
+        } catch {
+            return [];
+        }
+    }, [getDecryptedData]);
+
+    // Save wallets to encrypted storage
+    const saveWallets = useCallback((walletList: LocalWallet[]): void => {
+        saveData(JSON.stringify(walletList));
+    }, [saveData]);
+
     const fetchBalances = useCallback(async () => {
         await loadNetworkPrefix();
         const stored = loadWallets();
@@ -84,7 +99,8 @@ export function useWallets() {
         );
         setWallets(withBalances);
         setLoading(false);
-    }, []);
+    }, [loadWallets]);
+
     const createWallet = useCallback(async (label?: string) => {
         await loadNetworkPrefix();
         const newWallet = generateWallet(label);
@@ -93,7 +109,8 @@ export function useWallets() {
         saveWallets(stored);
         await fetchBalances();
         return newWallet;
-    }, [fetchBalances]);
+    }, [loadWallets, saveWallets, fetchBalances]);
+
     const importWallet = useCallback(async (mnemonic: string, label?: string) => {
         await loadNetworkPrefix();
         const imported = importFromMnemonic(mnemonic, label);
@@ -105,13 +122,15 @@ export function useWallets() {
         saveWallets(stored);
         await fetchBalances();
         return imported;
-    }, [fetchBalances]);
+    }, [loadWallets, saveWallets, fetchBalances]);
+
     const deleteWallet = useCallback((address: string) => {
         const stored = loadWallets();
         const filtered = stored.filter(w => w.address !== address);
         saveWallets(filtered);
         setWallets(prev => prev.filter(w => w.address !== address));
-    }, []);
+    }, [loadWallets, saveWallets]);
+
     const signTransaction = useCallback((from: string, to: string, amount: number, fee: number, timestamp: number) => {
         const stored = loadWallets();
         const w = stored.find(w => w.address === from);
@@ -122,11 +141,36 @@ export function useWallets() {
         const keyPair = elliptic.keyFromPrivate(w.privateKey, 'hex');
         const signature = keyPair.sign(hash).toDER('hex');
         return { hash, signature, publicKey: w.publicKey, timestamp };
-    }, []);
+    }, [loadWallets]);
+
+    // Require PIN confirmation before sending transaction
+    const signTransactionWithPin = useCallback(async (
+        from: string,
+        to: string,
+        amount: number,
+        fee: number,
+        timestamp: number
+    ): Promise<{ hash: string; signature: string; publicKey: string; timestamp: number } | null> => {
+        const confirmed = await confirmPin('Подтвердите транзакцию', `Отправить ${amount} EDU?`);
+        if (!confirmed) return null;
+        return signTransaction(from, to, amount, fee, timestamp);
+    }, [confirmPin, signTransaction]);
+
     useEffect(() => {
         fetchBalances();
         const interval = setInterval(fetchBalances, 10000);
         return () => clearInterval(interval);
     }, [fetchBalances]);
-    return { wallets, loading, error, createWallet, importWallet, deleteWallet, signTransaction, refresh: fetchBalances };
+
+    return {
+        wallets,
+        loading,
+        error,
+        createWallet,
+        importWallet,
+        deleteWallet,
+        signTransaction,
+        signTransactionWithPin,
+        refresh: fetchBalances
+    };
 }

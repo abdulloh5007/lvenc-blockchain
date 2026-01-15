@@ -7,3 +7,4 @@ export { SeedImportModal } from './SeedImportModal';
 export { PrivateKeyImportModal } from './PrivateKeyImportModal';
 export { NFTCard } from './NFTCard';
 export { CustomSelect } from './CustomSelect';
+export { PinModal } from './PinModal';

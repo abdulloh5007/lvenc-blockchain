@@ -1,0 +1,327 @@
+import 'dotenv/config';
+import * as net from 'net';
+import * as readline from 'readline';
+import express, { Express } from 'express';
+import cors from 'cors';
+import rateLimit from 'express-rate-limit';
+import swaggerUi from 'swagger-ui-express';
+import { swaggerSpec } from '../../api/swagger.js';
+import { Blockchain } from '../../blockchain/index.js';
+import { P2PServer } from '../../network/index.js';
+import { storage } from '../../storage/index.js';
+import { Wallet } from '../../wallet/index.js';
+import { logger } from '../../utils/logger.js';
+import { NFTManager } from '../../nft/index.js';
+import { initBlockProducer, stakingPool } from '../../staking/index.js';
+
+import { createBlockchainRoutes } from '../../api/routes/blockchain.js';
+import { createWalletRoutes } from '../../api/routes/wallet.js';
+import { createTransactionRoutes } from '../../api/routes/transaction.js';
+import { createNetworkRoutes } from '../../api/routes/network.js';
+import { createNFTRoutes } from '../../api/routes/nft.js';
+import { createStakingRoutes } from '../../api/routes/staking.js';
+
+export interface NodeOptions {
+    apiPort: number;
+    p2pPort: number;
+    seedNode?: string;
+    dataDir: string;
+    network: string;
+    enableApi: boolean;
+    bootstrapMode?: boolean;
+}
+
+// Create readline interface for prompts
+function createPrompt(): readline.Interface {
+    return readline.createInterface({
+        input: process.stdin,
+        output: process.stdout
+    });
+}
+
+// Ask user a question with default answer
+async function ask(question: string, defaultAnswer: string = ''): Promise<string> {
+    const rl = createPrompt();
+    return new Promise((resolve) => {
+        const prompt = defaultAnswer ? `${question} [${defaultAnswer}]: ` : `${question}: `;
+        rl.question(prompt, (answer) => {
+            rl.close();
+            resolve(answer.trim() || defaultAnswer);
+        });
+    });
+}
+
+// Ask yes/no question
+async function confirm(question: string, defaultYes: boolean = true): Promise<boolean> {
+    const rl = createPrompt();
+    return new Promise((resolve) => {
+        const hint = defaultYes ? '[Y/n]' : '[y/N]';
+        rl.question(`${question} ${hint} `, (answer) => {
+            rl.close();
+            const a = answer.trim().toLowerCase();
+            if (a === '') resolve(defaultYes);
+            else resolve(a === 'y' || a === 'yes');
+        });
+    });
+}
+
+// Check if port is available
+async function isPortAvailable(port: number): Promise<boolean> {
+    return new Promise((resolve) => {
+        const server = net.createServer();
+        server.once('error', () => resolve(false));
+        server.once('listening', () => {
+            server.close();
+            resolve(true);
+        });
+        server.listen(port);
+    });
+}
+
+// Find available port starting from given port
+async function findAvailablePort(startPort: number): Promise<number> {
+    let port = startPort;
+    while (!(await isPortAvailable(port))) {
+        port++;
+        if (port > startPort + 100) {
+            throw new Error('Could not find available port');
+        }
+    }
+    return port;
+}
+
+export async function startNode(options: NodeOptions): Promise<void> {
+    console.log(`
+╔═══════════════════════════════════════════════════════════╗
+║                                                           ║
+║   ███████╗██████╗ ██╗   ██╗     ██████╗██╗  ██╗ █████╗    ║
+║   ██╔════╝██╔══██╗██║   ██║    ██╔════╝██║  ██║██╔══██╗   ║
+║   █████╗  ██║  ██║██║   ██║    ██║     ███████║███████║   ║
+║   ██╔══╝  ██║  ██║██║   ██║    ██║     ██╔══██║██╔══██║   ║
+║   ███████╗██████╔╝╚██████╔╝    ╚██████╗██║  ██║██║  ██║   ║
+║   ╚══════╝╚═════╝  ╚═════╝      ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝   ║
+║                                                           ║
+║   ${options.bootstrapMode ? 'BOOTSTRAP NODE' : 'EDU CHAIN Node'} v1.0.0${options.bootstrapMode ? '                    ' : '                        '}║
+╚═══════════════════════════════════════════════════════════╝
+    `);
+
+    // Interactive network selection if not specified via CLI
+    let network = options.network;
+    if (network === 'mainnet') {
+        console.log('\n🌐 Select network:');
+        console.log('   1. mainnet (production)');
+        console.log('   2. testnet (testing)\n');
+        const choice = await ask('Enter choice (1 or 2)', '1');
+        network = choice === '2' ? 'testnet' : 'mainnet';
+    }
+
+    // Check API port availability
+    let apiPort = options.apiPort;
+    if (!(await isPortAvailable(apiPort))) {
+        const nextPort = await findAvailablePort(apiPort + 1);
+        console.log(`\n⚠️  Port ${apiPort} is already in use.`);
+        const useNext = await confirm(`Use port ${nextPort} instead?`, true);
+        if (useNext) {
+            apiPort = nextPort;
+        } else {
+            console.log('\n❌ Aborted. Please stop the existing process or choose a different port.');
+            console.log(`   edu-chain start --port <number>\n`);
+            process.exit(1);
+        }
+    }
+
+    // Check P2P port availability
+    let p2pPort = options.p2pPort;
+    if (!(await isPortAvailable(p2pPort))) {
+        const nextPort = await findAvailablePort(p2pPort + 1);
+        console.log(`\n⚠️  P2P Port ${p2pPort} is already in use.`);
+        const useNext = await confirm(`Use port ${nextPort} instead?`, true);
+        if (useNext) {
+            p2pPort = nextPort;
+        } else {
+            console.log('\n❌ Aborted. Please stop the existing process or choose a different P2P port.');
+            console.log(`   edu-chain start --p2p <number>\n`);
+            process.exit(1);
+        }
+    }
+
+    console.log('');
+    logger.info(`🚀 Starting EDU Chain Node...`);
+    logger.info(`📁 Data directory: ${options.dataDir}`);
+    logger.info(`🌐 Network: ${network}`);
+    logger.info(`🔌 P2P Port: ${p2pPort}`);
+    if (options.enableApi) {
+        logger.info(`🌍 API Port: ${apiPort}`);
+    }
+
+    // Initialize blockchain
+    const blockchain = new Blockchain();
+    const savedData = storage.loadBlockchain();
+
+    if (savedData) {
+        blockchain.loadFromData(savedData);
+        logger.info(`📦 Loaded blockchain: ${blockchain.chain.length} blocks`);
+    } else {
+        const faucetWallet = new Wallet(undefined, 'Faucet');
+        blockchain.initialize(faucetWallet.address);
+        storage.saveBlockchain(blockchain.toJSON());
+        logger.info(`💧 Faucet wallet created: ${faucetWallet.address}`);
+        logger.warn(`⚠️ FAUCET MNEMONIC (save this): ${faucetWallet.mnemonic}`);
+    }
+
+    // Load staking data
+    const savedStaking = storage.loadStaking();
+    if (savedStaking) {
+        stakingPool.loadFromData(savedStaking);
+        logger.info(`📊 Loaded staking data: ${Object.keys(savedStaking.stakes || {}).length} stakers`);
+    }
+
+    // Initialize NFT Manager
+    const nftManager = new NFTManager();
+
+    // Initialize P2P server
+    const p2pServer = new P2PServer(blockchain, p2pPort, options.bootstrapMode);
+    p2pServer.start();
+
+    // Connect to seed node if provided
+    if (options.seedNode) {
+        logger.info(`🔗 Connecting to seed node: ${options.seedNode}`);
+        try {
+            await p2pServer.connectToPeer(options.seedNode);
+            logger.info(`✅ Connected to seed node`);
+        } catch (error) {
+            logger.warn(`⚠️ Failed to connect to seed node: ${error}`);
+        }
+    }
+
+    // Start API server if enabled
+    if (options.enableApi) {
+        const app: Express = express();
+
+        // Rate limiting
+        const apiLimiter = rateLimit({
+            windowMs: 60 * 1000,
+            max: 100,
+            message: { success: false, error: 'Too many requests' },
+        });
+
+        // Middleware
+        app.use(cors());
+        app.use(express.json({ limit: '10mb' }));
+        app.use('/api', apiLimiter);
+
+        // Swagger docs
+        app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+        // Routes
+        app.use('/api/blockchain', createBlockchainRoutes(blockchain));
+        app.use('/api/wallet', createWalletRoutes(blockchain));
+        app.use('/api/transaction', createTransactionRoutes(blockchain));
+        app.use('/api/network', createNetworkRoutes(p2pServer));
+        app.use('/api/nft', createNFTRoutes(nftManager));
+        app.use('/api/staking', createStakingRoutes(blockchain));
+
+        // Health check
+        app.get('/health', (_, res) => {
+            res.json({
+                status: 'ok',
+                blocks: blockchain.chain.length,
+                peers: p2pServer.getPeerCount(),
+                network: network,
+            });
+        });
+
+        app.listen(apiPort, () => {
+            logger.info(`🌍 API Server running on http://localhost:${apiPort}`);
+            logger.info(`📚 Swagger docs: http://localhost:${apiPort}/docs`);
+        });
+    }
+
+    // Initialize block producer (PoS) - skip in bootstrap mode
+    if (!options.bootstrapMode) {
+        initBlockProducer(blockchain);
+    } else {
+        logger.info(`📡 Bootstrap mode: Block production disabled`);
+    }
+
+    logger.info(`\n✅ Node is running!`);
+    console.log(`\n📋 Available commands: status, peers, info, help, exit\n`);
+
+    // Interactive REPL
+    const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout,
+        prompt: 'edu-chain> '
+    });
+
+    rl.prompt();
+
+    rl.on('line', async (line) => {
+        const cmd = line.trim().toLowerCase();
+
+        switch (cmd) {
+            case 'status':
+                console.log(`\n📊 Status:`);
+                console.log(`   Blocks: ${blockchain.chain.length}`);
+                console.log(`   Peers: ${p2pServer.getPeerCount()}`);
+                console.log(`   Pending TX: ${blockchain.pendingTransactions.length}`);
+                console.log(`   Network: ${network}\n`);
+                break;
+
+            case 'peers':
+                console.log(`\n🌐 Connected Peers: ${p2pServer.getPeerCount()}`);
+                p2pServer.getPeers().forEach((peer, i) => {
+                    console.log(`   ${i + 1}. ${peer}`);
+                });
+                console.log('');
+                break;
+
+            case 'info':
+                console.log(`\n📋 Node Info:`);
+                console.log(`   API Port: ${apiPort}`);
+                console.log(`   P2P Port: ${p2pPort}`);
+                console.log(`   Network: ${network}`);
+                console.log(`   Data Dir: ${options.dataDir}`);
+                console.log(`   Latest Block: #${blockchain.getLatestBlock().index}\n`);
+                break;
+
+            case 'help':
+                console.log(`\n📋 Commands:`);
+                console.log(`   status  - Show node status`);
+                console.log(`   peers   - Show connected peers`);
+                console.log(`   info    - Show node configuration`);
+                console.log(`   exit    - Stop the node\n`);
+                break;
+
+            case 'exit':
+            case 'quit':
+                console.log('\n👋 Shutting down node...');
+                p2pServer.close();
+                storage.saveBlockchain(blockchain.toJSON());
+                storage.saveStaking(stakingPool.toJSON());
+                console.log('💾 Data saved. Goodbye!\n');
+                rl.close();
+                process.exit(0);
+                break;
+
+            case '':
+                break;
+
+            default:
+                console.log(`Unknown command: ${cmd}. Type 'help' for available commands.`);
+        }
+
+        rl.prompt();
+    });
+
+    // Handle graceful shutdown
+    process.on('SIGINT', () => {
+        console.log('\n👋 Shutting down node...');
+        p2pServer.close();
+        storage.saveBlockchain(blockchain.toJSON());
+        storage.saveStaking(stakingPool.toJSON());
+        console.log('💾 Data saved. Goodbye!');
+        rl.close();
+        process.exit(0);
+    });
+}

@@ -1,0 +1,221 @@
+/* PinModal.css */
+
+/* Backdrop */
+.pin-backdrop {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease-out;
+    z-index: 9999;
+}
+
+.pin-backdrop.open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* Modal Window */
+.pin-modal {
+    background: var(--bg-primary, #ffffff);
+    border-radius: 24px;
+    width: 100%;
+    max-width: 360px;
+    padding: 32px 24px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+    transform: scale(0.95);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    /* Ease-out apple style */
+    border: 1px solid var(--border, transparent);
+}
+
+.pin-backdrop.open .pin-modal {
+    transform: scale(1);
+}
+
+.pin-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Typography */
+.pin-title {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-primary, #1a1a1a);
+    margin: 0 0 8px 0;
+    text-align: center;
+}
+
+.pin-subtitle {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-size: 15px;
+    color: var(--text-secondary, #818c99);
+    margin: 0 0 32px 0;
+    text-align: center;
+    line-height: 1.4;
+}
+
+/* Dots */
+.pin-dots {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 40px;
+}
+
+.pin-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background-color: transparent;
+    border: 1.5px solid #d1d5db;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.pin-dot.filled {
+    background-color: #0088cc;
+    /* Telegram/Tonkeeper Blue */
+    border-color: #0088cc;
+    transform: scale(1.1);
+}
+
+.pin-dot.error {
+    border-color: #ff3b30;
+    background-color: #ff3b30;
+}
+
+/* Keypad */
+.pin-keypad {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    column-gap: 24px;
+    row-gap: 16px;
+    width: 100%;
+    max-width: 280px;
+    margin-bottom: 32px;
+}
+
+.pin-key {
+    background: var(--bg-secondary, #f5f5f5);
+    border: none;
+    border-radius: 50%;
+    /* Fully round keys usually */
+    height: 64px;
+    width: 64px;
+    font-size: 24px;
+    font-weight: 500;
+    color: var(--text-primary, #000);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+    user-select: none;
+    justify-self: center;
+    /* Tonkeeper keys are often clean */
+}
+
+.pin-key:active,
+.pin-key.active-key {
+    background: var(--bg-tertiary, #e5e5e5);
+}
+
+.pin-key-delete {
+    background: transparent;
+    color: var(--text-primary, #1a1a1a);
+}
+
+.pin-key-delete:active,
+.pin-key-delete.active-key {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+/* PinAction Button */
+.pin-action-btn {
+    width: 100%;
+    height: 50px;
+    border-radius: 12px;
+    border: none;
+    background-color: var(--bg-secondary, #f2f2f7);
+    color: var(--text-secondary, #8e8e93);
+    font-size: 16px;
+    font-weight: 600;
+    cursor: default;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pin-action-btn.active {
+    background-color: var(--primary, #0088cc);
+    color: #ffffff;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0, 136, 204, 0.2);
+}
+
+.pin-action-btn.active:hover {
+    background-color: var(--primary-hover, #007AB8);
+}
+
+.pin-action-btn.active:active {
+    transform: scale(0.98);
+}
+
+/* Shake Animation */
+@keyframes shake {
+
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    20% {
+        transform: translateX(-8px);
+    }
+
+    40% {
+        transform: translateX(8px);
+    }
+
+    60% {
+        transform: translateX(-4px);
+    }
+
+    80% {
+        transform: translateX(4px);
+    }
+}
+
+.shake {
+    animation: shake 0.5s cubic-bezier(.36, .07, .19, .97) both;
+}
+
+/* Mobile Adaptation */
+@media (max-width: 480px) {
+    .pin-modal {
+        border-radius: 24px 24px 0 0;
+        padding-bottom: 40px;
+        max-width: 100%;
+        position: absolute;
+        bottom: 0;
+        transform: translateY(100%);
+    }
+
+    .pin-backdrop {
+        align-items: flex-end;
+        /* Bottom sheet on mobile if preferred, or maintain center */
+    }
+
+    .pin-backdrop.open .pin-modal {
+        transform: translateY(0);
+    }
+}

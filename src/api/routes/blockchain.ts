@@ -23,6 +23,33 @@ export function createBlockchainRoutes(blockchain: Blockchain): Router {
         });
     });
 
+    // Get paginated blocks (newest first)
+    router.get('/blocks', (req: Request, res: Response) => {
+        const offset = parseInt(req.query.offset as string) || 0;
+        const limit = parseInt(req.query.limit as string) || 20;
+
+        // Get blocks in reverse order (newest first)
+        const totalBlocks = blockchain.chain.length;
+        const startIndex = Math.max(0, totalBlocks - offset - limit);
+        const endIndex = totalBlocks - offset;
+
+        const blocks = blockchain.chain
+            .slice(startIndex, endIndex)
+            .reverse()
+            .map(b => b.toJSON());
+
+        res.json({
+            success: true,
+            data: {
+                blocks,
+                total: totalBlocks,
+                offset,
+                limit,
+                hasMore: startIndex > 0,
+            },
+        });
+    });
+
     // Get latest block
     router.get('/latest', (_req: Request, res: Response) => {
         res.json({

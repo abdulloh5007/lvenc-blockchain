@@ -1,0 +1,20 @@
+{
+    "network": "mainnet",
+    "ports": {
+        "api": 3001,
+        "p2p": 6001
+    },
+    "seeds": [
+        "wss://seed1.educhain.io:6001",
+        "wss://seed2.educhain.io:6001"
+    ],
+    "dataDir": "./data",
+    "rateLimit": {
+        "windowMs": 60000,
+        "max": 100
+    },
+    "blockProduction": {
+        "intervalMs": 10000,
+        "minStake": 100
+    }
+}

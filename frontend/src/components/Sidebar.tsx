@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Blocks, Wallet, FileText, Globe, Image, Sparkles, Sun, Moon, Languages, ChevronLeft, ChevronRight, Menu, X, Library, Coins } from 'lucide-react';
+import { LayoutDashboard, Blocks, Wallet, FileText, Globe, Image, Sparkles, Sun, Moon, Monitor, Languages, ChevronLeft, ChevronRight, Menu, X, Library, Coins } from 'lucide-react';
 import { useTheme, useI18n } from '../contexts';
 import './Sidebar.css';
 
@@ -48,31 +48,43 @@ export const Sidebar: React.FC<SidebarProps> = () => {
     const [collapsed, setCollapsed] = useState(false);
     const [mobileOpen, setMobileOpen] = useState(false);
     const [langMenuOpen, setLangMenuOpen] = useState(false);
-    const { theme, setTheme } = useTheme();
+    const [themeMenuOpen, setThemeMenuOpen] = useState(false);
+    const { theme, resolvedTheme, setTheme } = useTheme();
     const { locale, locales, t, setLocale } = useI18n();
     const navigate = useNavigate();
     const location = useLocation();
     const langMenuRef = useRef<HTMLDivElement>(null);
+    const themeMenuRef = useRef<HTMLDivElement>(null);
 
-    // Close language menu when clicking outside
+    // Close menus when clicking outside
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (langMenuRef.current && !langMenuRef.current.contains(event.target as Node)) {
                 setLangMenuOpen(false);
             }
+            if (themeMenuRef.current && !themeMenuRef.current.contains(event.target as Node)) {
+                setThemeMenuOpen(false);
+            }
         };
 
-        if (langMenuOpen) {
+        if (langMenuOpen || themeMenuOpen) {
             document.addEventListener('mousedown', handleClickOutside);
         }
 
         return () => {
             document.removeEventListener('mousedown', handleClickOutside);
         };
-    }, [langMenuOpen]);
+    }, [langMenuOpen, themeMenuOpen]);
 
-    const toggleTheme = () => {
-        setTheme(theme === 'dark' ? 'light' : 'dark');
+    const getThemeIcon = () => {
+        if (theme === 'system') return <Monitor size={20} />;
+        return resolvedTheme === 'dark' ? <Moon size={20} /> : <Sun size={20} />;
+    };
+
+    const getThemeLabel = () => {
+        if (theme === 'system') return t('theme.system') || 'Система';
+        if (theme === 'dark') return t('theme.dark') || 'Тёмная';
+        return t('theme.light') || 'Светлая';
     };
 
     const handleNavigate = (path: string) => {
@@ -153,14 +165,38 @@ export const Sidebar: React.FC<SidebarProps> = () => {
                                 </div>
                             )}
                         </div>
-                        <button
-                            className="footer-btn"
-                            onClick={toggleTheme}
-                            title={theme === 'dark' ? t('theme.light') : t('theme.dark')}
-                        >
-                            {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
-                            {!collapsed && <span>{theme === 'dark' ? t('theme.light') : t('theme.dark')}</span>}
-                        </button>
+                        <div className="theme-menu-container" ref={themeMenuRef}>
+                            <button
+                                className="footer-btn"
+                                onClick={() => setThemeMenuOpen(!themeMenuOpen)}
+                                title={getThemeLabel()}
+                            >
+                                {getThemeIcon()}
+                                {!collapsed && <span>{getThemeLabel()}</span>}
+                            </button>
+                            {themeMenuOpen && (
+                                <div className="theme-dropdown">
+                                    <button
+                                        className={`theme-option ${theme === 'light' ? 'active' : ''}`}
+                                        onClick={() => { setTheme('light'); setThemeMenuOpen(false); }}
+                                    >
+                                        <Sun size={16} /> {t('theme.light') || 'Светлая'}
+                                    </button>
+                                    <button
+                                        className={`theme-option ${theme === 'dark' ? 'active' : ''}`}
+                                        onClick={() => { setTheme('dark'); setThemeMenuOpen(false); }}
+                                    >
+                                        <Moon size={16} /> {t('theme.dark') || 'Тёмная'}
+                                    </button>
+                                    <button
+                                        className={`theme-option ${theme === 'system' ? 'active' : ''}`}
+                                        onClick={() => { setTheme('system'); setThemeMenuOpen(false); }}
+                                    >
+                                        <Monitor size={16} /> {t('theme.system') || 'Система'}
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>

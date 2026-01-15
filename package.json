@@ -1,15 +1,18 @@
 {
-  "name": "my-blockchain",
+  "name": "edu-chain-node",
   "version": "1.0.0",
-  "description": "Educational blockchain with full functionality",
+  "description": "EDU Chain - Educational Blockchain Node",
   "type": "module",
   "main": "dist/api/server.js",
+  "bin": {
+    "edu-chain": "./dist/cli/cli.js"
+  },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && chmod +x dist/cli/cli.js",
     "start": "node dist/api/server.js",
     "dev": "tsx watch src/api/server.ts",
-    "test": "vitest",
-    "mine": "tsx src/cli/mine.ts"
+    "cli": "tsx src/cli/cli.ts",
+    "test": "vitest"
   },
   "keywords": [
     "blockchain",
@@ -21,6 +24,7 @@
   "dependencies": {
     "@lighthouse-web3/sdk": "^0.4.3",
     "bip39": "^3.1.0",
+    "commander": "^14.0.2",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
