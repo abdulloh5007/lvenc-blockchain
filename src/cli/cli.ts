@@ -20,6 +20,7 @@ program
     .option('-n, --network <name>', 'Network name (mainnet/testnet)', 'mainnet')
     .option('--no-api', 'Run without API server (P2P only)')
     .option('-b, --bootstrap', 'Run as bootstrap node (peer discovery only)')
+    .option('--api-only', 'Run API server only (no P2P participation)')
     .action(async (options) => {
         await startNode({
             apiPort: parseInt(options.port),
@@ -29,6 +30,7 @@ program
             network: options.network,
             enableApi: options.api !== false,
             bootstrapMode: options.bootstrap === true,
+            apiOnlyMode: options.apiOnly === true,
         });
     });
 

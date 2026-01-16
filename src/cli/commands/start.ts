@@ -29,6 +29,7 @@ export interface NodeOptions {
     network: string;
     enableApi: boolean;
     bootstrapMode?: boolean;
+    apiOnlyMode?: boolean; // API server only, no P2P participation
 }
 
 // Create readline interface for prompts
@@ -179,19 +180,24 @@ export async function startNode(options: NodeOptions): Promise<void> {
     // Initialize NFT Manager
     const nftManager = new NFTManager();
 
-    // Initialize P2P server
-    const p2pServer = new P2PServer(blockchain, p2pPort, options.bootstrapMode);
-    p2pServer.start();
+    // Initialize P2P server (skip in API-only mode)
+    let p2pServer: P2PServer | null = null;
+    if (!options.apiOnlyMode) {
+        p2pServer = new P2PServer(blockchain, p2pPort, options.bootstrapMode);
+        p2pServer.start();
 
-    // Connect to seed node if provided
-    if (options.seedNode) {
-        logger.info(`🔗 Connecting to seed node: ${options.seedNode}`);
-        try {
-            await p2pServer.connectToPeer(options.seedNode);
-            logger.info(`✅ Connected to seed node`);
-        } catch (error) {
-            logger.warn(`⚠️ Failed to connect to seed node: ${error}`);
+        // Connect to seed node if provided
+        if (options.seedNode) {
+            logger.info(`🔗 Connecting to seed node: ${options.seedNode}`);
+            try {
+                await p2pServer.connectToPeer(options.seedNode);
+                logger.info(`✅ Connected to seed node`);
+            } catch (error) {
+                logger.warn(`⚠️ Failed to connect to seed node: ${error}`);
+            }
         }
+    } else {
+        logger.info(`🌐 API-only mode: P2P disabled, read-only blockchain access`);
     }
 
     // Start API server if enabled
@@ -217,7 +223,9 @@ export async function startNode(options: NodeOptions): Promise<void> {
         app.use('/api/blockchain', createBlockchainRoutes(blockchain));
         app.use('/api/wallet', createWalletRoutes(blockchain));
         app.use('/api/transaction', createTransactionRoutes(blockchain));
-        app.use('/api/network', createNetworkRoutes(p2pServer));
+        if (p2pServer) {
+            app.use('/api/network', createNetworkRoutes(p2pServer));
+        }
         app.use('/api/nft', createNFTRoutes(nftManager));
         app.use('/api/staking', createStakingRoutes(blockchain));
 
@@ -226,8 +234,9 @@ export async function startNode(options: NodeOptions): Promise<void> {
             res.json({
                 status: 'ok',
                 blocks: blockchain.chain.length,
-                peers: p2pServer.getPeerCount(),
+                peers: p2pServer ? p2pServer.getPeerCount() : 0,
                 network: network,
+                mode: options.apiOnlyMode ? 'api-only' : 'full-node',
             });
         });
 
@@ -263,16 +272,20 @@ export async function startNode(options: NodeOptions): Promise<void> {
             case 'status':
                 console.log(`\n📊 Status:`);
                 console.log(`   Blocks: ${blockchain.chain.length}`);
-                console.log(`   Peers: ${p2pServer.getPeerCount()}`);
+                console.log(`   Peers: ${p2pServer ? p2pServer.getPeerCount() : 'N/A (API-only)'}`);
                 console.log(`   Pending TX: ${blockchain.pendingTransactions.length}`);
                 console.log(`   Network: ${network}\n`);
                 break;
 
             case 'peers':
-                console.log(`\n🌐 Connected Peers: ${p2pServer.getPeerCount()}`);
-                p2pServer.getPeers().forEach((peer, i) => {
-                    console.log(`   ${i + 1}. ${peer}`);
-                });
+                if (p2pServer) {
+                    console.log(`\n🌐 Connected Peers: ${p2pServer.getPeerCount()}`);
+                    p2pServer.getPeers().forEach((peer, i) => {
+                        console.log(`   ${i + 1}. ${peer}`);
+                    });
+                } else {
+                    console.log(`\n🌐 P2P disabled in API-only mode`);
+                }
                 console.log('');
                 break;
 
@@ -296,7 +309,7 @@ export async function startNode(options: NodeOptions): Promise<void> {
             case 'exit':
             case 'quit':
                 console.log('\n👋 Shutting down node...');
-                p2pServer.close();
+                if (p2pServer) p2pServer.close();
                 storage.saveBlockchain(blockchain.toJSON());
                 storage.saveStaking(stakingPool.toJSON());
                 console.log('💾 Data saved. Goodbye!\n');
@@ -317,7 +330,7 @@ export async function startNode(options: NodeOptions): Promise<void> {
     // Handle graceful shutdown
     process.on('SIGINT', () => {
         console.log('\n👋 Shutting down node...');
-        p2pServer.close();
+        if (p2pServer) p2pServer.close();
         storage.saveBlockchain(blockchain.toJSON());
         storage.saveStaking(stakingPool.toJSON());
         console.log('💾 Data saved. Goodbye!');

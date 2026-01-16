@@ -5,12 +5,14 @@ import { config } from '../config.js';
 
 // === CONSTANTS ===
 const MAX_PEERS = 50;
+const MIN_PEERS = 3; // Minimum peers to maintain for mesh topology
 const MAX_PEERS_PER_IP = 10; // Increased for nginx proxy (shows all as 127.0.0.1)
 const MAX_PEERS_PER_SUBNET = 5; // /24 subnet
 const MAX_PEERS_TO_SHARE = 10; // Peers per PEX response
 const PEX_RATE_LIMIT_MS = 30000; // 30 seconds between PEX requests
 const PEER_TIMEOUT_MS = 30000;
 const RECONNECT_INTERVAL_MS = 60000;
+const PEER_MAINTENANCE_INTERVAL_MS = 30000; // Check peer count every 30s
 const BAN_DURATION_MS = 600000; // 10 minutes
 const MIN_PEER_CONFIRMATIONS = 2; // Peer must be confirmed by N sources
 
@@ -162,8 +164,8 @@ export class P2PServer {
             this.broadcastTransaction(tx);
         };
 
-        // Periodic peer maintenance
-        setInterval(() => this.maintainPeers(), RECONNECT_INTERVAL_MS);
+        // Periodic peer maintenance (faster for mesh topology)
+        setInterval(() => this.maintainPeers(), PEER_MAINTENANCE_INTERVAL_MS);
 
         // Clean up banned IPs periodically
         setInterval(() => this.cleanupBans(), BAN_DURATION_MS);
@@ -291,6 +293,9 @@ export class P2PServer {
      * Periodic peer maintenance
      */
     private maintainPeers(): void {
+        // Log current peer status
+        logger.debug(`👥 Peer maintenance: ${this.peers.size} connected, ${this.knownPeers.size} known`);
+
         // Rotate peers - disconnect from lowest scoring peers if we have many
         if (this.peers.size > MAX_PEERS * 0.8) {
             const sorted = Array.from(this.peers.entries())
@@ -304,9 +309,33 @@ export class P2PServer {
             }
         }
 
-        // Try to connect to more peers if we have few
-        if (this.peers.size < 5) {
+        // Try to connect to more peers if below minimum
+        if (this.peers.size < MIN_PEERS) {
+            logger.info(`📡 Below minimum peers (${this.peers.size}/${MIN_PEERS}), requesting more...`);
+
+            // First, try bootstrap nodes
             this.connectToBootstrap();
+
+            // Then, request peers from existing connections via PEX
+            for (const [socket, peer] of this.peers.entries()) {
+                if (peer.verified) {
+                    this.send(socket, { type: MessageType.QUERY_PEERS, data: null });
+                }
+            }
+        }
+
+        // CONTINUOUS SYNC: Periodically request latest block from random peer
+        // This ensures node stays synced even if broadcasts are missed (NAT, network issues)
+        if (this.peers.size > 0) {
+            const verifiedPeers = Array.from(this.peers.entries())
+                .filter(([_, p]) => p.verified);
+
+            if (verifiedPeers.length > 0) {
+                // Pick random peer to query (avoid querying same peer repeatedly)
+                const randomIndex = Math.floor(Math.random() * verifiedPeers.length);
+                const [socket] = verifiedPeers[randomIndex];
+                this.send(socket, { type: MessageType.QUERY_LATEST, data: null });
+            }
         }
     }
 
@@ -392,6 +421,21 @@ export class P2PServer {
             if (!peer.verified && message.type !== MessageType.HANDSHAKE && message.type !== MessageType.HANDSHAKE_ACK) {
                 logger.warn(`🚫 Unverified peer sent ${message.type}`);
                 return;
+            }
+
+            // BOOTSTRAP MODE: Only respond to peer discovery messages
+            // Bootstrap nodes do NOT relay blocks, transactions, or blockchain data
+            if (this.bootstrapMode) {
+                const allowedMessages = [
+                    MessageType.HANDSHAKE,
+                    MessageType.HANDSHAKE_ACK,
+                    MessageType.QUERY_PEERS,
+                    MessageType.RESPONSE_PEERS
+                ];
+                if (!allowedMessages.includes(message.type)) {
+                    logger.debug(`📡 Bootstrap mode: ignoring ${message.type}`);
+                    return;
+                }
             }
 
             switch (message.type) {
@@ -521,10 +565,19 @@ export class P2PServer {
         }
         peer.lastPexRequest = now;
 
-        // Send random subset of peers
-        const allPeers = Array.from(this.knownPeers);
-        const shuffled = allPeers.sort(() => Math.random() - 0.5);
+        // Filter out localhost/internal peers - only share external URLs
+        const externalPeers = Array.from(this.knownPeers).filter(url =>
+            !url.includes('127.0.0.1') &&
+            !url.includes('localhost') &&
+            !url.includes('192.168.') &&
+            !url.includes('10.0.')
+        );
+
+        // Send random subset of external peers
+        const shuffled = externalPeers.sort(() => Math.random() - 0.5);
         const subset = shuffled.slice(0, MAX_PEERS_TO_SHARE);
+
+        logger.debug(`📤 Sharing ${subset.length} external peers via PEX`);
 
         this.send(socket, {
             type: MessageType.RESPONSE_PEERS,
@@ -536,8 +589,18 @@ export class P2PServer {
      * Handle peers response - auto-connect to new peers
      */
     private async handlePeersResponse(peers: string[]): Promise<void> {
+        // Filter out localhost/internal URLs - don't connect to same-host peers
+        const externalPeers = peers.filter(url =>
+            !url.includes('127.0.0.1') &&
+            !url.includes('localhost') &&
+            !url.includes('192.168.') &&
+            !url.includes('10.0.')
+        );
+
         // Only accept limited number
-        const toProcess = peers.slice(0, MAX_PEERS_TO_SHARE);
+        const toProcess = externalPeers.slice(0, MAX_PEERS_TO_SHARE);
+
+        logger.debug(`📥 Received ${peers.length} peers, ${toProcess.length} external to process`);
 
         for (const peerUrl of toProcess) {
             if (this.knownPeers.has(peerUrl) || peerUrl === this.myUrl) {
@@ -561,11 +624,17 @@ export class P2PServer {
      * Handle blockchain response
      */
     private handleBlockchainResponse(data: unknown[]): void {
-        if (!data || data.length === 0) return;
+        if (!data || data.length === 0) {
+            logger.debug('📭 Received empty blockchain response');
+            return;
+        }
 
+        logger.debug(`📬 Received ${data.length} blocks from peer`);
         const receivedBlocks = data.map(b => Block.fromJSON(b as any));
         const latestReceived = receivedBlocks[receivedBlocks.length - 1];
         const latestLocal = this.blockchain.getLatestBlock();
+
+        logger.debug(`📊 Sync check: Local #${latestLocal.index} vs Received #${latestReceived.index}`);
 
         if (latestReceived.index > latestLocal.index) {
             logger.info(`📦 Received blockchain is ahead. Local: ${latestLocal.index}, Received: ${latestReceived.index}`);
