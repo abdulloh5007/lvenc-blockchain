@@ -39,7 +39,8 @@ export class Blockchain {
             const genesis = Block.createGenesisBlock(
                 config.blockchain.genesisAmount,
                 faucetAddress,
-                this.difficulty
+                this.difficulty,
+                config.genesis?.timestamp || 0
             );
             this.chain.push(genesis);
             this.updateBalanceCache();

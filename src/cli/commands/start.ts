@@ -162,11 +162,11 @@ export async function startNode(options: NodeOptions): Promise<void> {
         blockchain.loadFromData(savedData);
         logger.info(`📦 Loaded blockchain: ${blockchain.chain.length} blocks`);
     } else {
-        const faucetWallet = new Wallet(undefined, 'Faucet');
-        blockchain.initialize(faucetWallet.address);
+        // Use fixed genesis faucet address for network consistency
+        const { config: appConfig } = await import('../../config.js');
+        blockchain.initialize(appConfig.genesis.faucetAddress);
         storage.saveBlockchain(blockchain.toJSON());
-        logger.info(`💧 Faucet wallet created: ${faucetWallet.address}`);
-        logger.warn(`⚠️ FAUCET MNEMONIC (save this): ${faucetWallet.mnemonic}`);
+        logger.info(`💧 Genesis faucet address: ${appConfig.genesis.faucetAddress}`);
     }
 
     // Load staking data

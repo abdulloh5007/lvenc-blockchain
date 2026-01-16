@@ -1,4 +1,15 @@
 const isTestnet = process.env.NETWORK_MODE !== 'mainnet';
+
+// Fixed genesis configuration for network consistency
+// ALL nodes must use these values to have same genesis hash
+const GENESIS_CONFIG = {
+    // Fixed testnet faucet address (do not change!)
+    testnetFaucetAddress: 'tEDU0000000000000000000000000000000000000001',
+    mainnetFaucetAddress: 'EDU0000000000000000000000000000000000000001',
+    // Fixed timestamp (January 1, 2026 00:00:00 UTC)
+    timestamp: 1767225600000,
+};
+
 export const config = {
     network_mode: isTestnet ? 'testnet' : 'mainnet',
     isTestnet,
@@ -36,6 +47,11 @@ export const config = {
     faucet: {
         enabled: isTestnet,
         amount: 100,
+    },
+    // Genesis block configuration (fixed for network consistency)
+    genesis: {
+        faucetAddress: isTestnet ? GENESIS_CONFIG.testnetFaucetAddress : GENESIS_CONFIG.mainnetFaucetAddress,
+        timestamp: GENESIS_CONFIG.timestamp,
     },
 };
 export type Config = typeof config;

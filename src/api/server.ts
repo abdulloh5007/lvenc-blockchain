@@ -41,11 +41,10 @@ const savedData = storage.loadBlockchain();
 if (savedData) {
     blockchain.loadFromData(savedData);
 } else {
-    const faucetWallet = new Wallet(undefined, 'Faucet');
-    blockchain.initialize(faucetWallet.address);
+    // Use fixed genesis faucet address for network consistency
+    blockchain.initialize(config.genesis.faucetAddress);
     storage.saveBlockchain(blockchain.toJSON());
-    logger.info(`💧 Faucet wallet created: ${faucetWallet.address}`);
-    logger.warn(`⚠️ FAUCET MNEMONIC (save this): ${faucetWallet.mnemonic}`);
+    logger.info(`💧 Genesis faucet address: ${config.genesis.faucetAddress}`);
 }
 // Load staking data
 const savedStaking = storage.loadStaking();

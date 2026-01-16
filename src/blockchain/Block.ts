@@ -140,7 +140,8 @@ export class Block implements BlockData {
     static createGenesisBlock(
         genesisAmount: number,
         faucetAddress: string,
-        difficulty: number
+        difficulty: number,
+        fixedTimestamp?: number
     ): Block {
         const genesisTransaction = new Transaction(
             null,
@@ -150,7 +151,7 @@ export class Block implements BlockData {
         );
         const genesis = new Block(
             0,
-            0,
+            fixedTimestamp || 0, // Use fixed timestamp or 0
             [genesisTransaction],
             '0'.repeat(64),
             difficulty,
