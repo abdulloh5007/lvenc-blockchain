@@ -5,7 +5,7 @@ import { config } from '../config.js';
 
 // === CONSTANTS ===
 const MAX_PEERS = 50;
-const MAX_PEERS_PER_IP = 2;
+const MAX_PEERS_PER_IP = 10; // Increased for nginx proxy (shows all as 127.0.0.1)
 const MAX_PEERS_PER_SUBNET = 5; // /24 subnet
 const MAX_PEERS_TO_SHARE = 10; // Peers per PEX response
 const PEX_RATE_LIMIT_MS = 30000; // 30 seconds between PEX requests
