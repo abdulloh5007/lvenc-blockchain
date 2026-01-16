@@ -1,15 +1,16 @@
 #!/bin/bash
 
 # EDU Chain Blockchain - Deploy Script
-# Pulls latest code, rebuilds, and restarts PM2
+# Pulls latest code, rebuilds, and restarts both API and Bootstrap node
 
 set -e
 
 PROJECT_DIR="/root/lvenc-blockchain"
-PM2_APP_NAME="lvenc-blockchain"
+PM2_API_NAME="lvenc-api"
+PM2_BOOTSTRAP_NAME="edu-bootstrap"
 
 echo "🚀 Deploying EDU Chain..."
-echo "=========================="
+echo "========================="
 
 # Navigate to project
 cd $PROJECT_DIR
@@ -30,10 +31,26 @@ echo ""
 echo "🔨 Building..."
 npm run build
 
-# Restart PM2
+# === API Server ===
 echo ""
-echo "🔄 Restarting PM2..."
-pm2 restart $PM2_APP_NAME
+echo "🌍 Setting up API Server..."
+if pm2 describe $PM2_API_NAME > /dev/null 2>&1; then
+    pm2 restart $PM2_API_NAME
+else
+    pm2 start dist/api/server.js --name $PM2_API_NAME --cwd $PROJECT_DIR
+fi
+
+# === Bootstrap Node ===
+echo ""
+echo "🔗 Setting up Bootstrap Node..."
+if pm2 describe $PM2_BOOTSTRAP_NAME > /dev/null 2>&1; then
+    pm2 restart $PM2_BOOTSTRAP_NAME
+else
+    pm2 start dist/cli/cli.js --name $PM2_BOOTSTRAP_NAME --cwd $PROJECT_DIR -- start --bootstrap --p2p 6001 --port 3002 --network testnet
+fi
+
+# Save PM2 config
+pm2 save
 
 # Show status
 echo ""
@@ -43,6 +60,11 @@ pm2 status
 
 # Show logs
 echo ""
-echo "📋 Recent logs:"
+echo "📋 API Server logs:"
 echo "------------------------"
-pm2 logs $PM2_APP_NAME --lines 15 --nostream
+pm2 logs $PM2_API_NAME --lines 5 --nostream
+
+echo ""
+echo "📋 Bootstrap Node logs:"
+echo "------------------------"
+pm2 logs $PM2_BOOTSTRAP_NAME --lines 5 --nostream
