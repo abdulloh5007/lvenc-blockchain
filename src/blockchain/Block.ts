@@ -143,11 +143,16 @@ export class Block implements BlockData {
         difficulty: number,
         fixedTimestamp?: number
     ): Block {
+        // Fixed genesis transaction ID for network consistency
+        const GENESIS_TX_ID = 'genesis-tx-00000000-0000-0000-0000-000000000001';
+
         const genesisTransaction = new Transaction(
             null,
             faucetAddress,
             genesisAmount,
-            0
+            0,
+            fixedTimestamp || 0, // Use fixed timestamp for tx too
+            GENESIS_TX_ID        // Fixed ID
         );
         const genesis = new Block(
             0,
