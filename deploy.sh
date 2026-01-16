@@ -46,7 +46,7 @@ echo "🔗 Setting up Bootstrap Node..."
 if pm2 describe $PM2_BOOTSTRAP_NAME > /dev/null 2>&1; then
     pm2 restart $PM2_BOOTSTRAP_NAME
 else
-    pm2 start dist/cli/cli.js --name $PM2_BOOTSTRAP_NAME --cwd $PROJECT_DIR -- start --bootstrap --p2p 6001 --port 3002 --network testnet
+    pm2 start dist/cli/cli.js --name $PM2_BOOTSTRAP_NAME --cwd $PROJECT_DIR -- start --bootstrap --p2p 6002 --port 3002 --network testnet
 fi
 
 # Save PM2 config
@@ -68,3 +68,4 @@ echo ""
 echo "📋 Bootstrap Node logs:"
 echo "------------------------"
 pm2 logs $PM2_BOOTSTRAP_NAME --lines 5 --nostream
+
