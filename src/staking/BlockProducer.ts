@@ -4,6 +4,7 @@ import { vrfSelector } from './VRFSelector.js';
 import { storage } from '../storage/index.js';
 import { logger } from '../utils/logger.js';
 import { sha256 } from '../utils/crypto.js';
+import { config } from '../config.js';
 
 const SLOT_DURATION = 30000;
 
@@ -73,7 +74,7 @@ export class BlockProducer {
 
         // Apply stake penalty for outdated protocol version
         // Validators running outdated nodes have reduced weight in selection
-        const graceUntilBlock = require('../config.js').config.version.graceUntilBlock;
+        const graceUntilBlock = config.version.graceUntilBlock;
         const applyOutdatedPenalty = graceUntilBlock && currentBlockIndex < graceUntilBlock;
 
         // Include delegated stake in validator selection with optional penalty
