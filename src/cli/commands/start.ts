@@ -6,7 +6,7 @@ import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from '../../api/swagger.js';
-import { Blockchain } from '../../blockchain/index.js';
+import { Blockchain, Transaction, Block } from '../../blockchain/index.js';
 import { P2PServer } from '../../network/index.js';
 import { storage } from '../../storage/index.js';
 import { Wallet } from '../../wallet/index.js';
@@ -308,7 +308,6 @@ export async function startNode(options: NodeOptions): Promise<void> {
                 return;
             }
             try {
-                const { Transaction, Block } = require('../../blockchain/index.js');
                 const tx = new Transaction(genesisAddress, address, amount, 0);
                 const latestBlock = blockchain.getLatestBlock();
                 const faucetBlock = new Block(
