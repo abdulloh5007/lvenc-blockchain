@@ -57,6 +57,27 @@ docker run -d -p 3001:3001 -p 6001:6001 edu-chain-node
 
 ## 📖 Commands
 
+> 📚 **Полная документация:** [docs/CLI.md](docs/CLI.md)
+
+### Quick Reference
+
+```bash
+# Запуск ноды
+edu-chain start -n testnet
+
+# Показать identity
+edu-chain identity
+
+# Привязать reward address
+edu-chain reward generate      # Создать новый кошелёк
+edu-chain reward bind <addr>   # Использовать существующий
+edu-chain reward show          # Показать текущий
+
+# Статус
+edu-chain status
+edu-chain peers
+```
+
 ### Start Node
 
 ```bash

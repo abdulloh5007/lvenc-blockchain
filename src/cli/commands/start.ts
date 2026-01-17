@@ -13,6 +13,7 @@ import { Wallet } from '../../wallet/index.js';
 import { logger } from '../../utils/logger.js';
 import { NFTManager } from '../../nft/index.js';
 import { initBlockProducer, stakingPool } from '../../staking/index.js';
+import { config } from '../../config.js';
 
 import { createBlockchainRoutes } from '../../api/routes/blockchain.js';
 import { createWalletRoutes } from '../../api/routes/wallet.js';
@@ -20,6 +21,7 @@ import { createTransactionRoutes } from '../../api/routes/transaction.js';
 import { createNetworkRoutes } from '../../api/routes/network.js';
 import { createNFTRoutes } from '../../api/routes/nft.js';
 import { createStakingRoutes } from '../../api/routes/staking.js';
+import { createNodeRoutes } from '../../api/routes/node.js';
 
 export interface NodeOptions {
     apiPort: number;
@@ -102,7 +104,7 @@ export async function startNode(options: NodeOptions): Promise<void> {
 ║   ███████╗██████╔╝╚██████╔╝    ╚██████╗██║  ██║██║  ██║   ║
 ║   ╚══════╝╚═════╝  ╚═════╝      ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝   ║
 ║                                                           ║
-║   ${options.bootstrapMode ? 'BOOTSTRAP NODE' : 'EDU CHAIN Node'} v1.0.0${options.bootstrapMode ? '                    ' : '                        '}║
+║   ${options.bootstrapMode ? 'BOOTSTRAP NODE' : 'EDU CHAIN Node'} v${config.version.nodeVersion}${options.bootstrapMode ? '                    ' : '                        '}║
 ╚═══════════════════════════════════════════════════════════╝
     `);
 
@@ -236,6 +238,9 @@ export async function startNode(options: NodeOptions): Promise<void> {
         }
         app.use('/api/nft', createNFTRoutes(nftManager));
         app.use('/api/staking', createStakingRoutes(blockchain));
+        if (p2pServer) {
+            app.use('/api/node', createNodeRoutes(blockchain, p2pServer));
+        }
 
         // Health check
         app.get('/health', (_, res) => {

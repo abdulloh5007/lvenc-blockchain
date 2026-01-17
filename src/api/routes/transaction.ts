@@ -3,8 +3,11 @@ import { Blockchain, Transaction } from '../../blockchain/index.js';
 import { storage } from '../../storage/index.js';
 import { isBlacklisted, checkTransferRate, validateTransaction } from '../../security/index.js';
 import { verifySignature } from '../../utils/crypto.js';
+
 export function createTransactionRoutes(blockchain: Blockchain): Router {
     const router = Router();
+
+    // POST /send - must come first
     router.post('/send', (req: Request, res: Response) => {
         const { from, to, amount, fee, signature, publicKey, timestamp } = req.body;
         if (!from || !to || !amount || !signature || !publicKey || !timestamp) {
@@ -35,7 +38,6 @@ export function createTransactionRoutes(blockchain: Blockchain): Router {
                 });
                 return;
             }
-            // Use timestamp from client to match signature
             const transaction = new Transaction(from, to, Number(amount), txFee, Number(timestamp));
             const txHash = transaction.calculateHash();
             if (!verifySignature(txHash, signature, publicKey)) {
@@ -63,6 +65,46 @@ export function createTransactionRoutes(blockchain: Blockchain): Router {
             });
         }
     });
+
+    // Example format - MUST be before /:id
+    router.get('/example', (_req: Request, res: Response) => {
+        const exampleTimestamp = Date.now();
+        res.json({
+            success: true,
+            message: 'This is an example of a valid transaction request format',
+            example: {
+                endpoint: 'POST /api/transaction/send',
+                body: {
+                    from: 'tEDU_YourSenderAddressHere',
+                    to: 'tEDU_RecipientAddressHere',
+                    amount: 10,
+                    fee: 0.01,
+                    signature: 'hex_signature_created_by_wallet',
+                    publicKey: 'your_secp256k1_public_key_hex',
+                    timestamp: exampleTimestamp,
+                },
+                notes: [
+                    'signature = sign(sha256(from + to + amount + fee + timestamp), privateKey)',
+                    'publicKey must match the from address',
+                    'Use the frontend wallet to create properly signed transactions',
+                ],
+            },
+            curl_example: `curl -X POST http://localhost:3001/api/transaction/send -H "Content-Type: application/json" -d '{"from":"tEDU_...", "to":"tEDU_...", "amount":10, "fee":0.01, "signature":"...", "publicKey":"...", "timestamp":${exampleTimestamp}}'`,
+        });
+    });
+
+    // Pool pending - MUST be before /:id
+    router.get('/pool/pending', (_req: Request, res: Response) => {
+        res.json({
+            success: true,
+            data: {
+                transactions: blockchain.pendingTransactions.map(tx => tx.toJSON()),
+                count: blockchain.pendingTransactions.length,
+            },
+        });
+    });
+
+    // Get by ID - MUST be last (catches all other paths)
     router.get('/:id', (req: Request, res: Response) => {
         const { id } = req.params;
         const result = blockchain.getTransaction(id);
@@ -79,14 +121,6 @@ export function createTransactionRoutes(blockchain: Blockchain): Router {
             },
         });
     });
-    router.get('/pool/pending', (_req: Request, res: Response) => {
-        res.json({
-            success: true,
-            data: {
-                transactions: blockchain.pendingTransactions.map(tx => tx.toJSON()),
-                count: blockchain.pendingTransactions.length,
-            },
-        });
-    });
+
     return router;
 }

@@ -3,6 +3,7 @@ import 'dotenv/config';
 import { Command } from 'commander';
 import { startNode } from './commands/start.js';
 import { identityCommand } from './commands/identity.js';
+import { rewardCommand } from './commands/reward.js';
 
 const program = new Command();
 
@@ -132,3 +133,4 @@ async function showPeers(port: number): Promise<void> {
 
 // Add identity command
 program.addCommand(identityCommand);
+program.addCommand(rewardCommand);
