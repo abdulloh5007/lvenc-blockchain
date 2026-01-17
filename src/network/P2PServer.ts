@@ -227,9 +227,15 @@ export class P2PServer {
         const peer = this.peerManager.getPeer(socket);
         if (!peer) return;
 
-        const result = this.handshake.verifyHandshake(data, peer.ip, (rejectData) => {
-            this.send(socket, { type: MessageType.VERSION_REJECT, data: rejectData });
-        });
+        const currentBlockHeight = this.blockchain.chain.length - 1;
+        const result = this.handshake.verifyHandshake(
+            data,
+            peer.ip,
+            currentBlockHeight,
+            (rejectData: VersionRejectData) => {
+                this.send(socket, { type: MessageType.VERSION_REJECT, data: rejectData });
+            }
+        );
 
         if (!result.verified) {
             socket.close();
@@ -316,6 +322,10 @@ export class P2PServer {
             const randomPeer = verified[Math.floor(Math.random() * verified.length)];
             this.send(randomPeer.socket, { type: MessageType.QUERY_LATEST, data: null });
         }
+
+        // Check and log grace period warnings
+        const currentBlockHeight = this.blockchain.chain.length - 1;
+        this.handshake.checkGraceWarning(currentBlockHeight);
     }
 
     // ==================== UTILITIES ====================

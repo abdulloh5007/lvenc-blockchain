@@ -19,6 +19,7 @@ import { createNFTRoutes } from './routes/nft.js';
 import { createIPFSRoutes } from './routes/ipfs.js';
 import { createAdminRoutes } from './routes/admin.js';
 import { createStakingRoutes } from './routes/staking.js';
+import { createNodeRoutes } from './routes/node.js';
 import { initBlockProducer, stakingPool } from '../staking/index.js';
 import {
     apiKeyAuth,
@@ -177,6 +178,7 @@ v1Router.use('/network', createNetworkRoutes(p2pServer));
 v1Router.use('/nft', createNFTRoutes(nftManager));
 v1Router.use('/ipfs', createIPFSRoutes());
 v1Router.use('/staking', createStakingRoutes(blockchain));
+v1Router.use('/node', createNodeRoutes(blockchain, p2pServer));
 
 // Apply mint rate limit to NFT mint endpoint
 v1Router.post('/nft/mint', mintLimiter);

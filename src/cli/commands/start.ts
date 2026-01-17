@@ -155,6 +155,14 @@ export async function startNode(options: NodeOptions): Promise<void> {
         logger.info(`🌍 API Port: ${apiPort}`);
     }
 
+    // Initialize node identity (Ed25519 keypair)
+    const { initNodeIdentity } = await import('../../identity/index.js');
+    const nodeIdentity = await initNodeIdentity(options.dataDir);
+    logger.info(`🔑 Node ID: ${nodeIdentity.getShortId()}`);
+
+    // Show first-run warning if new identity
+    await nodeIdentity.showFirstRunWarning();
+
     // Initialize blockchain
     const blockchain = new Blockchain();
     const savedData = storage.loadBlockchain();

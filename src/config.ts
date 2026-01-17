@@ -14,16 +14,16 @@ const GENESIS_CONFIG = {
 // Increment PROTOCOL_VERSION on breaking changes, update MIN_PROTOCOL_VERSION to enforce upgrades
 const VERSION_CONFIG = {
     // Software version (semver)
-    nodeVersion: '1.1.0',
+    nodeVersion: '1.2.0',
     // Protocol version (increment on breaking network changes)
     protocolVersion: 1,
     // Minimum protocol version required to connect (used for mandatory updates)
     minProtocolVersion: 1,
-    // Grace period deadline (null = no active grace period)
-    // Set to timestamp when critical update is released + grace days
-    graceDeadline: null as number | null,
-    // Grace period duration in days (for reference)
-    gracePeriodDays: 7,
+    // Block-based grace period (null = no active grace period)
+    // Set to current_block + GRACE_BLOCKS when releasing critical update
+    graceUntilBlock: null as number | null,
+    // Grace period in blocks (for reference: ~7 days at 30s blocks = ~20,160 blocks)
+    gracePeriodBlocks: 20160,
 };
 
 // Chunk Sync Configuration

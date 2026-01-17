@@ -35,6 +35,23 @@ export enum MessageType {
 
     // Version Control
     VERSION_REJECT = 'VERSION_REJECT',
+    VERSION_ANNOUNCEMENT = 'VERSION_ANNOUNCEMENT',  // Network-wide version broadcast
+}
+
+// ==================== VERSION ERROR CODES ====================
+
+export enum VersionErrorCode {
+    ERR_MIN_PROTOCOL = 'ERR_MIN_PROTOCOL',           // Protocol version below minimum
+    ERR_GRACE_EXPIRED = 'ERR_GRACE_EXPIRED',         // Grace period expired
+    ERR_MALFORMED_PROTOCOL = 'ERR_MALFORMED_PROTOCOL', // Invalid protocol messages
+}
+
+// ==================== NODE STATUS FLAGS ====================
+
+export enum NodeVersionStatus {
+    UP_TO_DATE = 'UP_TO_DATE',
+    OUTDATED_WITHIN_GRACE = 'OUTDATED_WITHIN_GRACE',
+    OUTDATED_GRACE_EXPIRED = 'OUTDATED_GRACE_EXPIRED',
 }
 
 // ==================== MESSAGE INTERFACES ====================
@@ -45,20 +62,28 @@ export interface P2PMessage {
 }
 
 export interface HandshakeData {
+    nodeId: string;              // Ed25519 public key (hex) - cryptographic identity
     protocolVersion: number;
     minProtocolVersion: number;
-    graceDeadline: number | null;
+    graceUntilBlock: number | null;  // Block-based grace (not timestamp)
     chainId: string;
     genesisHash: string;
     nodeVersion: string;
     blockHeight: number;
+    rewardAddress: string | null;   // Wallet address for rewards
 }
 
 export interface VersionRejectData {
-    reason: string;
-    minVersion: number;
-    yourVersion: number;
-    updateCommand: string;
+    errorCode: VersionErrorCode;
+    currentVersion: number;
+    requiredVersion: number;
+    graceUntilBlock: number | null;
+    recommendedAction: string;
+}
+
+export interface VersionAnnouncementData {
+    minProtocolVersion: number;
+    graceUntilBlock: number | null;
 }
 
 // ==================== SYNC INTERFACES ====================

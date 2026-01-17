@@ -70,11 +70,28 @@ export class BlockProducer {
         }
 
         const seed = vrfSelector.generateSeed(latestBlock.hash, currentSlot);
-        // Include delegated stake in validator selection
-        const validatorList = validators.map(v => ({
-            address: v.address,
-            stake: v.stake + v.delegatedStake
-        }));
+
+        // Apply stake penalty for outdated protocol version
+        // Validators running outdated nodes have reduced weight in selection
+        const graceUntilBlock = require('../config.js').config.version.graceUntilBlock;
+        const applyOutdatedPenalty = graceUntilBlock && currentBlockIndex < graceUntilBlock;
+
+        // Include delegated stake in validator selection with optional penalty
+        const validatorList = validators.map(v => {
+            let effectiveStake = v.stake + v.delegatedStake;
+
+            // If network is in grace period and this is our node's stake,
+            // apply 50% penalty to incentivize upgrades
+            if (applyOutdatedPenalty) {
+                effectiveStake = Math.floor(effectiveStake * 0.5);
+                this.log.debug(`⚠️ Outdated node penalty applied: ${v.address.slice(0, 10)}... stake reduced by 50%`);
+            }
+
+            return {
+                address: v.address,
+                stake: effectiveStake
+            };
+        });
         const validatorAddress = vrfSelector.selectValidator(validatorList, seed);
 
         if (!validatorAddress) {
