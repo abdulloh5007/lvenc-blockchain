@@ -2,24 +2,28 @@
 
 Educational Blockchain Network with Proof-of-Stake consensus.
 
-## 🚀 Quick Start
+## 🚀 Quick Start (One Line!)
 
-### Option 1: NPM (Recommended)
-
+### Testnet
 ```bash
-# Install globally
-npm install -g edu-chain-node
-
-# Start the node
-edu-chain start
+./run_testnet.sh
 ```
 
-### Option 2: From Source
+### Mainnet
+```bash
+./run_mainnet.sh
+```
+
+---
+
+## 📦 Installation
+
+### Option 1: From Source (Recommended)
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-repo/edu-chain.git
-cd edu-chain
+git clone https://github.com/abdulloh5007/lvenc-blockchain.git
+cd lvenc-blockchain
 
 # Install dependencies
 npm install
@@ -27,8 +31,18 @@ npm install
 # Build
 npm run build
 
-# Start the node
-node dist/cli/cli.js start
+# Start testnet node
+./run_testnet.sh
+```
+
+### Option 2: Manual Start
+
+```bash
+# Testnet
+npx edu-chain start --network testnet
+
+# Mainnet
+npx edu-chain start --network mainnet
 ```
 
 ### Option 3: Docker
@@ -56,6 +70,16 @@ edu-chain start [options]
 - `-d, --data <path>` - Data directory path (default: ./data)
 - `-n, --network <name>` - Network name: mainnet/testnet (default: mainnet)
 - `--no-api` - Run without API server (P2P only)
+- `-b, --bootstrap` - Run as bootstrap node (peer discovery only)
+- `--api-only` - Run API server only (no P2P participation)
+
+### Node Modes
+
+| Mode | Command | Description |
+|------|---------|-------------|
+| **Full Node** | `edu-chain start` | Full participant: sync, validate, stake, produce blocks |
+| **Bootstrap** | `edu-chain start --bootstrap` | Peer discovery only, no blocks |
+| **API-Only** | `edu-chain start --api-only` | Read-only API, no P2P |
 
 **Examples:**
 

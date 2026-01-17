@@ -1,0 +1,58 @@
+Business Source License 1.1
+
+Licensor: LVENC Team / Abdulloh
+Licensed Work: EDU Chain Blockchain (LVENC)
+Additional Use Grant: None
+Change Date: 2030-01-01
+Change License: MIT License
+
+TERMS
+
+The Licensor hereby grants you the right to copy, modify, create derivative 
+works, redistribute, and make non-production use of the Licensed Work.
+
+Effective on the Change Date, or the fourth anniversary of the first publicly 
+available distribution of a specific version of the Licensed Work under this 
+License, whichever comes first, the Licensor hereby grants you rights under 
+the terms of the Change License.
+
+RESTRICTIONS
+
+1. PRODUCTION USE PROHIBITED
+   The Licensed Work may NOT be used in production environments without 
+   explicit written permission from the Licensor.
+
+2. TRADEMARK AND NAME PROTECTION
+   The names "EDU Chain", "LVENC", "EDU", and any logos, branding, or 
+   trademarks associated with this project are RESERVED and may NOT be used:
+   
+   a) In the name of any derivative work or fork
+   b) In any marketing, branding, or promotional materials
+   c) To imply endorsement or affiliation with the original project
+   d) In any domain names, social media handles, or project identifiers
+
+3. NETWORK ISOLATION
+   Any derivative work must NOT connect to the official EDU Chain network 
+   (mainnet or testnet) without explicit written permission.
+
+4. GENESIS BLOCK
+   The official genesis block configuration is proprietary. Derivative works 
+   must use a different genesis configuration.
+
+LIMITED WARRANTY
+
+THE LICENSED WORK IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS 
+OR IMPLIED. IN NO EVENT SHALL THE LICENSOR BE LIABLE FOR ANY CLAIM, DAMAGES 
+OR OTHER LIABILITY ARISING FROM THE LICENSED WORK.
+
+NOTICE
+
+This license does not grant you any right in any trademark or logo of Licensor 
+or its affiliates. "EDU Chain" and "LVENC" are trademarks of the Licensor.
+
+For production use licensing, contact: [abdulloh50007@gmail.com]
+
+---
+
+Copyright (c) 2026 LVENC Team
+All Rights Reserved.

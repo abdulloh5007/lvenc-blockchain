@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Download, CheckCircle, AlertCircle } from 'lucide-react';
+import { X, Download, AlertCircle } from 'lucide-react';
 import { Button } from './Button';
 import { useI18n } from '../contexts';
 import wordlist from '../data/wordlist.json';
@@ -12,24 +12,34 @@ interface SeedImportModalProps {
 }
 
 const WORD_COUNT = 24;
+const MAX_SUGGESTIONS = 3;
 
 export const SeedImportModal: React.FC<SeedImportModalProps> = ({ isOpen, onClose, onImport }) => {
     const { t } = useI18n();
     const [words, setWords] = useState<string[]>(Array(WORD_COUNT).fill(''));
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [activeIndex, setActiveIndex] = useState<number | null>(null);
+    const [suggestions, setSuggestions] = useState<string[]>([]);
     const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
     useEffect(() => {
         if (isOpen) {
             setWords(Array(WORD_COUNT).fill(''));
             setError(null);
+            setSuggestions([]);
+            setActiveIndex(null);
             setTimeout(() => inputRefs.current[0]?.focus(), 100);
         }
     }, [isOpen]);
 
-    const validateWord = (word: string): boolean => {
-        return wordlist.includes(word.toLowerCase().trim());
+    // Get autocomplete suggestions
+    const getSuggestions = (input: string): string[] => {
+        if (!input || input.length < 1) return [];
+        const lower = input.toLowerCase();
+        return wordlist
+            .filter(w => w.startsWith(lower))
+            .slice(0, MAX_SUGGESTIONS);
     };
 
     const handlePaste = async (index: number, e: React.ClipboardEvent) => {
@@ -40,6 +50,7 @@ export const SeedImportModal: React.FC<SeedImportModalProps> = ({ isOpen, onClos
             e.preventDefault();
             setWords(pastedWords.map(w => w.toLowerCase()));
             inputRefs.current[WORD_COUNT - 1]?.focus();
+            setSuggestions([]);
         } else if (pastedWords.length > 1) {
             e.preventDefault();
             const newWords = [...words];
@@ -51,14 +62,52 @@ export const SeedImportModal: React.FC<SeedImportModalProps> = ({ isOpen, onClos
             setWords(newWords);
             const nextIndex = Math.min(index + pastedWords.length, WORD_COUNT - 1);
             inputRefs.current[nextIndex]?.focus();
+            setSuggestions([]);
         }
     };
 
     const handleChange = (index: number, value: string) => {
         const newWords = [...words];
-        newWords[index] = value.toLowerCase().trim();
+        // Don't trim during typing - only lowercase
+        newWords[index] = value.toLowerCase();
         setWords(newWords);
         setError(null);
+
+        // Always update activeIndex when typing
+        setActiveIndex(index);
+
+        // Update suggestions for current field
+        const trimmedValue = value.trim();
+        const newSuggestions = getSuggestions(trimmedValue);
+        setSuggestions(newSuggestions);
+    };
+
+    const handleFocus = (index: number) => {
+        setActiveIndex(index);
+        const trimmedValue = words[index]?.trim() || '';
+        setSuggestions(getSuggestions(trimmedValue));
+    };
+
+    const handleBlur = () => {
+        // Delay to allow click on suggestion, but don't clear activeIndex
+        // It will be set correctly by handleFocus when clicking another field
+        setTimeout(() => {
+            setSuggestions([]);
+        }, 200);
+    };
+
+    const selectSuggestion = (word: string) => {
+        if (activeIndex !== null) {
+            const newWords = [...words];
+            newWords[activeIndex] = word;
+            setWords(newWords);
+            setSuggestions([]);
+
+            // Move to next field
+            if (activeIndex < WORD_COUNT - 1) {
+                inputRefs.current[activeIndex + 1]?.focus();
+            }
+        }
     };
 
     const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
@@ -71,7 +120,15 @@ export const SeedImportModal: React.FC<SeedImportModalProps> = ({ isOpen, onClos
             e.preventDefault();
             inputRefs.current[index - 1]?.focus();
         } else if (e.key === 'Enter') {
-            handleImport();
+            if (suggestions.length > 0) {
+                e.preventDefault();
+                selectSuggestion(suggestions[0]);
+            } else {
+                handleImport();
+            }
+        } else if (e.key === 'ArrowDown' && suggestions.length > 0) {
+            e.preventDefault();
+            // Could add keyboard navigation for suggestions
         }
     };
 
@@ -82,9 +139,10 @@ export const SeedImportModal: React.FC<SeedImportModalProps> = ({ isOpen, onClos
             return;
         }
 
-        const invalidWords = words.filter(w => !validateWord(w));
+        // Validate all words at once
+        const invalidWords = words.filter(w => !(wordlist as string[]).includes(w.toLowerCase().trim()));
         if (invalidWords.length > 0) {
-            setError(`${t('wallet.invalidWords')}: ${invalidWords.join(', ')}`);
+            setError(t('wallet.invalidMnemonic'));
             return;
         }
 
@@ -99,13 +157,48 @@ export const SeedImportModal: React.FC<SeedImportModalProps> = ({ isOpen, onClos
         setLoading(false);
     };
 
-    const isComplete = words.every(w => w.trim() && validateWord(w));
+    const filledCount = words.filter(w => w.trim()).length;
 
     if (!isOpen) return null;
 
     // Split words into two columns: 1-12 and 13-24
     const firstColumn = words.slice(0, 12);
     const secondColumn = words.slice(12, 24);
+
+    const renderInput = (word: string, index: number) => (
+        <div key={index} className="seed-input-wrapper">
+            <span className="seed-num">{index + 1}</span>
+            <input
+                ref={el => { inputRefs.current[index] = el; }}
+                type="text"
+                value={word}
+                onChange={e => handleChange(index, e.target.value)}
+                onPaste={e => handlePaste(index, e)}
+                onKeyDown={e => handleKeyDown(index, e)}
+                onFocus={() => handleFocus(index)}
+                onBlur={handleBlur}
+                placeholder=""
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
+            />
+            {/* Autocomplete suggestions dropdown */}
+            {activeIndex === index && suggestions.length > 0 && (
+                <div className="seed-suggestions">
+                    {suggestions.map((s, i) => (
+                        <div
+                            key={i}
+                            className="seed-suggestion"
+                            onMouseDown={() => selectSuggestion(s)}
+                        >
+                            {s}
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
 
     return (
         <div className="seed-modal-overlay" onClick={onClose}>
@@ -119,59 +212,19 @@ export const SeedImportModal: React.FC<SeedImportModalProps> = ({ isOpen, onClos
 
                 <div className="seed-grid-columns">
                     <div className="seed-column">
-                        {firstColumn.map((word, index) => (
-                            <div key={index} className={`seed-input-wrapper ${word && !validateWord(word) ? 'invalid' : ''} ${word && validateWord(word) ? 'valid' : ''}`}>
-                                <span className="seed-num">{index + 1}</span>
-                                <input
-                                    ref={el => { inputRefs.current[index] = el; }}
-                                    type="text"
-                                    value={word}
-                                    onChange={e => handleChange(index, e.target.value)}
-                                    onPaste={e => handlePaste(index, e)}
-                                    onKeyDown={e => handleKeyDown(index, e)}
-                                    placeholder=""
-                                    autoComplete="off"
-                                    autoCorrect="off"
-                                    autoCapitalize="off"
-                                    spellCheck={false}
-                                />
-                                {word && validateWord(word) && <CheckCircle size={14} className="word-valid-icon" />}
-                                {word && !validateWord(word) && <AlertCircle size={14} className="word-invalid-icon" />}
-                            </div>
-                        ))}
+                        {firstColumn.map((word, index) => renderInput(word, index))}
                     </div>
                     <div className="seed-column">
-                        {secondColumn.map((word, index) => {
-                            const actualIndex = index + 12;
-                            return (
-                                <div key={actualIndex} className={`seed-input-wrapper ${word && !validateWord(word) ? 'invalid' : ''} ${word && validateWord(word) ? 'valid' : ''}`}>
-                                    <span className="seed-num">{actualIndex + 1}</span>
-                                    <input
-                                        ref={el => { inputRefs.current[actualIndex] = el; }}
-                                        type="text"
-                                        value={word}
-                                        onChange={e => handleChange(actualIndex, e.target.value)}
-                                        onPaste={e => handlePaste(actualIndex, e)}
-                                        onKeyDown={e => handleKeyDown(actualIndex, e)}
-                                        placeholder=""
-                                        autoComplete="off"
-                                        autoCorrect="off"
-                                        autoCapitalize="off"
-                                        spellCheck={false}
-                                    />
-                                    {word && validateWord(word) && <CheckCircle size={14} className="word-valid-icon" />}
-                                    {word && !validateWord(word) && <AlertCircle size={14} className="word-invalid-icon" />}
-                                </div>
-                            );
-                        })}
+                        {secondColumn.map((word, index) => renderInput(word, index + 12))}
                     </div>
                 </div>
 
                 {error && <div className="seed-error"><AlertCircle size={16} /> {error}</div>}
 
                 <div className="seed-modal-actions">
+                    <span className="seed-progress">{filledCount}/{WORD_COUNT}</span>
                     <Button variant="ghost" onClick={onClose}>{t('common.cancel')}</Button>
-                    <Button onClick={handleImport} loading={loading} disabled={!isComplete}>
+                    <Button onClick={handleImport} loading={loading}>
                         <Download size={16} /> {t('wallet.import')}
                     </Button>
                 </div>

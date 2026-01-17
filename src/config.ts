@@ -10,6 +10,30 @@ const GENESIS_CONFIG = {
     timestamp: 1767225600000,
 };
 
+// Protocol Version Control
+// Increment PROTOCOL_VERSION on breaking changes, update MIN_PROTOCOL_VERSION to enforce upgrades
+const VERSION_CONFIG = {
+    // Software version (semver)
+    nodeVersion: '1.1.0',
+    // Protocol version (increment on breaking network changes)
+    protocolVersion: 1,
+    // Minimum protocol version required to connect (used for mandatory updates)
+    minProtocolVersion: 1,
+    // Grace period deadline (null = no active grace period)
+    // Set to timestamp when critical update is released + grace days
+    graceDeadline: null as number | null,
+    // Grace period duration in days (for reference)
+    gracePeriodDays: 7,
+};
+
+// Chunk Sync Configuration
+const SYNC_CONFIG = {
+    // Number of blocks per chunk during sync
+    chunkSize: 500,
+    // Maximum blocks to request in one query
+    maxBlocksPerRequest: 1000,
+};
+
 export const config = {
     network_mode: isTestnet ? 'testnet' : 'mainnet',
     isTestnet,
@@ -53,5 +77,9 @@ export const config = {
         faucetAddress: isTestnet ? GENESIS_CONFIG.testnetFaucetAddress : GENESIS_CONFIG.mainnetFaucetAddress,
         timestamp: GENESIS_CONFIG.timestamp,
     },
+    // Version control (for mandatory updates)
+    version: VERSION_CONFIG,
+    // Sync configuration
+    sync: SYNC_CONFIG,
 };
 export type Config = typeof config;
