@@ -261,6 +261,76 @@ export async function startNode(options: NodeOptions): Promise<void> {
             });
         });
 
+        // Network info
+        app.get('/api/network-info', (_, res) => {
+            res.json({
+                success: true,
+                data: {
+                    network: config.network_mode,
+                    isTestnet: config.isTestnet,
+                    symbol: config.blockchain.coinSymbol,
+                    addressPrefix: config.blockchain.addressPrefix,
+                    faucetEnabled: config.faucet.enabled,
+                },
+            });
+        });
+
+        // Faucet (testnet only)
+        const faucetCooldowns: Map<string, number> = new Map();
+        app.post('/api/faucet', (req, res) => {
+            if (!config.faucet.enabled) {
+                res.status(403).json({ success: false, error: 'Faucet is only available on testnet' });
+                return;
+            }
+            const { address, amount = config.faucet.amount } = req.body;
+            if (!address) {
+                res.status(400).json({ success: false, error: 'Address is required' });
+                return;
+            }
+            const genesisBlock = blockchain.chain[0];
+            const genesisAddress = genesisBlock?.transactions[0]?.toAddress;
+            if (!genesisAddress) {
+                res.status(500).json({ success: false, error: 'Genesis not found' });
+                return;
+            }
+            const balance = blockchain.getBalance(genesisAddress);
+            if (balance < amount) {
+                res.status(400).json({ success: false, error: 'Faucet is empty' });
+                return;
+            }
+            const lastRequest = faucetCooldowns.get(address);
+            const now = Date.now();
+            if (lastRequest && now - lastRequest < 60000) {
+                const waitSec = Math.ceil((60000 - (now - lastRequest)) / 1000);
+                res.status(429).json({ success: false, error: `Wait ${waitSec} seconds before next faucet request` });
+                return;
+            }
+            try {
+                const { Transaction, Block } = require('../../blockchain/index.js');
+                const tx = new Transaction(genesisAddress, address, amount, 0);
+                const latestBlock = blockchain.getLatestBlock();
+                const faucetBlock = new Block(
+                    latestBlock.index + 1,
+                    Date.now(),
+                    [tx],
+                    latestBlock.hash,
+                    blockchain.difficulty,
+                    'FAUCET',
+                    'pos'
+                );
+                faucetBlock.hash = faucetBlock.calculateHash();
+                blockchain.chain.push(faucetBlock);
+                (blockchain as any).balanceCache?.clear();
+                storage.saveBlockchain(blockchain.toJSON());
+                faucetCooldowns.set(address, now);
+                logger.info(`💧 Faucet: ${amount} ${config.blockchain.coinSymbol} → ${address}`);
+                res.json({ success: true, data: { message: `Sent ${amount} ${config.blockchain.coinSymbol}`, transactionId: tx.id, blockIndex: faucetBlock.index } });
+            } catch (e) {
+                logger.error(`Faucet error: ${e instanceof Error ? e.message : e}`);
+                res.status(500).json({ success: false, error: e instanceof Error ? e.message : 'Failed' });
+            }
+        });
+
         app.listen(apiPort, () => {
             logger.info(`🌍 API Server running on http://localhost:${apiPort}`);
             logger.info(`📚 Swagger docs: http://localhost:${apiPort}/docs`);
