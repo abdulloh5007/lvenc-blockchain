@@ -1,28 +1,29 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, Image, Plus, X, Upload, Globe } from 'lucide-react';
+import { Sparkles, Image, Plus, X, Upload, Globe, Loader } from 'lucide-react';
 import { Card, Button, Input, CustomSelect } from '../components';
 import { useWallets } from '../hooks';
+import { usePinContext } from '../contexts';
 import { nft, ipfs } from '../api/client';
 import type { NFTMetadata, NFTAttribute, IPFSStatus } from '../api/client';
 import './NFT.css';
 
 export const NFTMint: React.FC = () => {
     const { wallets } = useWallets();
+    const { confirmPin } = usePinContext();
     const [loading, setLoading] = useState(false);
-    const [uploading, setUploading] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
     const [ipfsStatus, setIpfsStatus] = useState<IPFSStatus | null>(null);
 
     const [selectedWallet, setSelectedWallet] = useState('');
-    const [seedPhrase, setSeedPhrase] = useState('');
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
-    const [imageData, setImageData] = useState('');
-    const [imageCid, setImageCid] = useState('');
+    const [imageData, setImageData] = useState(''); // Base64 data URL - NOT uploaded yet
+    const [imageFileName, setImageFileName] = useState('');
     const [royalty, setRoyalty] = useState(5);
     const [attributes, setAttributes] = useState<NFTAttribute[]>([]);
     const [newAttrType, setNewAttrType] = useState('');
     const [newAttrValue, setNewAttrValue] = useState('');
+    const [mintStep, setMintStep] = useState<'idle' | 'uploading' | 'minting'>('idle');
 
     // Check IPFS status on mount
     useEffect(() => {
@@ -35,7 +36,8 @@ export const NFTMint: React.FC = () => {
         checkIPFS();
     }, []);
 
-    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Handle image selection - ONLY store locally, NO IPFS upload
+    const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
@@ -45,20 +47,11 @@ export const NFTMint: React.FC = () => {
         }
 
         const reader = new FileReader();
-        reader.onload = async (event) => {
+        reader.onload = (event) => {
             const base64Data = event.target?.result as string;
             setImageData(base64Data);
-
-            // If IPFS is available, upload automatically
-            if (ipfsStatus?.connected) {
-                setUploading(true);
-                const uploadRes = await ipfs.upload(base64Data, file.name);
-                if (uploadRes.success && uploadRes.data) {
-                    setImageCid(uploadRes.data.cid);
-                    setMessage({ type: 'success', text: `Загружено в IPFS: ${uploadRes.data.cid.slice(0, 12)}...` });
-                }
-                setUploading(false);
-            }
+            setImageFileName(file.name);
+            setMessage(null);
         };
         reader.readAsDataURL(file);
     };
@@ -75,16 +68,43 @@ export const NFTMint: React.FC = () => {
         setAttributes(attributes.filter((_, i) => i !== index));
     };
 
+    const clearImage = () => {
+        setImageData('');
+        setImageFileName('');
+    };
+
     const handleMint = async () => {
-        if (!selectedWallet || !seedPhrase || !name || !imageData) {
+        if (!selectedWallet || !name || !imageData) {
             setMessage({ type: 'error', text: 'Заполните все обязательные поля' });
             return;
         }
 
-        setLoading(true);
+        // Confirm with PIN instead of asking for mnemonic
+        const confirmed = await confirmPin('Подтвердите создание NFT', `Создать "${name}" с вашего кошелька?`);
+        if (!confirmed) {
+            setMessage({ type: 'error', text: 'Отменено пользователем' });
+            return;
+        }
 
-        // Use IPFS URL if available, otherwise base64
-        const imageUrl = imageCid ? `ipfs://${imageCid}` : imageData;
+        setLoading(true);
+        let imageUrl = imageData;
+
+        // Step 1: Upload to IPFS if available
+        if (ipfsStatus?.connected) {
+            setMintStep('uploading');
+            const uploadRes = await ipfs.upload(imageData, imageFileName || 'nft-image.png');
+            if (uploadRes.success && uploadRes.data) {
+                imageUrl = `ipfs://${uploadRes.data.cid}`;
+            } else {
+                setMessage({ type: 'error', text: uploadRes.error || 'Ошибка загрузки в IPFS' });
+                setLoading(false);
+                setMintStep('idle');
+                return;
+            }
+        }
+
+        // Step 2: Mint NFT
+        setMintStep('minting');
 
         const metadata: NFTMetadata = {
             name,
@@ -93,27 +113,43 @@ export const NFTMint: React.FC = () => {
             attributes,
         };
 
-        const res = await nft.mint(selectedWallet, metadata, seedPhrase.trim(), undefined, royalty);
+        // Get the wallet's mnemonic from the stored wallets
+        const wallet = wallets.find(w => w.address === selectedWallet);
+        if (!wallet) {
+            setMessage({ type: 'error', text: 'Кошелёк не найден' });
+            setLoading(false);
+            setMintStep('idle');
+            return;
+        }
+
+        const res = await nft.mint(selectedWallet, metadata, wallet.mnemonic, undefined, royalty);
 
         if (res.success && res.data) {
             setMessage({ type: 'success', text: `NFT #${res.data.tokenId} создан!` });
+            // Clear form
             setName('');
             setDescription('');
             setImageData('');
-            setImageCid('');
+            setImageFileName('');
             setAttributes([]);
-            setSeedPhrase('');
+            setRoyalty(5);
         } else {
             setMessage({ type: 'error', text: res.error || 'Ошибка создания NFT' });
         }
         setLoading(false);
+        setMintStep('idle');
+    };
+
+    const getMintButtonText = () => {
+        if (mintStep === 'uploading') return 'Загрузка в IPFS...';
+        if (mintStep === 'minting') return 'Создание NFT...';
+        return 'Создать NFT';
     };
 
     return (
         <div className="nft-page fade-in">
             <div className="page-header">
                 <h1><Sparkles className="header-icon" /> Создать NFT</h1>
-                <p>Минтинг уникального цифрового актива</p>
             </div>
 
             {/* IPFS Status */}
@@ -136,29 +172,23 @@ export const NFTMint: React.FC = () => {
                         {imageData ? (
                             <div className="image-preview">
                                 <img src={imageData} alt="Preview" />
-                                {uploading && <div className="upload-overlay">Загрузка в IPFS...</div>}
-                                {imageCid && (
-                                    <div className="ipfs-badge">
-                                        <Globe size={12} /> IPFS
-                                    </div>
-                                )}
-                                <button className="remove-image" onClick={() => { setImageData(''); setImageCid(''); }}>
+                                <div className="preview-badge">Превью</div>
+                                <button className="remove-image" onClick={clearImage}>
                                     <X size={16} />
                                 </button>
                             </div>
                         ) : (
                             <label className="image-upload-area">
-                                <input type="file" accept="image/*" onChange={handleImageUpload} hidden />
+                                <input type="file" accept="image/*" onChange={handleImageSelect} hidden />
                                 <Upload size={32} />
                                 <span>Загрузить изображение</span>
                                 <span className="hint">PNG, JPG, GIF (макс. 2MB)</span>
                             </label>
                         )}
                     </div>
-                    {imageCid && (
-                        <div className="cid-display">
-                            <span className="label">CID:</span>
-                            <code>{imageCid}</code>
+                    {imageData && (
+                        <div className="upload-info">
+                            <span className="hint">⚡ Загрузка в IPFS произойдёт при создании NFT</span>
                         </div>
                     )}
                 </Card>
@@ -207,13 +237,9 @@ export const NFTMint: React.FC = () => {
                             </div>
                         </div>
 
-                        <div className="seed-input">
-                            <label>Seed-фраза *</label>
-                            <textarea placeholder="Введите 15 слов seed-фразы..." value={seedPhrase} onChange={e => setSeedPhrase(e.target.value)} rows={2} />
-                        </div>
-
-                        <Button onClick={handleMint} loading={loading} disabled={!selectedWallet || !name || !imageData || uploading}>
-                            <Sparkles size={16} /> Создать NFT
+                        <Button onClick={handleMint} loading={loading} disabled={!selectedWallet || !name || !imageData}>
+                            {loading ? <Loader size={16} className="spin" /> : <Sparkles size={16} />}
+                            {getMintButtonText()}
                         </Button>
                     </div>
                 </Card>
