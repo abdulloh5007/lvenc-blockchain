@@ -70,6 +70,38 @@
     color: var(--text-primary);
 }
 
+/* Mode Tabs - 12/24 word switch */
+.seed-mode-tabs {
+    display: flex;
+    gap: 8px;
+    padding: 16px 24px 0;
+}
+
+.seed-mode-tab {
+    flex: 1;
+    padding: 12px 16px;
+    background: var(--bg-glass);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.seed-mode-tab:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.seed-mode-tab.active {
+    background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+    border-color: transparent;
+    color: white;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
 .seed-modal-desc {
     padding: 16px 24px 8px;
     color: var(--text-secondary);

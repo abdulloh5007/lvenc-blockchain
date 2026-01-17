@@ -6,8 +6,13 @@
 import { Command } from 'commander';
 import * as fs from 'fs';
 import * as path from 'path';
-import { config } from '../../config.js';
 import { Wallet } from '../../wallet/index.js';
+
+// Helper to get data dir based on network
+function getDataDir(network: string, dataDir?: string): string {
+    if (dataDir) return dataDir;
+    return `./data/${network}`;
+}
 
 export const rewardCommand = new Command('reward')
     .description('Manage reward address for validator earnings');
@@ -17,14 +22,16 @@ export const rewardCommand = new Command('reward')
 rewardCommand
     .command('bind <address>')
     .description('Bind an existing wallet address for rewards')
-    .option('-d, --data-dir <path>', 'Data directory', config.storage.dataDir)
+    .option('-n, --network <name>', 'Network (testnet/mainnet)', 'testnet')
+    .option('-d, --data-dir <path>', 'Data directory (overrides network)')
     .action(async (address: string, options) => {
-        const identityPath = path.join(options.dataDir, 'identity.key');
+        const dataDir = getDataDir(options.network, options.dataDir);
+        const identityPath = path.join(dataDir, 'identity.key');
 
         if (!fs.existsSync(identityPath)) {
             console.log('');
             console.log('❌ No identity found');
-            console.log(`   Run 'edu-chain start' first to generate an identity`);
+            console.log(`   Run 'edu-chain start -n ${options.network}' first to generate an identity`);
             console.log('');
             process.exit(1);
         }
@@ -50,6 +57,7 @@ rewardCommand
             console.log('║              ✅ Reward Address Bound                      ║');
             console.log('╠═══════════════════════════════════════════════════════════╣');
             console.log(`║  Address: ${address.slice(0, 20)}...${address.slice(-8)}       ║`);
+            console.log(`║  Network: ${options.network.padEnd(46)} ║`);
             console.log('╚═══════════════════════════════════════════════════════════╝');
             console.log('');
             console.log('💡 Validator rewards will be sent to this address.');
@@ -66,14 +74,16 @@ rewardCommand
 rewardCommand
     .command('generate')
     .description('Generate a new wallet and bind it as reward address')
-    .option('-d, --data-dir <path>', 'Data directory', config.storage.dataDir)
+    .option('-n, --network <name>', 'Network (testnet/mainnet)', 'testnet')
+    .option('-d, --data-dir <path>', 'Data directory (overrides network)')
     .action(async (options) => {
-        const identityPath = path.join(options.dataDir, 'identity.key');
+        const dataDir = getDataDir(options.network, options.dataDir);
+        const identityPath = path.join(dataDir, 'identity.key');
 
         if (!fs.existsSync(identityPath)) {
             console.log('');
             console.log('❌ No identity found');
-            console.log(`   Run 'edu-chain start' first to generate an identity`);
+            console.log(`   Run 'edu-chain start -n ${options.network}' first to generate an identity`);
             console.log('');
             process.exit(1);
         }
@@ -106,11 +116,12 @@ rewardCommand
             console.log('║                                                           ║');
             console.log('╠═══════════════════════════════════════════════════════════╣');
             console.log(`║  Reward Address: ${address.slice(0, 36)}... ║`);
+            console.log(`║  Network:        ${options.network.padEnd(38)} ║`);
             console.log('╚═══════════════════════════════════════════════════════════╝');
             console.log('');
             console.log('🔒 Write down your mnemonic and store it securely!');
             console.log('   You can recover this wallet using:');
-            console.log(`   edu-chain wallet recover --mnemonic "your 12 words"`);
+            console.log(`   edu-chain wallet recover --mnemonic "your 24 words"`);
             console.log('');
             console.log('💡 Validator rewards will be sent to this address.');
             console.log('');
@@ -126,14 +137,16 @@ rewardCommand
 rewardCommand
     .command('show')
     .description('Show current reward address')
-    .option('-d, --data-dir <path>', 'Data directory', config.storage.dataDir)
+    .option('-n, --network <name>', 'Network (testnet/mainnet)', 'testnet')
+    .option('-d, --data-dir <path>', 'Data directory (overrides network)')
     .action(async (options) => {
-        const identityPath = path.join(options.dataDir, 'identity.key');
+        const dataDir = getDataDir(options.network, options.dataDir);
+        const identityPath = path.join(dataDir, 'identity.key');
 
         if (!fs.existsSync(identityPath)) {
             console.log('');
             console.log('❌ No identity found');
-            console.log(`   Run 'edu-chain start' first to generate an identity`);
+            console.log(`   Run 'edu-chain start -n ${options.network}' first to generate an identity`);
             console.log('');
             process.exit(1);
         }
@@ -148,13 +161,14 @@ rewardCommand
                 console.log('║                    💰 Reward Address                      ║');
                 console.log('╠═══════════════════════════════════════════════════════════╣');
                 console.log(`║  ${identity.rewardAddress.padEnd(55)} ║`);
+                console.log(`║  Network: ${options.network.padEnd(46)} ║`);
                 console.log('╚═══════════════════════════════════════════════════════════╝');
             } else {
                 console.log('❌ No reward address configured');
                 console.log('');
                 console.log('💡 To set a reward address:');
-                console.log('   edu-chain reward bind <address>   - Use existing wallet');
-                console.log('   edu-chain reward generate         - Create new wallet');
+                console.log(`   edu-chain reward bind <address> -n ${options.network}`);
+                console.log(`   edu-chain reward generate -n ${options.network}`);
             }
             console.log('');
 

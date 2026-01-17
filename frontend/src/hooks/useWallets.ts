@@ -27,11 +27,11 @@ export interface LocalWallet {
     createdAt: number;
 }
 
-function generateMnemonic(): string {
+function generateMnemonic(wordCount: 12 | 24 = 24): string {
     const words: string[] = [];
-    const array = new Uint32Array(24);
+    const array = new Uint32Array(wordCount);
     crypto.getRandomValues(array);
-    for (let i = 0; i < 24; i++) {
+    for (let i = 0; i < wordCount; i++) {
         const index = array[i] % wordlist.length;
         words.push(wordlist[index]);
     }
@@ -42,8 +42,8 @@ function mnemonicToPrivateKey(mnemonic: string): string {
     return sha256(mnemonic);
 }
 
-function generateWallet(label: string = 'Wallet'): LocalWallet {
-    const mnemonic = generateMnemonic();
+function generateWallet(label: string = 'Wallet', wordCount: 12 | 24 = 24): LocalWallet {
+    const mnemonic = generateMnemonic(wordCount);
     const privateKey = mnemonicToPrivateKey(mnemonic);
     const keyPair = elliptic.keyFromPrivate(privateKey, 'hex');
     const publicKey = keyPair.getPublic('hex');
@@ -54,7 +54,8 @@ function generateWallet(label: string = 'Wallet'): LocalWallet {
 
 function importFromMnemonic(mnemonic: string, label: string = 'Imported'): LocalWallet {
     const words = mnemonic.trim().toLowerCase().split(/\s+/);
-    if (words.length !== 24) throw new Error('Mnemonic must be 24 words');
+    // Support both 12 and 24 words for import
+    if (words.length !== 12 && words.length !== 24) throw new Error('Mnemonic must be 12 or 24 words');
     const privateKey = mnemonicToPrivateKey(mnemonic.trim().toLowerCase());
     const keyPair = elliptic.keyFromPrivate(privateKey, 'hex');
     const publicKey = keyPair.getPublic('hex');
@@ -101,9 +102,9 @@ export function useWallets() {
         setLoading(false);
     }, [loadWallets]);
 
-    const createWallet = useCallback(async (label?: string) => {
+    const createWallet = useCallback(async (label?: string, wordCount: 12 | 24 = 24) => {
         await loadNetworkPrefix();
-        const newWallet = generateWallet(label);
+        const newWallet = generateWallet(label, wordCount);
         const stored = loadWallets();
         stored.push(newWallet);
         saveWallets(stored);

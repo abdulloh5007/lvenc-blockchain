@@ -380,3 +380,44 @@
 .import-actions .btn {
     flex: 1;
 }
+/* Word count selector */
+.word-count-selector {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.selector-label {
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.selector-options {
+    display: flex;
+    gap: 8px;
+}
+
+.selector-option {
+    flex: 1;
+    padding: 10px;
+    background: var(--bg-glass);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.selector-option:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.selector-option.active {
+    background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+    border-color: transparent;
+    color: white;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}

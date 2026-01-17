@@ -110,7 +110,7 @@
         "seedPhrase": "Seed Phrase",
         "words": "words",
         "enterSeed": "Enter your 24-word seed phrase...",
-        "enterSeedWords": "Enter your 24 secret words in correct order",
+        "enterSeedWords": "Enter your secret words in correct order",
         "fillAllWords": "Please fill in all 24 words",
         "invalidWords": "Invalid words",
         "pasteHint": "Tip: Paste all 24 words in the first field to auto-fill",

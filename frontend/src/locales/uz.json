@@ -110,7 +110,7 @@
         "seedPhrase": "Seed-fraza",
         "words": "so'z",
         "enterSeed": "24 so'zlik seed-frazani kiriting...",
-        "enterSeedWords": "24 maxfiy so'zni to'g'ri tartibda kiriting",
+        "enterSeedWords": "Maxfiy so'zlarni to'g'ri tartibda kiriting",
         "fillAllWords": "Barcha 24 so'zni to'ldiring",
         "invalidWords": "Noto'g'ri so'zlar",
         "pasteHint": "Maslahat: Avto-to'ldirish uchun birinchi maydoniga 24 so'zni joylashtiring",

@@ -11,6 +11,7 @@ export const WalletPage: React.FC = () => {
     const { wallets, createWallet, importWallet, deleteWallet, signTransaction, refresh } = useWallets();
     const { t } = useI18n();
     const [newWalletLabel, setNewWalletLabel] = useState('');
+    const [wordCount, setWordCount] = useState<12 | 24>(24);
     const [createdWallet, setCreatedWallet] = useState<{ address: string; mnemonic: string } | null>(null);
     const [selectedWallet, setSelectedWallet] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
@@ -33,7 +34,7 @@ export const WalletPage: React.FC = () => {
     const handleCreateWallet = async () => {
         setLoading(true);
         try {
-            const result = await createWallet(newWalletLabel || 'Wallet');
+            const result = await createWallet(newWalletLabel || 'Wallet', wordCount);
             setCreatedWallet({ address: result.address, mnemonic: result.mnemonic });
             setNewWalletLabel('');
             setMessage({ type: 'success', text: t('wallet.walletCreated') });
@@ -141,6 +142,25 @@ export const WalletPage: React.FC = () => {
                     <Card title={t('wallet.createWallet')} icon={<Plus size={20} />}>
                         <div className="create-form">
                             <Input label={`${t('wallet.walletName')} (${t('wallet.optional')})`} placeholder="My Wallet" value={newWalletLabel} onChange={(e) => setNewWalletLabel(e.target.value)} />
+
+                            <div className="word-count-selector">
+                                <span className="selector-label">Size:</span>
+                                <div className="selector-options">
+                                    <button
+                                        className={`selector-option ${wordCount === 24 ? 'active' : ''}`}
+                                        onClick={() => setWordCount(24)}
+                                    >
+                                        24 {t('wallet.words') || 'words'}
+                                    </button>
+                                    <button
+                                        className={`selector-option ${wordCount === 12 ? 'active' : ''}`}
+                                        onClick={() => setWordCount(12)}
+                                    >
+                                        12 {t('wallet.words') || 'words'}
+                                    </button>
+                                </div>
+                            </div>
+
                             <Button onClick={handleCreateWallet} loading={loading}><Plus size={16} /> {t('common.create')}</Button>
                         </div>
                     </Card>
@@ -155,7 +175,7 @@ export const WalletPage: React.FC = () => {
                                 <div className="info-row"><span className="label">{t('wallet.address')}:</span><span className="value font-mono">{formatAddress(createdWallet.address)}</span></div>
                                 <div className="warning-box"><AlertTriangle size={16} /> {t('wallet.saveSeed')}</div>
                                 <div className="seed-phrase-box">
-                                    <span className="label">{t('wallet.seedPhrase')} (24 {t('wallet.words')}):</span>
+                                    <span className="label">{t('wallet.seedPhrase')} ({createdWallet.mnemonic.split(' ').length} {t('wallet.words') || 'words'}):</span>
                                     <div className="seed-words">
                                         {createdWallet.mnemonic?.split(' ').map((word: string, i: number) => (
                                             <span key={i} className="seed-word"><span className="word-num">{i + 1}</span>{word}</span>

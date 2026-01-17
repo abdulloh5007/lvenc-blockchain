@@ -26,7 +26,22 @@ export class Wallet {
 
     private keyPair: elliptic.ec.KeyPair;
 
-    constructor(privateKeyOrMnemonic?: string, label?: string) {
+    /**
+     * Create a wallet
+     * @param privateKeyOrMnemonic - Private key hex, mnemonic phrase, or undefined to generate new
+     * @param labelOrWordCount - Wallet label (string) or word count for new wallet (12 or 24)
+     */
+    constructor(privateKeyOrMnemonic?: string, labelOrWordCount?: string | 12 | 24) {
+        // Determine if second param is label or word count
+        let label: string | undefined;
+        let wordCount: 12 | 24 = 24;
+
+        if (typeof labelOrWordCount === 'number') {
+            wordCount = labelOrWordCount;
+        } else {
+            label = labelOrWordCount;
+        }
+
         if (privateKeyOrMnemonic) {
             if (privateKeyOrMnemonic.includes(' ')) {
                 const mnemonic = privateKeyOrMnemonic.trim();
@@ -43,13 +58,16 @@ export class Wallet {
                 this.privateKey = privateKeyOrMnemonic;
             }
         } else {
-            const entropy = secureRandom(32);
+            // Generate new wallet with specified word count
+            // 12 words = 16 bytes (128 bits), 24 words = 32 bytes (256 bits)
+            const entropyBytes = wordCount === 12 ? 16 : 32;
+            const entropy = secureRandom(entropyBytes);
             this.mnemonic = bip39.entropyToMnemonic(entropy.toString('hex'));
             const seed = bip39.mnemonicToSeedSync(this.mnemonic);
             const privateKeyHex = sha256(seed.toString('hex')).substring(0, 64);
             this.keyPair = ec.keyFromPrivate(privateKeyHex, 'hex');
             this.privateKey = privateKeyHex;
-            logger.info(`🔑 New wallet created with 24-word mnemonic (secure entropy)`);
+            logger.info(`🔑 New wallet created with ${wordCount}-word mnemonic`);
         }
 
         this.publicKey = this.keyPair.getPublic('hex');

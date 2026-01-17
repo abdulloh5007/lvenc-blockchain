@@ -158,8 +158,10 @@ export async function startNode(options: NodeOptions): Promise<void> {
     }
 
     // Initialize node identity (Ed25519 keypair)
+    // Identity is stored in network-specific directory
+    const identityDir = `${options.dataDir}/${options.network}`;
     const { initNodeIdentity } = await import('../../identity/index.js');
-    const nodeIdentity = await initNodeIdentity(options.dataDir);
+    const nodeIdentity = await initNodeIdentity(identityDir);
     logger.info(`🔑 Node ID: ${nodeIdentity.getShortId()}`);
 
     // Show first-run warning if new identity
@@ -261,10 +263,17 @@ export async function startNode(options: NodeOptions): Promise<void> {
 
     // Initialize block producer (PoS) - skip in bootstrap mode
     if (!options.bootstrapMode) {
-        initBlockProducer(blockchain);
+        const blockProducer = initBlockProducer(blockchain);
+        blockProducer.start();
+        logger.info(`🏭 Block producer started`);
     } else {
         logger.info(`📡 Bootstrap mode: Block production disabled`);
     }
+
+    // Auto-save staking data periodically
+    setInterval(() => {
+        storage.saveStaking(stakingPool.toJSON());
+    }, 60000); // Every minute
 
     logger.info(`\n✅ Node is running!`);
     console.log(`\n📋 Available commands: status, peers, info, help, exit\n`);

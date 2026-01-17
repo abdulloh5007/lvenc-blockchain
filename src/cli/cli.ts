@@ -52,6 +52,11 @@ program
         await showPeers(parseInt(options.port));
     });
 
+// Add identity and reward commands BEFORE parse()
+program.addCommand(identityCommand);
+program.addCommand(rewardCommand);
+
+// Parse AFTER all commands are registered
 program.parse();
 
 // Inline status function
@@ -130,7 +135,3 @@ async function showPeers(port: number): Promise<void> {
         `);
     }
 }
-
-// Add identity command
-program.addCommand(identityCommand);
-program.addCommand(rewardCommand);
