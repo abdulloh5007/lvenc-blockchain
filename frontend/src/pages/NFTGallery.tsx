@@ -43,7 +43,10 @@ export const NFTGallery: React.FC = () => {
     return (
         <div className="nft-gallery-page fade-in">
             <div className="gallery-header">
-                <h1>NFT Gallery</h1>
+                <div className="gallery-title">
+                    <Image className="header-icon" size={28} />
+                    <h1>NFT Gallery</h1>
+                </div>
                 <span className="nft-count">{nfts.length} NFT</span>
             </div>
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Lock, Unlock, Award, TrendingUp, Clock, GitBranch, RefreshCw } from 'lucide-react';
+import { Coins, Users, Lock, Unlock, Award, TrendingUp, Clock, GitBranch, RefreshCw } from 'lucide-react';
 import { Card, Button, CustomSelect } from '../components';
 import { useWallets } from '../hooks';
 import { useI18n } from '../contexts';
@@ -145,7 +145,8 @@ export const StakingPage: React.FC = () => {
     return (
         <div className="staking-page fade-in">
             <div className="page-header">
-                <h1>{t('staking.title')}</h1>
+                <h1><Coins className="header-icon" /> {t('staking.title')}</h1>
+                <p>{t('staking.subtitle')}</p>
             </div>
 
             {/* Epoch Banner */}
@@ -354,7 +355,7 @@ export const StakingPage: React.FC = () => {
                     )}
                 </Card>
 
-                <Card title={t('staking.validators')} className="validators-card">
+                <Card title={t('staking.validators')} icon={<Users size={20} />} className="validators-card">
                     {validators.length === 0 ? (
                         <p className="no-validators">{t('staking.noValidators')}</p>
                     ) : (

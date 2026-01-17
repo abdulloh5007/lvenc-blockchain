@@ -1,241 +1,82 @@
-/* NFT Global Styles & Premium Layout */
-.nft-page,
-.nft-gallery-page {
-    padding: 32px 40px;
-    max-width: 1600px;
+.nft-page {
+    padding: 24px;
+    max-width: 1400px;
     margin: 0 auto;
 }
 
-/* Header */
-.gallery-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 32px;
-}
-
-.gallery-header h1 {
-    font-size: 28px;
-    font-weight: 700;
-    color: var(--text-primary);
-    letter-spacing: -0.02em;
-    margin: 0;
-}
-
-.nft-count {
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
-    padding: 6px 14px;
-    border-radius: 20px;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text-secondary);
-}
-
-/* Grid Layout */
-.nft-full-grid {
+.nft-content {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    grid-template-columns: 1fr 380px;
     gap: 24px;
 }
 
-/* Loading & Empty States */
-.gallery-loading,
-.gallery-empty {
+@media (max-width: 1000px) {
+    .nft-content {
+        grid-template-columns: 1fr;
+    }
+}
+
+.nft-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 16px;
+}
+
+.loading-state {
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 16px;
-    min-height: 400px;
+    gap: 12px;
+    padding: 40px;
     color: var(--text-muted);
+}
+
+.spin {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* NFT Detail Sidebar */
+.nft-detail-sidebar {
+    position: sticky;
+    top: 24px;
+}
+
+.nft-detail {
     text-align: center;
 }
 
-.gallery-empty h2 {
-    color: var(--text-primary);
-    font-size: 20px;
-    margin: 0;
-}
-
-.gallery-empty p {
-    color: var(--text-secondary);
-    font-size: 14px;
-}
-
-/* Pagination */
-.pagination {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 12px;
-    margin-top: 48px;
-    padding-top: 24px;
-    border-top: 1px solid var(--border-color);
-}
-
-.pagination-btn {
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    color: var(--text-secondary);
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.pagination-btn:hover:not(:disabled) {
-    background: var(--bg-card-hover);
-    border-color: var(--border-highlight);
-    color: var(--text-primary);
-}
-
-.pagination-btn:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-}
-
-.pagination-pages {
-    display: flex;
-    gap: 8px;
-}
-
-.pagination-page {
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    color: var(--text-secondary);
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.pagination-page:hover {
-    border-color: var(--border-highlight);
-    color: var(--text-primary);
-}
-
-.pagination-page.active {
-    background: var(--accent-primary);
-    border-color: var(--accent-primary);
-    color: white;
-}
-
-/* Modal Premium Style */
-.nft-modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.75);
-    backdrop-filter: blur(12px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-    padding: 32px;
-    animation: fadeIn 0.2s ease-out;
-}
-
-.nft-modal {
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    border-radius: 20px;
-    max-width: 480px;
-    width: 100%;
-    max-height: 90vh;
-    overflow-y: auto;
-    position: relative;
-    box-shadow: var(--shadow-2xl);
-    animation: scaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-@keyframes scaleIn {
-    from {
-        transform: scale(0.95);
-        opacity: 0;
-    }
-
-    to {
-        transform: scale(1);
-        opacity: 1;
-    }
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-
-    to {
-        opacity: 1;
-    }
-}
-
-.modal-close {
-    position: absolute;
-    top: 16px;
-    right: 16px;
-    background: rgba(0, 0, 0, 0.6);
-    border: none;
-    border-radius: 50%;
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    color: white;
-    z-index: 10;
-    transition: all 0.2s;
-    backdrop-filter: blur(4px);
-}
-
-.modal-close:hover {
-    background: rgba(0, 0, 0, 0.8);
-    transform: scale(1.1);
-}
-
-.modal-image {
+.detail-image {
     width: 100%;
     aspect-ratio: 1;
     object-fit: cover;
-    background: var(--bg-tertiary);
+    border-radius: 12px;
+    margin-bottom: 16px;
 }
 
-.modal-content {
-    padding: 24px;
-}
-
-.modal-content h2 {
-    font-size: 24px;
-    font-weight: 700;
+.nft-detail h2 {
+    font-size: 20px;
+    margin-bottom: 8px;
     color: var(--text-primary);
-    margin: 0 0 8px 0;
-    letter-spacing: -0.01em;
 }
 
-.modal-desc {
+.detail-desc {
     color: var(--text-secondary);
     font-size: 14px;
-    line-height: 1.6;
-    margin-bottom: 24px;
+    margin-bottom: 16px;
 }
 
-.modal-info {
-    background: var(--bg-tertiary);
+.detail-info {
+    background: var(--bg-glass);
     border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 16px;
-    margin-bottom: 24px;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 16px;
 }
 
 .info-row {
@@ -251,80 +92,551 @@
 }
 
 .info-row span:first-child {
-    color: var(--text-secondary);
-    font-weight: 500;
+    color: var(--text-muted);
 }
 
 .info-row span:last-child {
     color: var(--text-primary);
-    font-weight: 600;
 }
 
-.modal-attributes h4 {
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: 12px;
+.detail-attributes h4 {
+    text-align: left;
+    font-size: 14px;
+    margin-bottom: 8px;
+    color: var(--text-secondary);
 }
 
 .attributes-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
+    gap: 8px;
+    margin-bottom: 16px;
 }
 
 .attribute-item {
-    background: var(--bg-tertiary);
+    background: var(--bg-glass);
     border: 1px solid var(--border-color);
     border-radius: 8px;
-    padding: 10px;
+    padding: 8px;
     text-align: center;
-    transition: all 0.2s;
-}
-
-.attribute-item:hover {
-    border-color: var(--border-highlight);
 }
 
 .attr-type {
     display: block;
-    font-size: 11px;
+    font-size: 10px;
     color: var(--text-muted);
     text-transform: uppercase;
-    margin-bottom: 4px;
 }
 
 .attr-value {
     display: block;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
     color: var(--text-primary);
 }
 
-/* Mint Page Styles */
+.close-detail {
+    width: 100%;
+}
+
+/* Mint Page */
 .mint-content {
     display: grid;
     grid-template-columns: 400px 1fr;
-    gap: 40px;
-    align-items: start;
+    gap: 24px;
+}
+
+@media (max-width: 900px) {
+    .mint-content {
+        grid-template-columns: 1fr;
+    }
+}
+
+.image-upload-container {
+    aspect-ratio: 1;
+}
+
+.image-upload-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    height: 100%;
+    border: 2px dashed var(--border-color);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--text-muted);
+}
+
+.image-upload-area:hover {
+    border-color: var(--accent-primary);
+    color: var(--accent-primary);
+}
+
+.image-upload-area .hint {
+    font-size: 12px;
+}
+
+.image-preview {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+.image-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 12px;
+}
+
+.remove-image {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: rgba(0, 0, 0, 0.7);
+    border: none;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: white;
 }
 
 .mint-form {
     display: flex;
     flex-direction: column;
-    gap: 24px;
+    gap: 16px;
 }
 
-/* Responsive */
-@media (max-width: 900px) {
-    .mint-content {
-        grid-template-columns: 1fr;
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.form-group label {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.form-group select,
+.form-group textarea {
+    padding: 12px;
+    background: var(--bg-glass);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 14px;
+    resize: none;
+}
+
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+}
+
+.attributes-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.attributes-section label {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.attributes-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.attribute-tag {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 12px;
+}
+
+.attribute-tag button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted);
+    padding: 0;
+    display: flex;
+}
+
+.add-attribute {
+    display: flex;
+    gap: 8px;
+}
+
+.add-attribute input {
+    flex: 1;
+    padding: 8px 12px;
+    background: var(--bg-glass);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-size: 13px;
+}
+
+.add-attribute input:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+}
+
+/* IPFS Status */
+.ipfs-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    margin-bottom: 16px;
+    border-radius: 8px;
+    font-size: 13px;
+}
+
+.ipfs-status.connected {
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid var(--success);
+    color: var(--success);
+}
+
+.ipfs-status.disconnected {
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid var(--warning);
+    color: var(--warning);
+}
+
+.ipfs-status .hint {
+    font-size: 11px;
+    opacity: 0.8;
+}
+
+/* IPFS Badge on Image */
+.ipfs-badge {
+    position: absolute;
+    bottom: 8px;
+    left: 8px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    background: rgba(16, 185, 129, 0.9);
+    color: white;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.upload-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.7);
+    border-radius: 12px;
+    color: white;
+    font-size: 14px;
+}
+
+/* CID Display */
+.cid-display {
+    margin-top: 12px;
+    padding: 10px;
+    background: var(--bg-glass);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 12px;
+}
+
+.cid-display .label {
+    color: var(--text-muted);
+    margin-right: 8px;
+}
+
+.cid-display code {
+    font-family: var(--font-mono);
+    color: var(--accent-primary);
+    word-break: break-all;
+}
+
+/* Seed Input */
+.seed-input {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.seed-input label {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.seed-input textarea {
+    padding: 12px;
+    background: var(--bg-glass);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 14px;
+    resize: none;
+}
+
+.seed-input textarea:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+}
+
+/* ==================== Full Page NFT Gallery ==================== */
+.nft-gallery-page {
+    padding: 24px;
+    min-height: 100vh;
+}
+
+.gallery-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.gallery-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.gallery-title h1 {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.nft-count {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.gallery-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    min-height: 400px;
+    color: var(--text-muted);
+}
+
+.gallery-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    min-height: 400px;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.gallery-empty h2 {
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.nft-full-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 20px;
+}
+
+/* Pagination */
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    margin-top: 32px;
+    padding: 16px 0;
+}
+
+.pagination-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 10px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pagination-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+}
+
+.pagination-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.pagination-pages {
+    display: flex;
+    gap: 8px;
+}
+
+.pagination-page {
+    width: 36px;
+    height: 36px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.pagination-page:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.pagination-page.active {
+    background: var(--accent-primary);
+    border-color: var(--accent-primary);
+    color: white;
+}
+
+/* NFT Modal */
+.nft-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 24px;
+    animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
     }
 
-    .nft-page,
-    .nft-gallery-page {
-        padding: 24px;
+    to {
+        opacity: 1;
     }
+}
+
+.nft-modal {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    max-width: 500px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.modal-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: rgba(0, 0, 0, 0.5);
+    border: none;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: white;
+    z-index: 10;
+    transition: background 0.2s;
+}
+
+.modal-close:hover {
+    background: rgba(0, 0, 0, 0.7);
+}
+
+.modal-image {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    border-radius: 16px 16px 0 0;
+}
+
+.modal-content {
+    padding: 20px;
+}
+
+.modal-content h2 {
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 8px 0;
+}
+
+.modal-desc {
+    color: var(--text-secondary);
+    font-size: 14px;
+    margin-bottom: 16px;
+    line-height: 1.5;
+}
+
+.modal-info {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 16px;
+}
+
+.modal-attributes h4 {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-bottom: 10px;
 }

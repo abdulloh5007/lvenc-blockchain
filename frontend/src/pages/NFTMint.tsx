@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, X, Upload, Globe } from 'lucide-react';
+import { Sparkles, Image, Plus, X, Upload, Globe } from 'lucide-react';
 import { Card, Button, Input, CustomSelect } from '../components';
 import { useWallets } from '../hooks';
 import { nft, ipfs } from '../api/client';
@@ -112,7 +112,8 @@ export const NFTMint: React.FC = () => {
     return (
         <div className="nft-page fade-in">
             <div className="page-header">
-                <h1>Создать NFT</h1>
+                <h1><Sparkles className="header-icon" /> Создать NFT</h1>
+                <p>Минтинг уникального цифрового актива</p>
             </div>
 
             {/* IPFS Status */}
@@ -130,7 +131,7 @@ export const NFTMint: React.FC = () => {
             )}
 
             <div className="mint-content">
-                <Card title="Изображение" className="mint-image-card">
+                <Card title="Изображение" icon={<Image size={20} />} className="mint-image-card">
                     <div className="image-upload-container">
                         {imageData ? (
                             <div className="image-preview">
@@ -162,7 +163,7 @@ export const NFTMint: React.FC = () => {
                     )}
                 </Card>
 
-                <Card title="Детали NFT" className="mint-details-card">
+                <Card title="Детали NFT" icon={<Sparkles size={20} />} className="mint-details-card">
                     <div className="mint-form">
                         <div className="form-group">
                             <label>Кошелёк создателя *</label>
@@ -212,7 +213,7 @@ export const NFTMint: React.FC = () => {
                         </div>
 
                         <Button onClick={handleMint} loading={loading} disabled={!selectedWallet || !name || !imageData || uploading}>
-                            <Plus size={16} /> Создать NFT
+                            <Sparkles size={16} /> Создать NFT
                         </Button>
                     </div>
                 </Card>

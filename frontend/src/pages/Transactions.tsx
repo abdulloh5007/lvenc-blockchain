@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, Inbox, ArrowRight, X, Copy, CheckCircle } from 'lucide-react';
+import { FileText, Clock, Inbox, ArrowRight, X, Copy, CheckCircle } from 'lucide-react';
 import { useI18n } from '../contexts';
 import { transaction } from '../api/client';
 import type { Transaction } from '../api/client';
@@ -38,7 +38,7 @@ export const TransactionsPage: React.FC = () => {
     return (
         <div className="transactions-page fade-in">
             <div className="page-header">
-                <h1>{t('transactions.title')}</h1>
+                <h1><FileText className="header-icon" /> {t('transactions.title')}</h1>
             </div>
 
             <div className="transactions-section">

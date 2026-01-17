@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Clock, Loader } from 'lucide-react';
+import { Blocks, Search, Hash, Clock, Loader } from 'lucide-react';
 import { Card } from '../components';
 import { blockchain as blockchainApi } from '../api/client';
 import { useI18n } from '../contexts';
@@ -85,11 +85,12 @@ export const BlocksPage: React.FC = () => {
     return (
         <div className="blocks-page fade-in">
             <div className="page-header">
-                <h1>{t('blocks.title')}</h1>
+                <h1><Blocks className="header-icon" /> {t('blocks.title')}</h1>
+                <p>{t('blocks.subtitle')}</p>
             </div>
 
             <div className="blocks-content">
-                <Card title={`${t('blocks.title')} (${total})`} className="blocks-list-card">
+                <Card title={`${t('blocks.title')} (${total})`} icon={<Hash size={20} />} className="blocks-list-card">
                     <div className="blocks-table">
                         <div className="table-header">
                             <span>{t('dashboard.index')}</span>
@@ -127,7 +128,7 @@ export const BlocksPage: React.FC = () => {
                 </Card>
 
                 {selectedBlock ? (
-                    <Card title={`${t('blocks.blockDetails')} #${selectedBlock.index}`} className="block-detail-card">
+                    <Card title={`${t('blocks.blockDetails')} #${selectedBlock.index}`} icon={<Search size={20} />} className="block-detail-card">
                         <div className="block-details">
                             <div className="detail-section">
                                 <div className="detail-grid">
@@ -162,7 +163,7 @@ export const BlocksPage: React.FC = () => {
                         </div>
                     </Card>
                 ) : (
-                    <Card title={t('blocks.blockDetails')} className="block-detail-card">
+                    <Card title={t('blocks.blockDetails')} icon={<Search size={20} />} className="block-detail-card">
                         <div className="empty-state"><Clock size={48} /><p>{t('blocks.selectBlock')}</p></div>
                     </Card>
                 )}
