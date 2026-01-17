@@ -216,6 +216,9 @@ export async function startNode(options: NodeOptions): Promise<void> {
     if (options.enableApi) {
         const app: Express = express();
 
+        // Trust proxy for nginx/cloudflare (needed for rate limiting behind proxy)
+        app.set('trust proxy', 1);
+
         // Rate limiting
         const apiLimiter = rateLimit({
             windowMs: 60 * 1000,
