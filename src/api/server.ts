@@ -58,9 +58,8 @@ if (savedStaking) {
 const nftManager = new NFTManager();
 
 // Initialize Node Identity
-import { getNodeIdentity } from '../identity/index.js';
-const nodeIdentity = getNodeIdentity()!;
-await nodeIdentity.init();
+import { initNodeIdentity } from '../identity/index.js';
+const nodeIdentity = await initNodeIdentity();
 if (nodeIdentity.isNew()) {
     logger.warn('⚠️ New node identity generated. Backup your identity.key file!');
 }
