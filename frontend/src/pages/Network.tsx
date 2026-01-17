@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Globe, Radio, Users, Plus, Link2, Monitor, BookOpen } from 'lucide-react';
+import { Globe, Radio, Link2, Monitor } from 'lucide-react';
 import { Card, Button, Input } from '../components';
 import { useI18n } from '../contexts';
 import { network } from '../api/client';
@@ -45,8 +45,7 @@ export const NetworkPage: React.FC = () => {
     return (
         <div className="network-page fade-in">
             <div className="page-header">
-                <h1><Globe className="header-icon" /> {t('network.title')}</h1>
-                <p>{t('network.subtitle')}</p>
+                <h1>{t('network.title')}</h1>
             </div>
 
             {message && (
@@ -57,7 +56,7 @@ export const NetworkPage: React.FC = () => {
             )}
 
             <div className="network-content">
-                <Card title={t('network.status')} icon={<Radio size={20} />} className="status-card">
+                <Card title={t('network.status')} className="status-card">
                     <div className="network-stats">
                         <div className="stat-item"><Link2 className="stat-icon-large" /><div className="stat-details"><span className="stat-value-large">{peerCount}</span><span className="stat-label-large">{t('network.connectedPeers')}</span></div></div>
                         <div className="stat-item"><Globe className="stat-icon-large" /><div className="stat-details"><span className="stat-value-large">P2P</span><span className="stat-label-large">{t('network.networkType')}</span></div></div>
@@ -65,7 +64,7 @@ export const NetworkPage: React.FC = () => {
                     </div>
                 </Card>
 
-                <Card title={t('network.peers')} icon={<Users size={20} />} className="peers-card">
+                <Card title={t('network.peers')} className="peers-card">
                     {peers.length === 0 ? (
                         <div className="empty-state"><Link2 size={40} className="empty-icon" /><p>{t('network.noPeers')}</p></div>
                     ) : (
@@ -77,7 +76,7 @@ export const NetworkPage: React.FC = () => {
                     )}
                 </Card>
 
-                <Card title={t('network.connect')} icon={<Plus size={20} />} className="connect-card">
+                <Card title={t('network.connect')} className="connect-card">
                     <div className="connect-form">
                         <Input label={t('network.peerUrl')} placeholder="ws://192.168.1.100:6001" value={peerUrl} onChange={(e) => setPeerUrl(e.target.value)} />
                         <Button onClick={handleConnect} loading={loading}><Link2 size={16} /> {t('network.connect')}</Button>
@@ -93,7 +92,7 @@ export const NetworkPage: React.FC = () => {
                     </div>
                 </Card>
 
-                <Card title={t('network.aboutNetwork')} icon={<BookOpen size={20} />} className="about-card">
+                <Card title={t('network.aboutNetwork')} className="about-card">
                     <div className="about-content"><p>{t('network.networkDesc')}</p></div>
                 </Card>
             </div>

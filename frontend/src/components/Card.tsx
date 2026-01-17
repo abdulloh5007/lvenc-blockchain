@@ -9,13 +9,12 @@ interface CardProps {
     action?: React.ReactNode;
 }
 
-export const Card: React.FC<CardProps> = ({ title, icon, children, className = '', action }) => {
+export const Card: React.FC<CardProps> = ({ title, children, className = '', action }) => {
     return (
         <div className={`card ${className}`}>
             {(title || action) && (
                 <div className="card-header">
                     <div className="card-title">
-                        {icon && <span className="card-icon">{icon}</span>}
                         {title && <h3>{title}</h3>}
                     </div>
                     {action && <div className="card-action">{action}</div>}
@@ -29,15 +28,14 @@ export const Card: React.FC<CardProps> = ({ title, icon, children, className = '
 interface StatCardProps {
     label: string;
     value: string | number;
-    icon: React.ReactNode;
+    icon?: React.ReactNode; // Keep prop for backward compat but don't render
     trend?: 'up' | 'down' | 'neutral';
     change?: string;
 }
 
-export const StatCard: React.FC<StatCardProps> = ({ label, value, icon, trend, change }) => {
+export const StatCard: React.FC<StatCardProps> = ({ label, value, trend, change }) => {
     return (
         <div className="stat-card">
-            <div className="stat-icon">{icon}</div>
             <div className="stat-info">
                 <span className="stat-value">{value}</span>
                 <span className="stat-label">{label}</span>

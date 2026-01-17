@@ -87,8 +87,7 @@ export const WalletPage: React.FC = () => {
     return (
         <div className="wallet-page fade-in">
             <div className="page-header">
-                <h1><Wallet className="header-icon" /> {t('wallet.title')}</h1>
-                <p>{t('wallet.subtitle')}</p>
+                <h1>{t('wallet.title')}</h1>
             </div>
             {message && (
                 <div className={`message ${message.type}`}>
@@ -98,7 +97,7 @@ export const WalletPage: React.FC = () => {
             )}
             <div className="wallet-content">
                 <div className="wallet-main">
-                    <Card title={t('wallet.myWallets')} icon={<Wallet size={20} />}>
+                    <Card title={t('wallet.myWallets')}>
                         {wallets.length === 0 ? (
                             <p className="empty-state">{t('wallet.noWallets')}</p>
                         ) : (
@@ -125,7 +124,7 @@ export const WalletPage: React.FC = () => {
                         )}
                     </Card>
                     {selectedWallet && (
-                        <Card title={t('wallet.sendTransaction')} icon={<Send size={20} />} className="send-card">
+                        <Card title={t('wallet.sendTransaction')} className="send-card">
                             <div className="send-form">
                                 <div className="form-row"><span className="form-label">{t('transactions.from')}:</span><span className="font-mono">{formatAddress(selectedWallet)}</span></div>
                                 <Input label={t('wallet.toAddress')} placeholder="EDU..." value={sendTo} onChange={(e) => setSendTo(e.target.value)} />
@@ -139,7 +138,7 @@ export const WalletPage: React.FC = () => {
                     )}
                 </div>
                 <div className="wallet-sidebar">
-                    <Card title={t('wallet.createWallet')} icon={<Plus size={20} />}>
+                    <Card title={t('wallet.createWallet')}>
                         <div className="create-form">
                             <Input label={`${t('wallet.walletName')} (${t('wallet.optional')})`} placeholder="My Wallet" value={newWalletLabel} onChange={(e) => setNewWalletLabel(e.target.value)} />
 
@@ -164,13 +163,13 @@ export const WalletPage: React.FC = () => {
                             <Button onClick={handleCreateWallet} loading={loading}><Plus size={16} /> {t('common.create')}</Button>
                         </div>
                     </Card>
-                    <Card title={t('wallet.importWallet')} icon={<Download size={20} />}>
+                    <Card title={t('wallet.importWallet')}>
                         <Button variant="secondary" onClick={() => setShowImportModal(true)} className="full-width">
                             <Download size={16} /> {t('wallet.importBySeed')}
                         </Button>
                     </Card>
                     {createdWallet && (
-                        <Card title={t('wallet.newWallet')} icon={<Wallet size={20} />} className="new-wallet-card">
+                        <Card title={t('wallet.newWallet')} className="new-wallet-card">
                             <div className="new-wallet-info">
                                 <div className="info-row"><span className="label">{t('wallet.address')}:</span><span className="value font-mono">{formatAddress(createdWallet.address)}</span></div>
                                 <div className="warning-box"><AlertTriangle size={16} /> {t('wallet.saveSeed')}</div>

@@ -48,10 +48,7 @@ export const NFTCollections: React.FC = () => {
     return (
         <div className="collections-page fade-in">
             <div className="collections-header">
-                <div className="collections-title-row">
-                    <Library size={28} />
-                    <h1>{t('collections.title')}</h1>
-                </div>
+                <h1>{t('collections.title')}</h1>
                 <span className="collections-count">{collections.length} {t('collections.items')}</span>
             </div>
 

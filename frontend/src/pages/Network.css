@@ -1,188 +1,205 @@
+/* Network Page Premium Layout */
 .network-page {
-    padding: 24px;
-    max-width: 1200px;
+    padding: 32px 40px;
+    max-width: 1600px;
     margin: 0 auto;
 }
 
 .network-content {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 24px;
+    gap: 32px;
 }
 
-@media (max-width: 900px) {
-    .network-content {
-        grid-template-columns: 1fr;
-    }
-}
-
-.message {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 16px;
-    border-radius: 8px;
-    margin-bottom: 20px;
-}
-
-.message.success {
-    background: rgba(16, 185, 129, 0.1);
-    border: 1px solid var(--success);
-    color: var(--success);
-}
-
-.message.error {
-    background: rgba(239, 68, 68, 0.1);
-    border: 1px solid var(--error);
-    color: var(--error);
-}
-
-.message button {
-    background: none;
-    border: none;
-    color: inherit;
-    font-size: 20px;
-    cursor: pointer;
-}
-
-/* Network stats */
-.network-stats {
+/* Status Card */
+.status-card .network-stats {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 24px;
+    padding: 24px;
 }
 
 .stat-item {
     display: flex;
-    align-items: center;
+    flex-direction: column;
     gap: 12px;
-    padding: 16px;
-    background: var(--bg-glass);
-    border-radius: 10px;
 }
 
 .stat-icon-large {
-    font-size: 32px;
+    width: 32px;
+    height: 32px;
+    color: var(--accent-primary);
+    opacity: 0.8;
 }
 
 .stat-details {
     display: flex;
     flex-direction: column;
+    gap: 4px;
 }
 
 .stat-value-large {
-    font-size: 20px;
+    font-size: 24px;
     font-weight: 700;
-    color: var(--accent-primary);
+    color: var(--text-primary);
+    line-height: 1.2;
+    letter-spacing: -0.02em;
 }
 
 .stat-label-large {
-    font-size: 11px;
-    color: var(--text-muted);
+    font-size: 13px;
+    color: var(--text-secondary);
+    font-weight: 500;
 }
 
-/* Peers list */
+/* Peers Card */
+.peers-card {
+    min-height: 300px;
+}
+
 .peers-list {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 8px;
+    max-height: 300px;
+    overflow-y: auto;
+    padding-right: 8px;
 }
 
 .peer-item {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 16px;
-    background: var(--bg-glass);
+    gap: 16px;
+    padding: 12px;
+    background: var(--bg-tertiary);
     border: 1px solid var(--border-color);
-    border-radius: 10px;
+    border-radius: 8px;
+    transition: all 0.2s;
+}
+
+.peer-item:hover {
+    border-color: var(--border-highlight);
+    background: var(--bg-card-hover);
 }
 
 .peer-avatar {
-    font-size: 24px;
+    color: var(--text-secondary);
+    width: 20px;
+    height: 20px;
 }
 
 .peer-info {
+    flex: 1;
     display: flex;
-    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .peer-name {
-    font-weight: 500;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--text-primary);
 }
 
 .peer-status {
-    font-size: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    padding: 4px 8px;
+    border-radius: 6px;
 }
 
 .peer-status.online {
+    background: rgba(34, 197, 94, 0.1);
     color: var(--success);
 }
 
-/* Connect form */
+/* Connect Card */
+.connect-card {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+}
+
 .connect-form {
     display: flex;
     flex-direction: column;
     gap: 16px;
-    margin-bottom: 24px;
+    margin-bottom: 32px;
+    padding: 24px;
+    background: var(--bg-tertiary);
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+}
+
+.connect-info {
+    padding: 0 12px;
 }
 
 .connect-info h4 {
-    font-size: 13px;
-    color: var(--text-secondary);
-    margin-bottom: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 16px;
 }
 
 .connect-info ol {
+    margin: 0;
     padding-left: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 }
 
 .connect-info li {
-    font-size: 13px;
-    color: var(--text-muted);
-    margin-bottom: 8px;
-    line-height: 1.5;
-}
-
-/* About */
-.about-content p {
     font-size: 14px;
     color: var(--text-secondary);
-    margin-bottom: 16px;
-    line-height: 1.6;
-}
-
-.about-content ul {
-    padding-left: 20px;
-}
-
-.about-content li {
-    font-size: 13px;
-    color: var(--text-muted);
-    margin-bottom: 8px;
     line-height: 1.5;
 }
 
-/* Empty state */
+.connect-info li::marker {
+    color: var(--accent-primary);
+    font-weight: 600;
+}
+
+/* About Card */
+.about-card {
+    grid-column: 1 / -1;
+}
+
+.about-content {
+    line-height: 1.6;
+    color: var(--text-secondary);
+    font-size: 15px;
+    padding: 0 8px;
+}
+
+/* Loading & Empty */
 .empty-state {
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 32px;
-    text-align: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 48px 24px;
+    color: var(--text-muted);
 }
 
 .empty-icon {
-    font-size: 40px;
-    margin-bottom: 12px;
+    opacity: 0.5;
 }
 
-.empty-state p {
-    font-weight: 500;
-}
+/* Responsive */
+@media (max-width: 1200px) {
+    .network-page {
+        padding: 24px;
+    }
 
-.empty-hint {
-    font-size: 13px;
-    color: var(--text-muted);
-    margin-top: 4px;
+    .network-content {
+        grid-template-columns: 1fr;
+    }
+
+    .connect-card {
+        grid-column: 1;
+        grid-row: auto;
+    }
 }

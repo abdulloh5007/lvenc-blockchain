@@ -1,202 +1,130 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Blocks, Wallet, FileText, Globe, Image, Sparkles, Sun, Moon, Monitor, Languages, ChevronLeft, ChevronRight, Menu, X, Library, Coins } from 'lucide-react';
+import { LayoutDashboard, Blocks, Wallet, Globe, X, ChevronRight, ChevronLeft, Menu, Sun, Moon, Languages, FileText, Coins, Image } from 'lucide-react';
 import { useTheme, useI18n } from '../contexts';
 import './Sidebar.css';
 
 interface SidebarProps {
-    onNavigate?: (page: string) => void; // Optional for backward compatibility if needed
+    onNavigate?: (page: string) => void;
 }
 
-const navGroups = [
-    {
-        title: 'Overview',
-        titleKey: 'nav.overview',
-        items: [
-            { id: '/', labelKey: 'nav.dashboard', icon: LayoutDashboard },
-            { id: '/blocks', labelKey: 'nav.blocks', icon: Blocks },
-            { id: '/transactions', labelKey: 'nav.transactions', icon: FileText },
-        ],
-    },
-    {
-        title: 'Wallet',
-        titleKey: 'nav.walletGroup',
-        items: [
-            { id: '/wallet', labelKey: 'nav.wallet', icon: Wallet },
-            { id: '/staking', labelKey: 'nav.staking', icon: Coins },
-        ],
-    },
-    {
-        title: 'NFT',
-        titleKey: 'nav.nftGroup',
-        items: [
-            { id: '/nft', labelKey: 'nav.nft', icon: Image },
-            { id: '/nft/collections', labelKey: 'nav.collections', icon: Library },
-            { id: '/nft/mint', labelKey: 'nav.nftMint', icon: Sparkles },
-        ],
-    },
-    {
-        title: 'Network',
-        titleKey: 'nav.networkGroup',
-        items: [
-            { id: '/network', labelKey: 'nav.network', icon: Globe },
-        ],
-    },
+const navigation = [
+    { id: '/', labelKey: 'nav.dashboard', icon: LayoutDashboard },
+    { id: '/blocks', labelKey: 'nav.blocks', icon: Blocks },
+    { id: '/transactions', labelKey: 'nav.transactions', icon: FileText },
+    { id: '/wallet', labelKey: 'nav.wallet', icon: Wallet },
+    { id: '/staking', labelKey: 'nav.staking', icon: Coins },
+    { id: '/nft', labelKey: 'nav.nft', icon: Image },
+    { id: '/network', labelKey: 'nav.network', icon: Globe },
+];
+
+const languages = [
+    { code: 'en', label: 'English' },
+    { code: 'ru', label: 'Русский' },
+    { code: 'uz', label: "O'zbek" },
 ];
 
 export const Sidebar: React.FC<SidebarProps> = () => {
     const [collapsed, setCollapsed] = useState(false);
     const [mobileOpen, setMobileOpen] = useState(false);
     const [langMenuOpen, setLangMenuOpen] = useState(false);
-    const [themeMenuOpen, setThemeMenuOpen] = useState(false);
-    const { theme, resolvedTheme, setTheme } = useTheme();
-    const { locale, locales, t, setLocale } = useI18n();
+    const { theme, setTheme } = useTheme();
+    const { t, locale, setLocale } = useI18n();
     const navigate = useNavigate();
     const location = useLocation();
-    const langMenuRef = useRef<HTMLDivElement>(null);
-    const themeMenuRef = useRef<HTMLDivElement>(null);
-
-    // Close menus when clicking outside
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (langMenuRef.current && !langMenuRef.current.contains(event.target as Node)) {
-                setLangMenuOpen(false);
-            }
-            if (themeMenuRef.current && !themeMenuRef.current.contains(event.target as Node)) {
-                setThemeMenuOpen(false);
-            }
-        };
-
-        if (langMenuOpen || themeMenuOpen) {
-            document.addEventListener('mousedown', handleClickOutside);
-        }
-
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
-    }, [langMenuOpen, themeMenuOpen]);
-
-    const getThemeIcon = () => {
-        if (theme === 'system') return <Monitor size={20} />;
-        return resolvedTheme === 'dark' ? <Moon size={20} /> : <Sun size={20} />;
-    };
-
-    const getThemeLabel = () => {
-        if (theme === 'system') return t('theme.system') || 'Система';
-        if (theme === 'dark') return t('theme.dark') || 'Тёмная';
-        return t('theme.light') || 'Светлая';
-    };
 
     const handleNavigate = (path: string) => {
         navigate(path);
         setMobileOpen(false);
     };
 
+    const isActive = (path: string) => {
+        if (path === '/') return location.pathname === '/';
+        return location.pathname.startsWith(path);
+    };
+
+    const closeMobile = () => setMobileOpen(false);
+
     return (
         <>
-            {/* Mobile Menu Button */}
+            {/* Mobile Menu Button - Always visible on mobile */}
             <button className="mobile-menu-toggle" onClick={() => setMobileOpen(true)}>
                 <Menu size={24} />
             </button>
 
             {/* Mobile Overlay */}
-            <div className={`mobile-overlay ${mobileOpen ? 'open' : ''}`} onClick={() => setMobileOpen(false)} />
+            {mobileOpen && (
+                <div className="mobile-overlay" onClick={closeMobile} />
+            )}
 
+            {/* Sidebar */}
             <div className={`sidebar ${collapsed ? 'collapsed' : ''} ${mobileOpen ? 'mobile-open' : ''}`}>
                 <div className="sidebar-header">
                     {!collapsed && <span className="logo-text">EDU Chain</span>}
-                    <button className="collapse-btn" onClick={() => setMobileOpen(false)}>
-                        <X size={24} />
-                    </button>
+
+                    {/* Desktop collapse button */}
                     <button className="collapse-btn desktop-only" onClick={() => setCollapsed(!collapsed)}>
-                        {collapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+                        {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+                    </button>
+
+                    {/* Mobile close button */}
+                    <button className="close-btn mobile-only" onClick={closeMobile}>
+                        <X size={20} />
                     </button>
                 </div>
 
                 <nav className="sidebar-nav">
-                    {navGroups.map((group, groupIndex) => (
-                        <div key={groupIndex} className="nav-group">
-                            {!collapsed && <h3 className="group-title">{t(group.titleKey) || group.title}</h3>}
-                            {group.items.map((item) => {
-                                // Exact match for paths, but allow startsWith only if it's not a parent of another nav item
-                                const isActive = location.pathname === item.id ||
-                                    (item.id !== '/' && item.id !== '/nft' && location.pathname.startsWith(item.id + '/'));
-                                return (
-                                    <button
-                                        key={item.id}
-                                        className={`nav-item ${isActive ? 'active' : ''}`}
-                                        onClick={() => handleNavigate(item.id)}
-                                        title={collapsed ? (t(item.labelKey) || item.labelKey) : ''}
-                                    >
-                                        <item.icon size={20} />
-                                        {!collapsed && <span>{t(item.labelKey) || item.labelKey}</span>}
-                                    </button>
-                                );
-                            })}
-                        </div>
+                    {navigation.map((item) => (
+                        <button
+                            key={item.id}
+                            className={`nav-item ${isActive(item.id) ? 'active' : ''}`}
+                            onClick={() => handleNavigate(item.id)}
+                            title={collapsed ? t(item.labelKey) : ''}
+                        >
+                            <item.icon size={18} />
+                            {!collapsed && <span>{t(item.labelKey) || item.id.replace('/', '')}</span>}
+                        </button>
                     ))}
                 </nav>
 
                 <div className="sidebar-footer">
-                    <div className="footer-actions">
-                        <div className="lang-menu-container" ref={langMenuRef}>
-                            <button
-                                className="footer-btn"
-                                onClick={() => setLangMenuOpen(!langMenuOpen)}
-                                title={t('common.language') || 'Language'}
-                            >
-                                <Languages size={20} />
-                                {!collapsed && <span className="lang-code">{locale.toUpperCase()}</span>}
-                            </button>
-                            {langMenuOpen && (
-                                <div className="lang-dropdown">
-                                    {locales.map(l => (
-                                        <button
-                                            key={l}
-                                            className={`lang-option ${locale === l ? 'active' : ''}`}
-                                            onClick={() => {
-                                                setLocale(l);
-                                                setLangMenuOpen(false);
-                                            }}
-                                        >
-                                            {l.toUpperCase()}
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                        <div className="theme-menu-container" ref={themeMenuRef}>
-                            <button
-                                className="footer-btn"
-                                onClick={() => setThemeMenuOpen(!themeMenuOpen)}
-                                title={getThemeLabel()}
-                            >
-                                {getThemeIcon()}
-                                {!collapsed && <span>{getThemeLabel()}</span>}
-                            </button>
-                            {themeMenuOpen && (
-                                <div className="theme-dropdown">
+                    {/* Theme Toggle */}
+                    <button
+                        className="footer-btn"
+                        onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                        title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
+                    >
+                        {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+                        {!collapsed && <span>{theme === 'dark' ? t('common.light') || 'Light' : t('common.dark') || 'Dark'}</span>}
+                    </button>
+
+                    {/* Language Selector */}
+                    <div className="lang-menu-container">
+                        <button
+                            className="footer-btn"
+                            onClick={() => setLangMenuOpen(!langMenuOpen)}
+                            title="Language"
+                        >
+                            <Languages size={18} />
+                            {!collapsed && <span>{languages.find(l => l.code === locale)?.label || 'Language'}</span>}
+                        </button>
+
+                        {langMenuOpen && (
+                            <div className="lang-dropdown">
+                                {languages.map((lang) => (
                                     <button
-                                        className={`theme-option ${theme === 'light' ? 'active' : ''}`}
-                                        onClick={() => { setTheme('light'); setThemeMenuOpen(false); }}
+                                        key={lang.code}
+                                        className={`lang-option ${locale === lang.code ? 'active' : ''}`}
+                                        onClick={() => {
+                                            setLocale(lang.code);
+                                            setLangMenuOpen(false);
+                                        }}
                                     >
-                                        <Sun size={16} /> {t('theme.light') || 'Светлая'}
+                                        {lang.label}
                                     </button>
-                                    <button
-                                        className={`theme-option ${theme === 'dark' ? 'active' : ''}`}
-                                        onClick={() => { setTheme('dark'); setThemeMenuOpen(false); }}
-                                    >
-                                        <Moon size={16} /> {t('theme.dark') || 'Тёмная'}
-                                    </button>
-                                    <button
-                                        className={`theme-option ${theme === 'system' ? 'active' : ''}`}
-                                        onClick={() => { setTheme('system'); setThemeMenuOpen(false); }}
-                                    >
-                                        <Monitor size={16} /> {t('theme.system') || 'Система'}
-                                    </button>
-                                </div>
-                            )}
-                        </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
