@@ -232,7 +232,10 @@ export async function startNode(options: NodeOptions): Promise<void> {
         app.use('/api', apiLimiter);
 
         // Swagger docs
-        app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+        app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+            customCss: '.swagger-ui .topbar { display: none }',
+            customSiteTitle: 'EDU Chain API Docs',
+        }));
 
         // Routes
         app.use('/api/blockchain', createBlockchainRoutes(blockchain));
