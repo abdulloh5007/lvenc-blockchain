@@ -1,57 +1,69 @@
 import { Router, Request, Response } from 'express';
-import lighthouse from '@lighthouse-web3/sdk';
 import { logger } from '../../utils/logger.js';
 
-// Lighthouse configuration
-const LIGHTHOUSE_API_KEY = process.env.LIGHTHOUSE_API_KEY || '';
-const LIGHTHOUSE_GATEWAY = 'https://gateway.lighthouse.storage/ipfs';
-
-// Fallback to custom gateway if configured
-const IPFS_GATEWAY_URL = process.env.IPFS_GATEWAY_URL || LIGHTHOUSE_GATEWAY;
+// Pinata configuration
+const PINATA_JWT = process.env.PINATA_JWT || '';
+const PINATA_GATEWAY = process.env.PINATA_GATEWAY || 'https://gateway.pinata.cloud/ipfs';
 
 export function createIPFSRoutes(): Router {
     const router = Router();
 
-    // Health check for Lighthouse
+    // Health check for Pinata
     router.get('/status', async (_req: Request, res: Response) => {
-        if (!LIGHTHOUSE_API_KEY) {
+        if (!PINATA_JWT) {
             res.json({
                 success: true,
                 data: {
                     connected: false,
-                    provider: 'lighthouse',
-                    message: 'LIGHTHOUSE_API_KEY not configured',
+                    provider: 'pinata',
+                    message: 'PINATA_JWT not configured',
                 },
             });
             return;
         }
 
         try {
-            // Get API key info
-            const balance = await lighthouse.getBalance(LIGHTHOUSE_API_KEY);
-            res.json({
-                success: true,
-                data: {
-                    connected: true,
-                    provider: 'lighthouse',
-                    network: 'filecoin',
-                    balance: balance.data,
-                    gatewayUrl: IPFS_GATEWAY_URL,
+            // Test authentication with Pinata
+            const response = await fetch('https://api.pinata.cloud/data/testAuthentication', {
+                headers: {
+                    'Authorization': `Bearer ${PINATA_JWT}`,
                 },
             });
+
+            if (response.ok) {
+                const data = await response.json() as { message?: string };
+                res.json({
+                    success: true,
+                    data: {
+                        connected: true,
+                        provider: 'pinata',
+                        message: data.message || 'Authenticated',
+                        gatewayUrl: PINATA_GATEWAY,
+                    },
+                });
+            } else {
+                res.json({
+                    success: true,
+                    data: {
+                        connected: false,
+                        provider: 'pinata',
+                        message: 'Authentication failed',
+                    },
+                });
+            }
         } catch (error) {
             res.json({
                 success: true,
                 data: {
-                    connected: true,
-                    provider: 'lighthouse',
-                    gatewayUrl: IPFS_GATEWAY_URL,
+                    connected: false,
+                    provider: 'pinata',
+                    error: error instanceof Error ? error.message : 'Connection failed',
                 },
             });
         }
     });
 
-    // Upload file to Lighthouse (Filecoin)
+    // Upload file to Pinata
     router.post('/upload', async (req: Request, res: Response) => {
         const { data, filename } = req.body;
 
@@ -60,10 +72,10 @@ export function createIPFSRoutes(): Router {
             return;
         }
 
-        if (!LIGHTHOUSE_API_KEY) {
+        if (!PINATA_JWT) {
             res.status(503).json({
                 success: false,
-                error: 'Lighthouse API key not configured. Set LIGHTHOUSE_API_KEY in .env',
+                error: 'Pinata JWT not configured. Set PINATA_JWT in .env',
             });
             return;
         }
@@ -86,37 +98,41 @@ export function createIPFSRoutes(): Router {
                 buffer = Buffer.from(data, 'base64');
             }
 
-            // Upload to Lighthouse using direct API call
-
-            // Use fetch to directly call Lighthouse API
+            // Upload to Pinata
             const formData = new FormData();
             const blob = new Blob([buffer], { type: mimeType });
             formData.append('file', blob, filename || 'file');
 
-            const response = await fetch('https://node.lighthouse.storage/api/v0/add', {
+            // Add metadata
+            const metadata = JSON.stringify({
+                name: filename || 'file',
+            });
+            formData.append('pinataMetadata', metadata);
+
+            const response = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${LIGHTHOUSE_API_KEY}`,
+                    'Authorization': `Bearer ${PINATA_JWT}`,
                 },
-                body: formData
+                body: formData,
             });
 
             if (!response.ok) {
                 const errorText = await response.text();
-                throw new Error(`Lighthouse upload failed: ${errorText}`);
+                throw new Error(`Pinata upload failed: ${errorText}`);
             }
 
-            const result = await response.json() as { Hash?: string };
-            const cid = result.Hash;
+            const result = await response.json() as { IpfsHash?: string; PinSize?: number };
+            const cid = result.IpfsHash;
 
             if (!cid) {
                 throw new Error('Upload failed - no hash returned');
             }
 
             const ipfsUrl = `ipfs://${cid}`;
-            const gatewayUrl = `${IPFS_GATEWAY_URL}/${cid}`;
+            const gatewayUrl = `${PINATA_GATEWAY}/${cid}`;
 
-            logger.info(`📤 Uploaded to Lighthouse/Filecoin: ${cid} (${buffer.length} bytes)`);
+            logger.info(`📤 Uploaded to Pinata: ${cid} (${buffer.length} bytes)`);
 
             res.json({
                 success: true,
@@ -124,13 +140,12 @@ export function createIPFSRoutes(): Router {
                     cid,
                     ipfsUrl,
                     gatewayUrl,
-                    size: buffer.length,
-                    provider: 'lighthouse',
-                    network: 'filecoin',
+                    size: result.PinSize || buffer.length,
+                    provider: 'pinata',
                 },
             });
         } catch (error) {
-            logger.error('Lighthouse upload error:', error);
+            logger.error('Pinata upload error:', error);
             res.status(500).json({
                 success: false,
                 error: error instanceof Error ? error.message : 'Upload failed',
@@ -138,29 +153,42 @@ export function createIPFSRoutes(): Router {
         }
     });
 
-    // Get file from IPFS via Lighthouse gateway (redirect)
+    // Get file from IPFS via Pinata gateway (redirect)
     router.get('/file/:cid', async (req: Request, res: Response) => {
         const { cid } = req.params;
-
-        // Redirect to Lighthouse gateway
-        const gatewayUrl = `${IPFS_GATEWAY_URL}/${cid}`;
+        const gatewayUrl = `${PINATA_GATEWAY}/${cid}`;
         res.redirect(gatewayUrl);
     });
 
-    // Get uploads list
+    // Get pinned files list
     router.get('/uploads', async (_req: Request, res: Response) => {
-        if (!LIGHTHOUSE_API_KEY) {
-            res.status(503).json({ success: false, error: 'Lighthouse not configured' });
+        if (!PINATA_JWT) {
+            res.status(503).json({ success: false, error: 'Pinata not configured' });
             return;
         }
 
         try {
-            const uploads = await lighthouse.getUploads(LIGHTHOUSE_API_KEY);
+            const response = await fetch('https://api.pinata.cloud/data/pinList?status=pinned&pageLimit=100', {
+                headers: {
+                    'Authorization': `Bearer ${PINATA_JWT}`,
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch pins');
+            }
+
+            const data = await response.json() as { rows?: Array<{ ipfs_pin_hash: string; metadata?: { name?: string }; date_pinned?: string }> };
+
             res.json({
                 success: true,
                 data: {
-                    uploads: uploads.data?.fileList || [],
-                    count: uploads.data?.fileList?.length || 0,
+                    uploads: data.rows?.map(pin => ({
+                        cid: pin.ipfs_pin_hash,
+                        name: pin.metadata?.name || 'Unknown',
+                        date: pin.date_pinned,
+                    })) || [],
+                    count: data.rows?.length || 0,
                 },
             });
         } catch (error) {
@@ -171,20 +199,35 @@ export function createIPFSRoutes(): Router {
         }
     });
 
-    // Get deal status for a CID
-    router.get('/deal/:cid', async (req: Request, res: Response) => {
+    // Unpin a file
+    router.delete('/unpin/:cid', async (req: Request, res: Response) => {
         const { cid } = req.params;
 
+        if (!PINATA_JWT) {
+            res.status(503).json({ success: false, error: 'Pinata not configured' });
+            return;
+        }
+
         try {
-            const status = await lighthouse.dealStatus(cid);
+            const response = await fetch(`https://api.pinata.cloud/pinning/unpin/${cid}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${PINATA_JWT}`,
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to unpin');
+            }
+
             res.json({
                 success: true,
-                data: status.data,
+                data: { message: `Unpinned ${cid}` },
             });
         } catch (error) {
             res.status(500).json({
                 success: false,
-                error: error instanceof Error ? error.message : 'Failed to get deal status',
+                error: error instanceof Error ? error.message : 'Failed to unpin',
             });
         }
     });
