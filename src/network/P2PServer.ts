@@ -15,8 +15,7 @@ import { PeerManager, PeerDiscovery } from './peers/index.js';
 import { HandshakeHandler } from './protocol/index.js';
 import { BlockSync } from './sync/index.js';
 
-// Re-export types for external use
-export { MessageType, P2PMessage } from './types.js';
+// Types are exported from ./types.js directly
 
 export class P2PServer {
     private server: WebSocketServer | null = null;

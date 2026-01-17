@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Sidebar } from './components';
 import { ThemeProvider, I18nProvider, PinProvider } from './contexts';
@@ -16,12 +17,14 @@ import {
 import './App.css';
 
 function App() {
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
   return (
     <ThemeProvider>
       <I18nProvider>
         <PinProvider>
-          <div className="app-layout">
-            <Sidebar />
+          <div className={`app-layout ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+            <Sidebar collapsed={sidebarCollapsed} setCollapsed={setSidebarCollapsed} />
             <main className="main-content">
               <Routes>
                 <Route path="/" element={<Dashboard />} />

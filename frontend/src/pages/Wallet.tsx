@@ -88,7 +88,6 @@ export const WalletPage: React.FC = () => {
         <div className="wallet-page fade-in">
             <div className="page-header">
                 <h1><Wallet className="header-icon" /> {t('wallet.title')}</h1>
-                <p>{t('wallet.subtitle')}</p>
             </div>
             {message && (
                 <div className={`message ${message.type}`}>

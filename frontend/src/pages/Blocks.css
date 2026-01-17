@@ -20,6 +20,11 @@
 .blocks-table {
     display: flex;
     flex-direction: column;
+    min-width: 700px;
+}
+
+.blocks-list-card .card-content {
+    overflow-x: auto;
 }
 
 .table-header {

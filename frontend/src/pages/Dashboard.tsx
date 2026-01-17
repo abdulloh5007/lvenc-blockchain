@@ -23,7 +23,6 @@ export const Dashboard: React.FC = () => {
         <div className="dashboard fade-in">
             <div className="page-header">
                 <h1>{t('dashboard.title')}</h1>
-                <p>{t('dashboard.subtitle')}</p>
             </div>
 
             <div className="stats-grid">

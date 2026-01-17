@@ -146,7 +146,6 @@ export const StakingPage: React.FC = () => {
         <div className="staking-page fade-in">
             <div className="page-header">
                 <h1><Coins className="header-icon" /> {t('staking.title')}</h1>
-                <p>{t('staking.subtitle')}</p>
             </div>
 
             {/* Epoch Banner */}

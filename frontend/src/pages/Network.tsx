@@ -46,7 +46,6 @@ export const NetworkPage: React.FC = () => {
         <div className="network-page fade-in">
             <div className="page-header">
                 <h1><Globe className="header-icon" /> {t('network.title')}</h1>
-                <p>{t('network.subtitle')}</p>
             </div>
 
             {message && (

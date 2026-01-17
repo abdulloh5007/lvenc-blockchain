@@ -5,7 +5,8 @@ import { useTheme, useI18n } from '../contexts';
 import './Sidebar.css';
 
 interface SidebarProps {
-    onNavigate?: (page: string) => void; // Optional for backward compatibility if needed
+    collapsed: boolean;
+    setCollapsed: (val: boolean) => void;
 }
 
 const navGroups = [
@@ -44,8 +45,7 @@ const navGroups = [
     },
 ];
 
-export const Sidebar: React.FC<SidebarProps> = () => {
-    const [collapsed, setCollapsed] = useState(false);
+export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
     const [mobileOpen, setMobileOpen] = useState(false);
     const [langMenuOpen, setLangMenuOpen] = useState(false);
     const [themeMenuOpen, setThemeMenuOpen] = useState(false);
@@ -56,7 +56,6 @@ export const Sidebar: React.FC<SidebarProps> = () => {
     const langMenuRef = useRef<HTMLDivElement>(null);
     const themeMenuRef = useRef<HTMLDivElement>(null);
 
-    // Close menus when clicking outside
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (langMenuRef.current && !langMenuRef.current.contains(event.target as Node)) {
@@ -94,10 +93,17 @@ export const Sidebar: React.FC<SidebarProps> = () => {
 
     return (
         <>
-            {/* Mobile Menu Button */}
+            {/* Mobile Menu Button - Top Right */}
             <button className="mobile-menu-toggle" onClick={() => setMobileOpen(true)}>
                 <Menu size={24} />
             </button>
+
+            {/* Mobile Close Button - Top Right (when sidebar open) */}
+            {mobileOpen && (
+                <button className="mobile-close-btn" onClick={() => setMobileOpen(false)}>
+                    <X size={24} />
+                </button>
+            )}
 
             {/* Mobile Overlay */}
             <div className={`mobile-overlay ${mobileOpen ? 'open' : ''}`} onClick={() => setMobileOpen(false)} />
@@ -105,9 +111,6 @@ export const Sidebar: React.FC<SidebarProps> = () => {
             <div className={`sidebar ${collapsed ? 'collapsed' : ''} ${mobileOpen ? 'mobile-open' : ''}`}>
                 <div className="sidebar-header">
                     {!collapsed && <span className="logo-text">EDU Chain</span>}
-                    <button className="collapse-btn" onClick={() => setMobileOpen(false)}>
-                        <X size={24} />
-                    </button>
                     <button className="collapse-btn desktop-only" onClick={() => setCollapsed(!collapsed)}>
                         {collapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
                     </button>
@@ -118,7 +121,6 @@ export const Sidebar: React.FC<SidebarProps> = () => {
                         <div key={groupIndex} className="nav-group">
                             {!collapsed && <h3 className="group-title">{t(group.titleKey) || group.title}</h3>}
                             {group.items.map((item) => {
-                                // Exact match for paths, but allow startsWith only if it's not a parent of another nav item
                                 const isActive = location.pathname === item.id ||
                                     (item.id !== '/' && item.id !== '/nft' && location.pathname.startsWith(item.id + '/'));
                                 return (

@@ -86,7 +86,6 @@ export const BlocksPage: React.FC = () => {
         <div className="blocks-page fade-in">
             <div className="page-header">
                 <h1><Blocks className="header-icon" /> {t('blocks.title')}</h1>
-                <p>{t('blocks.subtitle')}</p>
             </div>
 
             <div className="blocks-content">

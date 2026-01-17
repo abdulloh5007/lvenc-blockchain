@@ -20,6 +20,7 @@ import { createWalletRoutes } from '../../api/routes/wallet.js';
 import { createTransactionRoutes } from '../../api/routes/transaction.js';
 import { createNetworkRoutes } from '../../api/routes/network.js';
 import { createNFTRoutes } from '../../api/routes/nft.js';
+import { createIPFSRoutes } from '../../api/routes/ipfs.js';
 import { createStakingRoutes } from '../../api/routes/staking.js';
 import { createNodeRoutes } from '../../api/routes/node.js';
 
@@ -245,6 +246,7 @@ export async function startNode(options: NodeOptions): Promise<void> {
             app.use('/api/network', createNetworkRoutes(p2pServer));
         }
         app.use('/api/nft', createNFTRoutes(nftManager));
+        app.use('/api/ipfs', createIPFSRoutes());
         app.use('/api/staking', createStakingRoutes(blockchain));
         if (p2pServer) {
             app.use('/api/node', createNodeRoutes(blockchain, p2pServer));
