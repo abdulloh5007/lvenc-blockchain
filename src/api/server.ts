@@ -57,6 +57,15 @@ if (savedStaking) {
 // Initialize NFT Manager
 const nftManager = new NFTManager();
 
+// Initialize Node Identity
+import { getNodeIdentity } from '../identity/index.js';
+const nodeIdentity = getNodeIdentity()!;
+await nodeIdentity.init();
+if (nodeIdentity.isNew()) {
+    logger.warn('⚠️ New node identity generated. Backup your identity.key file!');
+}
+logger.info(`🔑 Node ID: ${nodeIdentity.getShortId()}`);
+
 // Initialize P2P server
 const p2pServer = new P2PServer(blockchain, config.network.p2pPort);
 p2pServer.start();
