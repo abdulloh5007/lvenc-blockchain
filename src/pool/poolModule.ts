@@ -9,7 +9,7 @@
  * 4. THIS MODULE CAN BE DELETED without breaking the blockchain
  * 
  * TRANSACTION ROUTING:
- * - Pool transactions identified by toAddress = "POOL_EDU_USDT"
+ * - Pool transactions identified by toAddress = "POOL_LVE_UZS"
  * - Core does NOT understand or special-case this address
  * - Operation type encoded in amount field
  * 
@@ -37,11 +37,11 @@ import { logger } from '../utils/logger.js';
 const log = logger.child('PoolModule');
 
 // Pool contract address convention
-export const POOL_ADDRESS = 'POOL_EDU_USDT';
+export const POOL_ADDRESS = 'POOL_LVE_UZS';
 
 // Operation codes
-const OP_SWAP_EDU_TO_USDT = 1;
-const OP_SWAP_USDT_TO_EDU = 2;
+const OP_SWAP_LVE_TO_UZS = 1;
+const OP_SWAP_UZS_TO_LVE = 2;
 const OP_ADD_LIQUIDITY = 3;
 const OP_REMOVE_LIQUIDITY = 4;
 
@@ -84,21 +84,21 @@ export function processPoolTransaction(tx: Transaction, blockIndex: number): boo
 
     try {
         switch (opCode) {
-            case OP_SWAP_EDU_TO_USDT:
-                poolStateManager.swap('EDU', amount, 0, blockIndex);
-                log.info(`🔄 Block ${blockIndex}: Swap ${amount} EDU → USDT by ${operator.slice(0, 12)}...`);
+            case OP_SWAP_LVE_TO_UZS:
+                poolStateManager.swap('LVE', amount, 0, blockIndex);
+                log.info(`🔄 Block ${blockIndex}: Swap ${amount} LVE → UZS by ${operator.slice(0, 12)}...`);
                 break;
 
-            case OP_SWAP_USDT_TO_EDU:
-                poolStateManager.swap('USDT', amount, 0, blockIndex);
-                log.info(`🔄 Block ${blockIndex}: Swap ${amount} USDT → EDU by ${operator.slice(0, 12)}...`);
+            case OP_SWAP_UZS_TO_LVE:
+                poolStateManager.swap('UZS', amount, 0, blockIndex);
+                log.info(`🔄 Block ${blockIndex}: Swap ${amount} UZS → LVE by ${operator.slice(0, 12)}...`);
                 break;
 
             case OP_ADD_LIQUIDITY:
-                // For add liquidity, USDT amount is encoded in fee field (hack but no core changes)
-                const usdtAmount = tx.fee;
-                poolStateManager.addLiquidity(operator, amount, usdtAmount, blockIndex);
-                log.info(`➕ Block ${blockIndex}: Add liquidity ${amount} EDU + ${usdtAmount} USDT`);
+                // For add liquidity, UZS amount is encoded in fee field (hack but no core changes)
+                const uzsAmount = tx.fee;
+                poolStateManager.addLiquidity(operator, amount, uzsAmount, blockIndex);
+                log.info(`➕ Block ${blockIndex}: Add liquidity ${amount} LVE + ${uzsAmount} UZS`);
                 break;
 
             case OP_REMOVE_LIQUIDITY:
@@ -141,11 +141,11 @@ export function processBlockPoolOperations(transactions: Transaction[], blockInd
  */
 export function createSwapTransaction(
     fromAddress: string,
-    tokenIn: 'EDU' | 'USDT',
+    tokenIn: 'LVE' | 'UZS',
     amountIn: number,
     fee: number = 0.001
 ): Transaction {
-    const opCode = tokenIn === 'EDU' ? OP_SWAP_EDU_TO_USDT : OP_SWAP_USDT_TO_EDU;
+    const opCode = tokenIn === 'LVE' ? OP_SWAP_LVE_TO_UZS : OP_SWAP_UZS_TO_LVE;
     const encodedAmount = encodePoolOperation(opCode, amountIn);
 
     return new Transaction(
@@ -161,17 +161,17 @@ export function createSwapTransaction(
  */
 export function createAddLiquidityTransaction(
     fromAddress: string,
-    eduAmount: number,
-    usdtAmount: number
+    lveAmount: number,
+    uzsAmount: number
 ): Transaction {
-    const encodedAmount = encodePoolOperation(OP_ADD_LIQUIDITY, eduAmount);
+    const encodedAmount = encodePoolOperation(OP_ADD_LIQUIDITY, lveAmount);
 
-    // Use fee field to encode USDT amount (hack but no core changes)
+    // Use fee field to encode UZS amount (hack but no core changes)
     return new Transaction(
         fromAddress,
         POOL_ADDRESS,
         encodedAmount,
-        usdtAmount  // USDT amount stored in fee field
+        uzsAmount  // UZS amount stored in fee field
     );
 }
 

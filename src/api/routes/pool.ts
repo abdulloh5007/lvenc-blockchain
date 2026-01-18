@@ -34,17 +34,17 @@ export function createPoolRoutes(): Router {
             data: {
                 initialized: info.initialized,
                 reserves: {
-                    edu: info.reserveEDU,
-                    usdt: info.reserveUSDT,
+                    lve: info.reserveLVE,
+                    uzs: info.reserveUZS,
                 },
                 price: {
-                    eduPerUsdt: info.priceUSDT,
-                    usdtPerEdu: info.priceEDU,
+                    lvePerUsdt: info.priceUZS,
+                    uzsPerEdu: info.priceLVE,
                 },
                 tvl: {
-                    edu: info.reserveEDU,
-                    usdt: info.reserveUSDT,
-                    totalUSDT: info.reserveUSDT * 2,
+                    lve: info.reserveLVE,
+                    uzs: info.reserveUZS,
+                    totalUZS: info.reserveUZS * 2,
                 },
                 lp: {
                     totalTokens: info.totalLPTokens,
@@ -68,16 +68,16 @@ export function createPoolRoutes(): Router {
         if (!from || !amount) {
             res.status(400).json({
                 success: false,
-                error: 'Required query params: from (EDU|USDT), amount (number)',
+                error: 'Required query params: from (LVE|UZS), amount (number)',
             });
             return;
         }
 
-        const token = String(from).toUpperCase() as 'EDU' | 'USDT';
-        if (token !== 'EDU' && token !== 'USDT') {
+        const token = String(from).toUpperCase() as 'LVE' | 'UZS';
+        if (token !== 'LVE' && token !== 'UZS') {
             res.status(400).json({
                 success: false,
-                error: 'Invalid token. Use EDU or USDT',
+                error: 'Invalid token. Use LVE or UZS',
             });
             return;
         }
@@ -105,7 +105,7 @@ export function createPoolRoutes(): Router {
 
         try {
             const quote = poolStateManager.getSwapQuote(token, amountNum);
-            const tokenOut = token === 'EDU' ? 'USDT' : 'EDU';
+            const tokenOut = token === 'LVE' ? 'UZS' : 'LVE';
 
             res.json({
                 success: true,

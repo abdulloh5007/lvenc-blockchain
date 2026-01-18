@@ -75,7 +75,7 @@ export const StakingPage: React.FC = () => {
         setMessage(null);
         const res = await staking.stake(selectedWallet, Number(stakeAmount));
         if (res.success && res.data) {
-            setMessage({ type: 'success', text: `✅ Staked ${stakeAmount} EDU (активно с эпохи ${res.data.effectiveEpoch})` });
+            setMessage({ type: 'success', text: `✅ Staked ${stakeAmount} LVE (активно с эпохи ${res.data.effectiveEpoch})` });
             refresh();
             loadData();
             loadUserStake();
@@ -118,7 +118,7 @@ export const StakingPage: React.FC = () => {
         setMessage(null);
         const res = await staking.delegate(selectedWallet, selectedValidator, Number(delegateAmount));
         if (res.success && res.data) {
-            setMessage({ type: 'success', text: `✅ Делегировано ${delegateAmount} EDU (активно с эпохи ${res.data.effectiveEpoch})` });
+            setMessage({ type: 'success', text: `✅ Делегировано ${delegateAmount} LVE (активно с эпохи ${res.data.effectiveEpoch})` });
             refresh();
             loadData();
             loadUserStake();
@@ -133,7 +133,7 @@ export const StakingPage: React.FC = () => {
         setLoading(true);
         const res = await staking.undelegate(selectedWallet, validator, amount);
         if (res.success) {
-            setMessage({ type: 'success', text: `🔓 Undelegated ${amount} EDU` });
+            setMessage({ type: 'success', text: `🔓 Undelegated ${amount} LVE` });
             refresh();
             loadUserStake();
         } else {
@@ -174,14 +174,14 @@ export const StakingPage: React.FC = () => {
                 <Card className="stat-card">
                     <TrendingUp size={24} />
                     <div className="stat-info">
-                        <span className="stat-value">{totalStaked.toLocaleString()} EDU</span>
+                        <span className="stat-value">{totalStaked.toLocaleString()} LVE</span>
                         <span className="stat-label">{t('staking.totalStaked')}</span>
                     </div>
                 </Card>
                 <Card className="stat-card">
                     <GitBranch size={24} />
                     <div className="stat-info">
-                        <span className="stat-value">{totalDelegated.toLocaleString()} EDU</span>
+                        <span className="stat-value">{totalDelegated.toLocaleString()} LVE</span>
                         <span className="stat-label">Делегировано</span>
                     </div>
                 </Card>
@@ -195,7 +195,7 @@ export const StakingPage: React.FC = () => {
                 <Card className="stat-card">
                     <Award size={24} />
                     <div className="stat-info">
-                        <span className="stat-value">10 EDU</span>
+                        <span className="stat-value">10 LVE</span>
                         <span className="stat-label">{t('staking.reward')}</span>
                     </div>
                 </Card>
@@ -211,7 +211,7 @@ export const StakingPage: React.FC = () => {
                                 { value: '', label: `${t('wallet.selectWallet')}...` },
                                 ...wallets.map(w => ({
                                     value: w.address,
-                                    label: `${w.label || 'Wallet'} (${w.balance || 0} EDU)`
+                                    label: `${w.label || 'Wallet'} (${w.balance || 0} LVE)`
                                 }))
                             ]}
                             value={selectedWallet}
@@ -224,17 +224,17 @@ export const StakingPage: React.FC = () => {
                         <div className="user-stake-info">
                             <div className="stake-item">
                                 <span>Ваш стейк:</span>
-                                <strong>{userStakeInfo.stake} EDU</strong>
+                                <strong>{userStakeInfo.stake} LVE</strong>
                             </div>
                             {userStakeInfo.pendingStake > 0 && (
                                 <div className="stake-item pending">
                                     <span>Ожидает:</span>
-                                    <strong>{userStakeInfo.pendingStake} EDU</strong>
+                                    <strong>{userStakeInfo.pendingStake} LVE</strong>
                                 </div>
                             )}
                             <div className="stake-item">
                                 <span>Делегировано:</span>
-                                <strong>{userStakeInfo.totalDelegated} EDU</strong>
+                                <strong>{userStakeInfo.totalDelegated} LVE</strong>
                             </div>
                             {userStakeInfo.isValidator && (
                                 <div className="validator-badge">✅ Вы валидатор</div>
@@ -256,7 +256,7 @@ export const StakingPage: React.FC = () => {
                     {activeTab === 'stake' && (
                         <div className="tab-content">
                             <div className="form-group">
-                                <label>Сумма стейка (мин 100 EDU)</label>
+                                <label>Сумма стейка (мин 100 LVE)</label>
                                 <input
                                     type="number"
                                     value={stakeAmount}
@@ -303,7 +303,7 @@ export const StakingPage: React.FC = () => {
                                         { value: '', label: 'Выберите валидатора...' },
                                         ...validators.map(v => ({
                                             value: v.address,
-                                            label: `${v.address.slice(0, 10)}... (${v.stake} EDU, ${v.commission || 10}% комиссия)`
+                                            label: `${v.address.slice(0, 10)}... (${v.stake} LVE, ${v.commission || 10}% комиссия)`
                                         }))
                                     ]}
                                     value={selectedValidator}
@@ -311,7 +311,7 @@ export const StakingPage: React.FC = () => {
                                 />
                             </div>
                             <div className="form-group">
-                                <label>Сумма делегирования (мин 10 EDU)</label>
+                                <label>Сумма делегирования (мин 10 LVE)</label>
                                 <input
                                     type="number"
                                     value={delegateAmount}
@@ -333,7 +333,7 @@ export const StakingPage: React.FC = () => {
                                     {userStakeInfo.delegations.map((d, i) => (
                                         <div key={i} className="delegation-item">
                                             <span>{d.validator.slice(0, 12)}...</span>
-                                            <span className="delegation-amount">{d.amount} EDU</span>
+                                            <span className="delegation-amount">{d.amount} LVE</span>
                                             <Button
                                                 size="sm"
                                                 variant="ghost"
@@ -365,7 +365,7 @@ export const StakingPage: React.FC = () => {
                                     <div className="validator-info">
                                         <span className="validator-address">{v.address.slice(0, 12)}...{v.address.slice(-8)}</span>
                                         <span className="validator-stake">
-                                            {v.stake.toLocaleString()} + {v.delegatedStake?.toLocaleString() || 0} EDU
+                                            {v.stake.toLocaleString()} + {v.delegatedStake?.toLocaleString() || 0} LVE
                                         </span>
                                     </div>
                                     <div className="validator-stats">

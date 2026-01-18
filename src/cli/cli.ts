@@ -10,13 +10,13 @@ import { config } from '../config.js';
 const program = new Command();
 
 program
-    .name('edu-chain')
-    .description('EDU Chain Node - Educational Blockchain Network')
+    .name('lve-chain')
+    .description('LVE Chain Node - Educational Blockchain Network')
     .version(config.version.nodeVersion);
 
 program
     .command('start')
-    .description('Start the EDU Chain node')
+    .description('Start the LVE Chain node')
     .option('-p, --port <number>', 'API server port', '3001')
     .option('--p2p <number>', 'P2P server port', '6001')
     .option('-s, --seed <url>', 'Seed node URL to connect to')
@@ -77,7 +77,7 @@ async function showStatus(port: number): Promise<void> {
 
         console.log(`
 ╔═══════════════════════════════════════╗
-║          EDU Chain Node Status        ║
+║          LVE Chain Node Status        ║
 ╠═══════════════════════════════════════╣
 ║  Status:    ${data.status === 'ok' ? '🟢 Running' : '🔴 Error'}              ║
 ║  Blocks:    ${String(data.blocks).padEnd(20)}      ║
@@ -88,7 +88,7 @@ async function showStatus(port: number): Promise<void> {
     } catch {
         console.log(`
 ╔═══════════════════════════════════════╗
-║          EDU Chain Node Status        ║
+║          LVE Chain Node Status        ║
 ╠═══════════════════════════════════════╣
 ║  Status:    🔴 Offline                ║
 ║                                       ║

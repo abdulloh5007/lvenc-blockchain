@@ -7,15 +7,15 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 interface PoolInfo {
     initialized: boolean;
     reserves: {
-        edu: number;
-        usdt: number;
+        lve: number;
+        uzs: number;
     };
     price: {
-        eduPerUsdt: number;
-        usdtPerEdu: number;
+        lvePerUsdt: number;
+        uzsPerEdu: number;
     };
     tvl: {
-        totalUSDT: number;
+        totalUZS: number;
     };
 }
 
@@ -32,7 +32,7 @@ const Swap: React.FC = () => {
     const { wallets } = useWallets();
     const wallet = wallets[0]; // Use first wallet
     const [poolInfo, setPoolInfo] = useState<PoolInfo | null>(null);
-    const [tokenIn, setTokenIn] = useState<'EDU' | 'USDT'>('EDU');
+    const [tokenIn, setTokenIn] = useState<'LVE' | 'UZS'>('LVE');
     const [amountIn, setAmountIn] = useState<string>('');
     const [quote, setQuote] = useState<QuoteResult | null>(null);
     const [loading, setLoading] = useState(false);
@@ -87,7 +87,7 @@ const Swap: React.FC = () => {
     }, [fetchQuote]);
 
     const flipTokens = () => {
-        setTokenIn(tokenIn === 'EDU' ? 'USDT' : 'EDU');
+        setTokenIn(tokenIn === 'LVE' ? 'UZS' : 'LVE');
         setAmountIn('');
         setQuote(null);
     };
@@ -102,7 +102,7 @@ const Swap: React.FC = () => {
         try {
             // For now, show instructions since swap requires signed transaction
             setSuccess(
-                `To swap, use CLI: edu-chain pool swap --from ${tokenIn} --amount ${amountIn} --min-out ${(quote.amountOut * 0.99).toFixed(4)}`
+                `To swap, use CLI: lve-chain pool swap --from ${tokenIn} --amount ${amountIn} --min-out ${(quote.amountOut * 0.99).toFixed(4)}`
             );
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Swap failed');
@@ -111,7 +111,7 @@ const Swap: React.FC = () => {
         }
     };
 
-    const tokenOut = tokenIn === 'EDU' ? 'USDT' : 'EDU';
+    const tokenOut = tokenIn === 'LVE' ? 'UZS' : 'LVE';
 
     return (
         <div className="swap-page">
@@ -124,8 +124,8 @@ const Swap: React.FC = () => {
                 {/* Pool Info */}
                 {poolInfo && poolInfo.initialized && (
                     <div className="pool-info-bar">
-                        <span>1 EDU = {poolInfo.price.usdtPerEdu.toFixed(4)} USDT</span>
-                        <span>TVL: ${poolInfo.tvl.totalUSDT.toFixed(2)}</span>
+                        <span>1 LVE = {poolInfo.price.uzsPerEdu.toFixed(4)} UZS</span>
+                        <span>TVL: ${poolInfo.tvl.totalUZS.toFixed(2)}</span>
                     </div>
                 )}
 
@@ -212,12 +212,12 @@ const Swap: React.FC = () => {
                     <div className="reserves-info">
                         <h4>Pool Reserves</h4>
                         <div className="reserve-row">
-                            <span>EDU</span>
-                            <span>{poolInfo.reserves.edu.toLocaleString()}</span>
+                            <span>LVE</span>
+                            <span>{poolInfo.reserves.lve.toLocaleString()}</span>
                         </div>
                         <div className="reserve-row">
-                            <span>USDT</span>
-                            <span>{poolInfo.reserves.usdt.toLocaleString()}</span>
+                            <span>UZS</span>
+                            <span>{poolInfo.reserves.uzs.toLocaleString()}</span>
                         </div>
                     </div>
                 )}

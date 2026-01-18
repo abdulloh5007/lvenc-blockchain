@@ -31,7 +31,7 @@ rewardCommand
         if (!fs.existsSync(identityPath)) {
             console.log('');
             console.log('❌ No identity found');
-            console.log(`   Run 'edu-chain start -n ${options.network}' first to generate an identity`);
+            console.log(`   Run 'lve-chain start -n ${options.network}' first to generate an identity`);
             console.log('');
             process.exit(1);
         }
@@ -83,7 +83,7 @@ rewardCommand
         if (!fs.existsSync(identityPath)) {
             console.log('');
             console.log('❌ No identity found');
-            console.log(`   Run 'edu-chain start -n ${options.network}' first to generate an identity`);
+            console.log(`   Run 'lve-chain start -n ${options.network}' first to generate an identity`);
             console.log('');
             process.exit(1);
         }
@@ -136,7 +136,7 @@ rewardCommand
         if (!fs.existsSync(identityPath)) {
             console.log('');
             console.log('❌ No identity found');
-            console.log(`   Run 'edu-chain start -n ${options.network}' first to generate an identity`);
+            console.log(`   Run 'lve-chain start -n ${options.network}' first to generate an identity`);
             console.log('');
             process.exit(1);
         }
@@ -157,8 +157,8 @@ rewardCommand
                 console.log('❌ No reward address configured');
                 console.log('');
                 console.log('💡 To set a reward address:');
-                console.log(`   edu-chain reward bind <address> -n ${options.network}`);
-                console.log(`   edu-chain reward generate -n ${options.network}`);
+                console.log(`   lve-chain reward bind <address> -n ${options.network}`);
+                console.log(`   lve-chain reward generate -n ${options.network}`);
             }
             console.log('');
 

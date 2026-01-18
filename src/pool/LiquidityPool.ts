@@ -22,9 +22,9 @@ const MIN_LIQUIDITY = 1000;   // Minimum initial liquidity (prevents division is
 // ========== INTERFACES ==========
 
 export interface PoolState {
-    reserveEDU: number;
-    reserveUSDT: number;
-    k: number;                    // Constant product (reserveEDU * reserveUSDT)
+    reserveLVE: number;
+    reserveUZS: number;
+    k: number;                    // Constant product (reserveLVE * reserveUZS)
     totalLPTokens: number;
     lpBalances: Record<string, number>;  // address -> LP token balance
     createdAt: number;
@@ -36,20 +36,20 @@ export interface SwapResult {
     amountOut: number;
     fee: number;
     priceImpact: number;
-    newReserveEDU: number;
-    newReserveUSDT: number;
+    newReserveLVE: number;
+    newReserveUZS: number;
 }
 
 export interface LiquidityResult {
     lpTokensMinted: number;
-    eduAdded: number;
-    usdtAdded: number;
+    lveAdded: number;
+    uzsAdded: number;
 }
 
 export interface RemoveLiquidityResult {
     lpTokensBurned: number;
-    eduReceived: number;
-    usdtReceived: number;
+    lveReceived: number;
+    uzsReceived: number;
 }
 
 // ========== LIQUIDITY POOL CLASS ==========
@@ -59,8 +59,8 @@ export class LiquidityPool {
 
     constructor() {
         this.state = {
-            reserveEDU: 0,
-            reserveUSDT: 0,
+            reserveLVE: 0,
+            reserveUZS: 0,
             k: 0,
             totalLPTokens: 0,
             lpBalances: {},
@@ -75,35 +75,35 @@ export class LiquidityPool {
      * Initialize pool with initial liquidity
      * First liquidity provider sets the initial price
      */
-    initializePool(provider: string, eduAmount: number, usdtAmount: number): LiquidityResult {
-        if (this.state.reserveEDU > 0 || this.state.reserveUSDT > 0) {
+    initializePool(provider: string, lveAmount: number, uzsAmount: number): LiquidityResult {
+        if (this.state.reserveLVE > 0 || this.state.reserveUZS > 0) {
             throw new Error('Pool already initialized');
         }
 
-        if (eduAmount <= 0 || usdtAmount <= 0) {
+        if (lveAmount <= 0 || uzsAmount <= 0) {
             throw new Error('Amounts must be positive');
         }
 
         // Calculate initial LP tokens (geometric mean)
-        const lpTokens = Math.sqrt(eduAmount * usdtAmount);
+        const lpTokens = Math.sqrt(lveAmount * uzsAmount);
 
         if (lpTokens < MIN_LIQUIDITY) {
             throw new Error(`Initial liquidity too low. Minimum: ${MIN_LIQUIDITY}`);
         }
 
-        this.state.reserveEDU = eduAmount;
-        this.state.reserveUSDT = usdtAmount;
-        this.state.k = eduAmount * usdtAmount;
+        this.state.reserveLVE = lveAmount;
+        this.state.reserveUZS = uzsAmount;
+        this.state.k = lveAmount * uzsAmount;
         this.state.totalLPTokens = lpTokens;
         this.state.lpBalances[provider] = lpTokens;
         this.state.createdAt = Date.now();
 
-        log.info(`🏊 Pool initialized: ${eduAmount} EDU + ${usdtAmount} USDT = ${lpTokens} LP`);
+        log.info(`🏊 Pool initialized: ${lveAmount} LVE + ${uzsAmount} UZS = ${lpTokens} LP`);
 
         return {
             lpTokensMinted: lpTokens,
-            eduAdded: eduAmount,
-            usdtAdded: usdtAmount,
+            lveAdded: lveAmount,
+            uzsAdded: uzsAmount,
         };
     }
 
@@ -112,7 +112,7 @@ export class LiquidityPool {
     /**
      * Calculate swap output (read-only quote)
      */
-    getSwapQuote(tokenIn: 'EDU' | 'USDT', amountIn: number): SwapResult {
+    getSwapQuote(tokenIn: 'LVE' | 'UZS', amountIn: number): SwapResult {
         if (!this.isInitialized()) {
             throw new Error('Pool not initialized');
         }
@@ -121,8 +121,8 @@ export class LiquidityPool {
             throw new Error('Amount must be positive');
         }
 
-        const reserveIn = tokenIn === 'EDU' ? this.state.reserveEDU : this.state.reserveUSDT;
-        const reserveOut = tokenIn === 'EDU' ? this.state.reserveUSDT : this.state.reserveEDU;
+        const reserveIn = tokenIn === 'LVE' ? this.state.reserveLVE : this.state.reserveUZS;
+        const reserveOut = tokenIn === 'LVE' ? this.state.reserveUZS : this.state.reserveLVE;
 
         // Calculate fee
         const fee = (amountIn * FEE_NUMERATOR) / FEE_DENOMINATOR;
@@ -154,8 +154,8 @@ export class LiquidityPool {
             amountOut,
             fee,
             priceImpact,
-            newReserveEDU: tokenIn === 'EDU' ? newReserveIn : newReserveOut,
-            newReserveUSDT: tokenIn === 'EDU' ? newReserveOut : newReserveIn,
+            newReserveLVE: tokenIn === 'LVE' ? newReserveIn : newReserveOut,
+            newReserveUZS: tokenIn === 'LVE' ? newReserveOut : newReserveIn,
         };
     }
 
@@ -163,7 +163,7 @@ export class LiquidityPool {
      * Execute swap (mutates state)
      * Returns actual amounts swapped
      */
-    swap(tokenIn: 'EDU' | 'USDT', amountIn: number, minAmountOut: number): SwapResult {
+    swap(tokenIn: 'LVE' | 'UZS', amountIn: number, minAmountOut: number): SwapResult {
         const quote = this.getSwapQuote(tokenIn, amountIn);
 
         // Slippage check
@@ -172,18 +172,18 @@ export class LiquidityPool {
         }
 
         // Update state
-        this.state.reserveEDU = quote.newReserveEDU;
-        this.state.reserveUSDT = quote.newReserveUSDT;
+        this.state.reserveLVE = quote.newReserveLVE;
+        this.state.reserveUZS = quote.newReserveUZS;
         this.state.lastSwapAt = Date.now();
 
         // Verify invariant: k should only increase (due to fees)
-        const newK = this.state.reserveEDU * this.state.reserveUSDT;
+        const newK = this.state.reserveLVE * this.state.reserveUZS;
         if (newK < this.state.k) {
             throw new Error('Invariant violation: k decreased');
         }
         this.state.k = newK;
 
-        log.info(`💱 Swap: ${amountIn} ${tokenIn} → ${quote.amountOut.toFixed(6)} ${tokenIn === 'EDU' ? 'USDT' : 'EDU'}`);
+        log.info(`💱 Swap: ${amountIn} ${tokenIn} → ${quote.amountOut.toFixed(6)} ${tokenIn === 'LVE' ? 'UZS' : 'LVE'}`);
 
         return quote;
     }
@@ -194,44 +194,44 @@ export class LiquidityPool {
      * Add liquidity to pool
      * Must add both tokens in current ratio
      */
-    addLiquidity(provider: string, eduAmount: number, usdtAmount: number): LiquidityResult {
+    addLiquidity(provider: string, lveAmount: number, uzsAmount: number): LiquidityResult {
         if (!this.isInitialized()) {
-            return this.initializePool(provider, eduAmount, usdtAmount);
+            return this.initializePool(provider, lveAmount, uzsAmount);
         }
 
-        if (eduAmount <= 0 || usdtAmount <= 0) {
+        if (lveAmount <= 0 || uzsAmount <= 0) {
             throw new Error('Amounts must be positive');
         }
 
         // Calculate optimal ratio
-        const currentRatio = this.state.reserveEDU / this.state.reserveUSDT;
-        const providedRatio = eduAmount / usdtAmount;
+        const currentRatio = this.state.reserveLVE / this.state.reserveUZS;
+        const providedRatio = lveAmount / uzsAmount;
 
         // Allow 1% ratio deviation
         const ratioDiff = Math.abs(currentRatio - providedRatio) / currentRatio;
         if (ratioDiff > 0.01) {
-            const optimalUSDT = eduAmount / currentRatio;
-            throw new Error(`Invalid ratio. For ${eduAmount} EDU, provide ~${optimalUSDT.toFixed(2)} USDT`);
+            const optimalUZS = lveAmount / currentRatio;
+            throw new Error(`Invalid ratio. For ${lveAmount} LVE, provide ~${optimalUZS.toFixed(2)} UZS`);
         }
 
         // Calculate LP tokens to mint (proportional to contribution)
-        const lpTokens = (eduAmount / this.state.reserveEDU) * this.state.totalLPTokens;
+        const lpTokens = (lveAmount / this.state.reserveLVE) * this.state.totalLPTokens;
 
         // Update reserves
-        this.state.reserveEDU += eduAmount;
-        this.state.reserveUSDT += usdtAmount;
-        this.state.k = this.state.reserveEDU * this.state.reserveUSDT;
+        this.state.reserveLVE += lveAmount;
+        this.state.reserveUZS += uzsAmount;
+        this.state.k = this.state.reserveLVE * this.state.reserveUZS;
 
         // Mint LP tokens
         this.state.totalLPTokens += lpTokens;
         this.state.lpBalances[provider] = (this.state.lpBalances[provider] || 0) + lpTokens;
 
-        log.info(`➕ Liquidity added: ${eduAmount} EDU + ${usdtAmount} USDT = ${lpTokens.toFixed(4)} LP`);
+        log.info(`➕ Liquidity added: ${lveAmount} LVE + ${uzsAmount} UZS = ${lpTokens.toFixed(4)} LP`);
 
         return {
             lpTokensMinted: lpTokens,
-            eduAdded: eduAmount,
-            usdtAdded: usdtAmount,
+            lveAdded: lveAmount,
+            uzsAdded: uzsAmount,
         };
     }
 
@@ -253,13 +253,13 @@ export class LiquidityPool {
 
         // Calculate proportional share
         const share = lpTokens / this.state.totalLPTokens;
-        const eduReceived = this.state.reserveEDU * share;
-        const usdtReceived = this.state.reserveUSDT * share;
+        const lveReceived = this.state.reserveLVE * share;
+        const uzsReceived = this.state.reserveUZS * share;
 
         // Update reserves
-        this.state.reserveEDU -= eduReceived;
-        this.state.reserveUSDT -= usdtReceived;
-        this.state.k = this.state.reserveEDU * this.state.reserveUSDT;
+        this.state.reserveLVE -= lveReceived;
+        this.state.reserveUZS -= uzsReceived;
+        this.state.k = this.state.reserveLVE * this.state.reserveUZS;
 
         // Burn LP tokens
         this.state.totalLPTokens -= lpTokens;
@@ -269,32 +269,32 @@ export class LiquidityPool {
             delete this.state.lpBalances[provider];
         }
 
-        log.info(`➖ Liquidity removed: ${lpTokens.toFixed(4)} LP → ${eduReceived.toFixed(4)} EDU + ${usdtReceived.toFixed(4)} USDT`);
+        log.info(`➖ Liquidity removed: ${lpTokens.toFixed(4)} LP → ${lveReceived.toFixed(4)} LVE + ${uzsReceived.toFixed(4)} UZS`);
 
         return {
             lpTokensBurned: lpTokens,
-            eduReceived,
-            usdtReceived,
+            lveReceived,
+            uzsReceived,
         };
     }
 
     // ========== GETTERS ==========
 
     isInitialized(): boolean {
-        return this.state.reserveEDU > 0 && this.state.reserveUSDT > 0;
+        return this.state.reserveLVE > 0 && this.state.reserveUZS > 0;
     }
 
-    getReserves(): { edu: number; usdt: number } {
-        return { edu: this.state.reserveEDU, usdt: this.state.reserveUSDT };
+    getReserves(): { lve: number; uzs: number } {
+        return { lve: this.state.reserveLVE, uzs: this.state.reserveUZS };
     }
 
-    getPrice(): { eduPerUsdt: number; usdtPerEdu: number } {
+    getPrice(): { lvePerUsdt: number; uzsPerEdu: number } {
         if (!this.isInitialized()) {
-            return { eduPerUsdt: 0, usdtPerEdu: 0 };
+            return { lvePerUsdt: 0, uzsPerEdu: 0 };
         }
         return {
-            eduPerUsdt: this.state.reserveEDU / this.state.reserveUSDT,
-            usdtPerEdu: this.state.reserveUSDT / this.state.reserveEDU,
+            lvePerUsdt: this.state.reserveLVE / this.state.reserveUZS,
+            uzsPerEdu: this.state.reserveUZS / this.state.reserveLVE,
         };
     }
 
@@ -310,13 +310,13 @@ export class LiquidityPool {
         const price = this.getPrice();
         return {
             initialized: this.isInitialized(),
-            reserveEDU: this.state.reserveEDU,
-            reserveUSDT: this.state.reserveUSDT,
+            reserveLVE: this.state.reserveLVE,
+            reserveUZS: this.state.reserveUZS,
             k: this.state.k,
             totalLPTokens: this.state.totalLPTokens,
             lpProviders: Object.keys(this.state.lpBalances).length,
-            priceEDU: price.usdtPerEdu,  // Price of 1 EDU in USDT
-            priceUSDT: price.eduPerUsdt, // Price of 1 USDT in EDU
+            priceLVE: price.uzsPerEdu,  // Price of 1 LVE in UZS
+            priceUZS: price.lvePerUsdt, // Price of 1 UZS in LVE
             createdAt: this.state.createdAt,
             lastSwapAt: this.state.lastSwapAt,
         };
@@ -330,7 +330,7 @@ export class LiquidityPool {
 
     loadFromData(data: PoolState): void {
         this.state = { ...data };
-        log.info(`📂 Pool state loaded: ${this.state.reserveEDU} EDU, ${this.state.reserveUSDT} USDT`);
+        log.info(`📂 Pool state loaded: ${this.state.reserveLVE} LVE, ${this.state.reserveUZS} UZS`);
     }
 }
 

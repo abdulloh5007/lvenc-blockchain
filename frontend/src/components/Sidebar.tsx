@@ -108,7 +108,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => 
 
             <div className={`sidebar ${collapsed ? 'collapsed' : ''} ${mobileOpen ? 'mobile-open' : ''}`}>
                 <div className="sidebar-header">
-                    {!collapsed && <span className="logo-text">EDU Chain</span>}
+                    {!collapsed && <span className="logo-text">LVE Chain</span>}
                     <button className="collapse-btn desktop-only" onClick={() => setCollapsed(!collapsed)}>
                         {collapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
                     </button>

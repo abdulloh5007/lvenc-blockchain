@@ -35,8 +35,8 @@ const MIN_LIQUIDITY = 1000n * PRECISION;
 
 export interface OnChainPoolState {
     initialized: boolean;
-    reserveEDU: string;     // BigInt as string for JSON
-    reserveUSDT: string;    // BigInt as string for JSON
+    reserveLVE: string;     // BigInt as string for JSON
+    reserveUZS: string;    // BigInt as string for JSON
     k: string;              // Invariant x * y >= k
     totalLPTokens: string;
     lpBalances: Record<string, string>;
@@ -52,14 +52,14 @@ export interface PoolOperation {
 }
 
 export interface SwapParams {
-    tokenIn: 'EDU' | 'USDT';
+    tokenIn: 'LVE' | 'UZS';
     amountIn: bigint;
     minAmountOut: bigint;
 }
 
 export interface LiquidityParams {
-    eduAmount: bigint;
-    usdtAmount: bigint;
+    lveAmount: bigint;
+    uzsAmount: bigint;
 }
 
 // ========== HELPER FUNCTIONS ==========
@@ -91,8 +91,8 @@ function sqrt(value: bigint): bigint {
 
 export class PoolStateManager {
     private initialized: boolean = false;
-    private reserveEDU: bigint = 0n;
-    private reserveUSDT: bigint = 0n;
+    private reserveLVE: bigint = 0n;
+    private reserveUZS: bigint = 0n;
     private k: bigint = 0n;
     private totalLPTokens: bigint = 0n;
     private lpBalances: Map<string, bigint> = new Map();
@@ -108,7 +108,7 @@ export class PoolStateManager {
     private checkInvariant(): void {
         if (!this.initialized) return;
 
-        const currentProduct = this.reserveEDU * this.reserveUSDT;
+        const currentProduct = this.reserveLVE * this.reserveUZS;
         if (currentProduct < this.k) {
             throw new Error(`INVARIANT VIOLATION: ${currentProduct} < ${this.k}`);
         }
@@ -119,8 +119,8 @@ export class PoolStateManager {
     loadState(data: OnChainPoolState | null): void {
         if (!data || !data.initialized) {
             this.initialized = false;
-            this.reserveEDU = 0n;
-            this.reserveUSDT = 0n;
+            this.reserveLVE = 0n;
+            this.reserveUZS = 0n;
             this.k = 0n;
             this.totalLPTokens = 0n;
             this.lpBalances.clear();
@@ -130,8 +130,8 @@ export class PoolStateManager {
         }
 
         this.initialized = true;
-        this.reserveEDU = BigInt(data.reserveEDU);
-        this.reserveUSDT = BigInt(data.reserveUSDT);
+        this.reserveLVE = BigInt(data.reserveLVE);
+        this.reserveUZS = BigInt(data.reserveUZS);
         this.k = BigInt(data.k);
         this.totalLPTokens = BigInt(data.totalLPTokens);
         this.lpBalances = new Map(
@@ -140,14 +140,14 @@ export class PoolStateManager {
         this.createdAtBlock = data.createdAtBlock;
         this.lastUpdateBlock = data.lastUpdateBlock;
 
-        log.info(`📂 Pool loaded: ${toNumber(this.reserveEDU)} EDU, ${toNumber(this.reserveUSDT)} USDT`);
+        log.info(`📂 Pool loaded: ${toNumber(this.reserveLVE)} LVE, ${toNumber(this.reserveUZS)} UZS`);
     }
 
     getState(): OnChainPoolState {
         return {
             initialized: this.initialized,
-            reserveEDU: this.reserveEDU.toString(),
-            reserveUSDT: this.reserveUSDT.toString(),
+            reserveLVE: this.reserveLVE.toString(),
+            reserveUZS: this.reserveUZS.toString(),
             k: this.k.toString(),
             totalLPTokens: this.totalLPTokens.toString(),
             lpBalances: Object.fromEntries(
@@ -168,28 +168,28 @@ export class PoolStateManager {
      * Initialize pool with first liquidity
      * ATOMIC: Either succeeds completely or fails with no state change
      */
-    initializePool(provider: string, eduAmount: number, usdtAmount: number, blockIndex: number): { lpTokens: number } {
+    initializePool(provider: string, lveAmount: number, uzsAmount: number, blockIndex: number): { lpTokens: number } {
         if (this.initialized) {
             throw new Error('Pool already initialized');
         }
 
-        const eduScaled = toBigInt(eduAmount);
-        const usdtScaled = toBigInt(usdtAmount);
+        const lveScaled = toBigInt(lveAmount);
+        const uzsScaled = toBigInt(uzsAmount);
 
-        if (eduScaled <= 0n || usdtScaled <= 0n) {
+        if (lveScaled <= 0n || uzsScaled <= 0n) {
             throw new Error('Amounts must be positive');
         }
 
-        const lpTokens = sqrt(eduScaled * usdtScaled);
+        const lpTokens = sqrt(lveScaled * uzsScaled);
         if (lpTokens < MIN_LIQUIDITY) {
             throw new Error(`Initial liquidity too low. Minimum: ${toNumber(MIN_LIQUIDITY)}`);
         }
 
         // Apply state changes
         this.initialized = true;
-        this.reserveEDU = eduScaled;
-        this.reserveUSDT = usdtScaled;
-        this.k = eduScaled * usdtScaled;
+        this.reserveLVE = lveScaled;
+        this.reserveUZS = uzsScaled;
+        this.k = lveScaled * uzsScaled;
         this.totalLPTokens = lpTokens;
         this.lpBalances.set(provider, lpTokens);
         this.createdAtBlock = blockIndex;
@@ -198,7 +198,7 @@ export class PoolStateManager {
         // Verify invariant
         this.checkInvariant();
 
-        log.info(`🏊 Pool initialized at block ${blockIndex}: ${eduAmount} EDU + ${usdtAmount} USDT`);
+        log.info(`🏊 Pool initialized at block ${blockIndex}: ${lveAmount} LVE + ${uzsAmount} UZS`);
         return { lpTokens: toNumber(lpTokens) };
     }
 
@@ -206,7 +206,7 @@ export class PoolStateManager {
      * Execute swap
      * ATOMIC: Either succeeds or reverts, no partial state
      */
-    swap(tokenIn: 'EDU' | 'USDT', amountIn: number, minAmountOut: number, blockIndex: number): { amountOut: number; fee: number } {
+    swap(tokenIn: 'LVE' | 'UZS', amountIn: number, minAmountOut: number, blockIndex: number): { amountOut: number; fee: number } {
         if (!this.initialized) {
             throw new Error('Pool not initialized');
         }
@@ -218,8 +218,8 @@ export class PoolStateManager {
             throw new Error('Amount must be positive');
         }
 
-        const reserveIn = tokenIn === 'EDU' ? this.reserveEDU : this.reserveUSDT;
-        const reserveOut = tokenIn === 'EDU' ? this.reserveUSDT : this.reserveEDU;
+        const reserveIn = tokenIn === 'LVE' ? this.reserveLVE : this.reserveUZS;
+        const reserveOut = tokenIn === 'LVE' ? this.reserveUZS : this.reserveLVE;
 
         // Calculate fee (integer math: fee = amountIn * 3 / 1000)
         const fee = (amountInScaled * FEE_NUMERATOR) / FEE_DENOMINATOR;
@@ -239,16 +239,16 @@ export class PoolStateManager {
         }
 
         // Apply state changes
-        if (tokenIn === 'EDU') {
-            this.reserveEDU += amountInScaled;
-            this.reserveUSDT -= amountOut;
+        if (tokenIn === 'LVE') {
+            this.reserveLVE += amountInScaled;
+            this.reserveUZS -= amountOut;
         } else {
-            this.reserveUSDT += amountInScaled;
-            this.reserveEDU -= amountOut;
+            this.reserveUZS += amountInScaled;
+            this.reserveLVE -= amountOut;
         }
 
         // Update k (increases due to fees)
-        this.k = this.reserveEDU * this.reserveUSDT;
+        this.k = this.reserveLVE * this.reserveUZS;
         this.lastUpdateBlock = blockIndex;
 
         // Verify invariant
@@ -262,22 +262,22 @@ export class PoolStateManager {
      * Add liquidity
      * ATOMIC: Either succeeds or reverts
      */
-    addLiquidity(provider: string, eduAmount: number, usdtAmount: number, blockIndex: number): { lpTokens: number } {
+    addLiquidity(provider: string, lveAmount: number, uzsAmount: number, blockIndex: number): { lpTokens: number } {
         if (!this.initialized) {
-            return this.initializePool(provider, eduAmount, usdtAmount, blockIndex);
+            return this.initializePool(provider, lveAmount, uzsAmount, blockIndex);
         }
 
-        const eduScaled = toBigInt(eduAmount);
-        const usdtScaled = toBigInt(usdtAmount);
+        const lveScaled = toBigInt(lveAmount);
+        const uzsScaled = toBigInt(uzsAmount);
 
-        if (eduScaled <= 0n || usdtScaled <= 0n) {
+        if (lveScaled <= 0n || uzsScaled <= 0n) {
             throw new Error('Amounts must be positive');
         }
 
         // Check ratio (allow 1% tolerance using integer math)
-        // ratio check: |eduScaled * reserveUSDT - usdtScaled * reserveEDU| <= (eduScaled * reserveUSDT) / 100
-        const cross1 = eduScaled * this.reserveUSDT;
-        const cross2 = usdtScaled * this.reserveEDU;
+        // ratio check: |lveScaled * reserveUZS - uzsScaled * reserveLVE| <= (lveScaled * reserveUZS) / 100
+        const cross1 = lveScaled * this.reserveUZS;
+        const cross2 = uzsScaled * this.reserveLVE;
         const diff = cross1 > cross2 ? cross1 - cross2 : cross2 - cross1;
         const tolerance = cross1 / 100n;
 
@@ -285,13 +285,13 @@ export class PoolStateManager {
             throw new Error('Invalid ratio');
         }
 
-        // Calculate LP tokens: lpTokens = (eduAmount / reserveEDU) * totalLP
-        const lpTokens = (eduScaled * this.totalLPTokens) / this.reserveEDU;
+        // Calculate LP tokens: lpTokens = (lveAmount / reserveLVE) * totalLP
+        const lpTokens = (lveScaled * this.totalLPTokens) / this.reserveLVE;
 
         // Apply state changes
-        this.reserveEDU += eduScaled;
-        this.reserveUSDT += usdtScaled;
-        this.k = this.reserveEDU * this.reserveUSDT;
+        this.reserveLVE += lveScaled;
+        this.reserveUZS += uzsScaled;
+        this.k = this.reserveLVE * this.reserveUZS;
         this.totalLPTokens += lpTokens;
 
         const currentBalance = this.lpBalances.get(provider) || 0n;
@@ -301,7 +301,7 @@ export class PoolStateManager {
         // Verify invariant
         this.checkInvariant();
 
-        log.info(`➕ Liquidity added at block ${blockIndex}: ${eduAmount} EDU + ${usdtAmount} USDT`);
+        log.info(`➕ Liquidity added at block ${blockIndex}: ${lveAmount} LVE + ${uzsAmount} UZS`);
         return { lpTokens: toNumber(lpTokens) };
     }
 
@@ -309,7 +309,7 @@ export class PoolStateManager {
      * Remove liquidity
      * ATOMIC: Either succeeds or reverts
      */
-    removeLiquidity(provider: string, lpTokens: number, blockIndex: number): { eduAmount: number; usdtAmount: number } {
+    removeLiquidity(provider: string, lpTokens: number, blockIndex: number): { lveAmount: number; uzsAmount: number } {
         if (!this.initialized) {
             throw new Error('Pool not initialized');
         }
@@ -322,13 +322,13 @@ export class PoolStateManager {
         }
 
         // Calculate amounts: amount = (lpTokens / totalLP) * reserve
-        const eduAmount = (lpTokensScaled * this.reserveEDU) / this.totalLPTokens;
-        const usdtAmount = (lpTokensScaled * this.reserveUSDT) / this.totalLPTokens;
+        const lveAmount = (lpTokensScaled * this.reserveLVE) / this.totalLPTokens;
+        const uzsAmount = (lpTokensScaled * this.reserveUZS) / this.totalLPTokens;
 
         // Apply state changes
-        this.reserveEDU -= eduAmount;
-        this.reserveUSDT -= usdtAmount;
-        this.k = this.reserveEDU * this.reserveUSDT;
+        this.reserveLVE -= lveAmount;
+        this.reserveUZS -= uzsAmount;
+        this.k = this.reserveLVE * this.reserveUZS;
         this.totalLPTokens -= lpTokensScaled;
 
         const newBalance = balance - lpTokensScaled;
@@ -342,8 +342,8 @@ export class PoolStateManager {
         // Verify invariant
         this.checkInvariant();
 
-        log.info(`➖ Liquidity removed: ${lpTokens} LP → ${toNumber(eduAmount)} EDU + ${toNumber(usdtAmount)} USDT`);
-        return { eduAmount: toNumber(eduAmount), usdtAmount: toNumber(usdtAmount) };
+        log.info(`➖ Liquidity removed: ${lpTokens} LP → ${toNumber(lveAmount)} LVE + ${toNumber(uzsAmount)} UZS`);
+        return { lveAmount: toNumber(lveAmount), uzsAmount: toNumber(uzsAmount) };
     }
 
     // ========== GETTERS ==========
@@ -351,13 +351,13 @@ export class PoolStateManager {
     getPoolInfo() {
         return {
             initialized: this.initialized,
-            reserveEDU: toNumber(this.reserveEDU),
-            reserveUSDT: toNumber(this.reserveUSDT),
+            reserveLVE: toNumber(this.reserveLVE),
+            reserveUZS: toNumber(this.reserveUZS),
             k: this.k.toString(),
             totalLPTokens: toNumber(this.totalLPTokens),
             lpProviders: this.lpBalances.size,
-            priceEDU: this.initialized ? toNumber(this.reserveUSDT) / toNumber(this.reserveEDU) : 0,
-            priceUSDT: this.initialized ? toNumber(this.reserveEDU) / toNumber(this.reserveUSDT) : 0,
+            priceLVE: this.initialized ? toNumber(this.reserveUZS) / toNumber(this.reserveLVE) : 0,
+            priceUZS: this.initialized ? toNumber(this.reserveLVE) / toNumber(this.reserveUZS) : 0,
             createdAtBlock: this.createdAtBlock,
             lastUpdateBlock: this.lastUpdateBlock,
         };
@@ -367,14 +367,14 @@ export class PoolStateManager {
         return toNumber(this.lpBalances.get(address) || 0n);
     }
 
-    getSwapQuote(tokenIn: 'EDU' | 'USDT', amountIn: number): { amountOut: number; fee: number; priceImpact: number } {
+    getSwapQuote(tokenIn: 'LVE' | 'UZS', amountIn: number): { amountOut: number; fee: number; priceImpact: number } {
         if (!this.initialized) {
             throw new Error('Pool not initialized');
         }
 
         const amountInScaled = toBigInt(amountIn);
-        const reserveIn = tokenIn === 'EDU' ? this.reserveEDU : this.reserveUSDT;
-        const reserveOut = tokenIn === 'EDU' ? this.reserveUSDT : this.reserveEDU;
+        const reserveIn = tokenIn === 'LVE' ? this.reserveLVE : this.reserveUZS;
+        const reserveOut = tokenIn === 'LVE' ? this.reserveUZS : this.reserveLVE;
 
         const fee = (amountInScaled * FEE_NUMERATOR) / FEE_DENOMINATOR;
         const amountInAfterFee = amountInScaled - fee;

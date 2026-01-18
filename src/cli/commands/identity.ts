@@ -31,7 +31,7 @@ export const identityCommand = new Command('identity')
         if (!fs.existsSync(identityPath)) {
             console.log('');
             console.log('❌ No identity found');
-            console.log(`   Run 'edu-chain start -n ${options.network}' to generate an identity`);
+            console.log(`   Run 'lve-chain start -n ${options.network}' to generate an identity`);
             console.log(`   Expected location: ${identityPath}`);
             console.log('');
             process.exit(1);
@@ -66,10 +66,10 @@ export const identityCommand = new Command('identity')
             console.log('╚═══════════════════════════════════════════════════════════╝');
             console.log('');
             console.log('💡 To bind a reward address:');
-            console.log(`   edu-chain reward bind <address> -n ${options.network}`);
+            console.log(`   lve-chain reward bind <address> -n ${options.network}`);
             console.log('');
             console.log('💡 To export public identity:');
-            console.log('   edu-chain identity --export');
+            console.log('   lve-chain identity --export');
             console.log('');
 
         } catch (error) {

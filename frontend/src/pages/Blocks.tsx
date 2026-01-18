@@ -146,7 +146,7 @@ export const BlocksPage: React.FC = () => {
                                 <div className="transactions-list">
                                     {selectedBlock.transactions.map((tx, i) => (
                                         <div key={tx.id} className="tx-item">
-                                            <div className="tx-header"><span className="tx-index">TX #{i + 1}</span><span className="tx-amount">{tx.amount} EDU</span></div>
+                                            <div className="tx-header"><span className="tx-index">TX #{i + 1}</span><span className="tx-amount">{tx.amount} LVE</span></div>
                                             <div className="tx-addresses">
                                                 <div className="address-item"><span className="label">{t('transactions.from')}</span><span className="address font-mono">{tx.fromAddress ? formatHash(tx.fromAddress) : 'System'}</span></div>
                                                 <span className="arrow">→</span>

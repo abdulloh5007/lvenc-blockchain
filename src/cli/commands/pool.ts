@@ -30,7 +30,7 @@ poolCommand
 ╠═══════════════════════════════════════════════════════════╣
 ║  Status: NOT INITIALIZED                                  ║
 ║                                                           ║
-║  Use 'edu-chain pool add' to create the pool              ║
+║  Use 'lve-chain pool add' to create the pool              ║
 ╚═══════════════════════════════════════════════════════════╝
             `);
             return;
@@ -40,9 +40,9 @@ poolCommand
 ╔═══════════════════════════════════════════════════════════╗
 ║                    💧 Liquidity Pool                      ║
 ╠═══════════════════════════════════════════════════════════╣
-║  Reserve EDU:    ${info.reserveEDU.toFixed(4).padEnd(38)} ║
-║  Reserve USDT:   ${info.reserveUSDT.toFixed(4).padEnd(38)} ║
-║  Price (EDU):    ${info.priceEDU.toFixed(6).padEnd(38)} USDT║
+║  Reserve LVE:    ${info.reserveLVE.toFixed(4).padEnd(38)} ║
+║  Reserve UZS:   ${info.reserveUZS.toFixed(4).padEnd(38)} ║
+║  Price (LVE):    ${info.priceLVE.toFixed(6).padEnd(38)} UZS║
 ║  Total LP:       ${info.totalLPTokens.toFixed(4).padEnd(38)} ║
 ║  LP Providers:   ${String(info.lpProviders).padEnd(38)} ║
 ╚═══════════════════════════════════════════════════════════╝
@@ -54,7 +54,7 @@ poolCommand
 poolCommand
     .command('quote')
     .description('Get swap quote without executing')
-    .requiredOption('--from <token>', 'Token to swap from (EDU or USDT)')
+    .requiredOption('--from <token>', 'Token to swap from (LVE or UZS)')
     .requiredOption('--amount <number>', 'Amount to swap')
     .action((options) => {
         const poolData = storage.loadPool();
@@ -65,9 +65,9 @@ poolCommand
             process.exit(1);
         }
 
-        const token = options.from.toUpperCase() as 'EDU' | 'USDT';
-        if (token !== 'EDU' && token !== 'USDT') {
-            console.log('❌ Invalid token. Use EDU or USDT');
+        const token = options.from.toUpperCase() as 'LVE' | 'UZS';
+        if (token !== 'LVE' && token !== 'UZS') {
+            console.log('❌ Invalid token. Use LVE or UZS');
             process.exit(1);
         }
 
@@ -79,7 +79,7 @@ poolCommand
 
         try {
             const quote = poolStateManager.getSwapQuote(token, amount);
-            const tokenOut = token === 'EDU' ? 'USDT' : 'EDU';
+            const tokenOut = token === 'LVE' ? 'UZS' : 'LVE';
 
             console.log(`
 ╔═══════════════════════════════════════════════════════════╗
@@ -103,16 +103,16 @@ poolCommand
     .command('add')
     .description('Add liquidity to pool')
     .requiredOption('--address <address>', 'Provider address')
-    .requiredOption('--edu <number>', 'EDU amount')
-    .requiredOption('--usdt <number>', 'USDT amount')
+    .requiredOption('--lve <number>', 'LVE amount')
+    .requiredOption('--uzs <number>', 'UZS amount')
     .action((options) => {
         const poolData = storage.loadPool();
         poolStateManager.loadState(poolData);
 
-        const eduAmount = parseFloat(options.edu);
-        const usdtAmount = parseFloat(options.usdt);
+        const lveAmount = parseFloat(options.lve);
+        const uzsAmount = parseFloat(options.uzs);
 
-        if (isNaN(eduAmount) || isNaN(usdtAmount) || eduAmount <= 0 || usdtAmount <= 0) {
+        if (isNaN(lveAmount) || isNaN(uzsAmount) || lveAmount <= 0 || uzsAmount <= 0) {
             console.log('❌ Invalid amounts');
             process.exit(1);
         }
@@ -120,15 +120,15 @@ poolCommand
         try {
             // Use block 0 for CLI (will be replaced with actual block in block producer)
             const blockIndex = 0;
-            const result = poolStateManager.addLiquidity(options.address, eduAmount, usdtAmount, blockIndex);
+            const result = poolStateManager.addLiquidity(options.address, lveAmount, uzsAmount, blockIndex);
             storage.savePool(poolStateManager.getState());
 
             console.log(`
 ╔═══════════════════════════════════════════════════════════╗
 ║                 ✅ Liquidity Added                        ║
 ╠═══════════════════════════════════════════════════════════╣
-║  EDU Added:      ${eduAmount.toFixed(4).padEnd(38)} ║
-║  USDT Added:     ${usdtAmount.toFixed(4).padEnd(38)} ║
+║  LVE Added:      ${lveAmount.toFixed(4).padEnd(38)} ║
+║  UZS Added:     ${uzsAmount.toFixed(4).padEnd(38)} ║
 ║  LP Tokens:      ${result.lpTokens.toFixed(4).padEnd(38)} ║
 ╚═══════════════════════════════════════════════════════════╝
             `);
@@ -165,8 +165,8 @@ poolCommand
 ║                 ✅ Liquidity Removed                      ║
 ╠═══════════════════════════════════════════════════════════╣
 ║  LP Burned:      ${lpTokens.toFixed(4).padEnd(38)} ║
-║  EDU Received:   ${result.eduAmount.toFixed(4).padEnd(38)} ║
-║  USDT Received:  ${result.usdtAmount.toFixed(4).padEnd(38)} ║
+║  LVE Received:   ${result.lveAmount.toFixed(4).padEnd(38)} ║
+║  UZS Received:  ${result.uzsAmount.toFixed(4).padEnd(38)} ║
 ╚═══════════════════════════════════════════════════════════╝
             `);
         } catch (error) {
@@ -180,7 +180,7 @@ poolCommand
 poolCommand
     .command('swap')
     .description('Swap tokens')
-    .requiredOption('--from <token>', 'Token to swap from (EDU or USDT)')
+    .requiredOption('--from <token>', 'Token to swap from (LVE or UZS)')
     .requiredOption('--amount <number>', 'Amount to swap')
     .option('--min-out <number>', 'Minimum output (slippage protection)', '0')
     .action((options) => {
@@ -192,9 +192,9 @@ poolCommand
             process.exit(1);
         }
 
-        const token = options.from.toUpperCase() as 'EDU' | 'USDT';
-        if (token !== 'EDU' && token !== 'USDT') {
-            console.log('❌ Invalid token. Use EDU or USDT');
+        const token = options.from.toUpperCase() as 'LVE' | 'UZS';
+        if (token !== 'LVE' && token !== 'UZS') {
+            console.log('❌ Invalid token. Use LVE or UZS');
             process.exit(1);
         }
 
@@ -211,7 +211,7 @@ poolCommand
             const result = poolStateManager.swap(token, amount, minOut, blockIndex);
             storage.savePool(poolStateManager.getState());
 
-            const tokenOut = token === 'EDU' ? 'USDT' : 'EDU';
+            const tokenOut = token === 'LVE' ? 'UZS' : 'LVE';
 
             console.log(`
 ╔═══════════════════════════════════════════════════════════╗

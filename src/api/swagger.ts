@@ -4,10 +4,10 @@ const options: swaggerJsdoc.Options = {
     definition: {
         openapi: '3.0.0',
         info: {
-            title: 'EDU Chain API',
+            title: 'LVE Chain API',
             version: '1.2.0',
             description: `
-## EDU Chain - Educational Blockchain Network
+## LVE Chain - Educational Blockchain Network
 
 Децентрализованная блокчейн-сеть с Proof-of-Stake консенсусом.
 

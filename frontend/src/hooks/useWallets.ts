@@ -6,7 +6,7 @@ import { sha256 } from 'js-sha256';
 import wordlist from '../data/wordlist.json';
 
 const elliptic = new EC('secp256k1');
-let addressPrefix = 'tEDU';
+let addressPrefix = 'tLVE';
 
 async function loadNetworkPrefix(): Promise<void> {
     try {
@@ -152,7 +152,7 @@ export function useWallets() {
         fee: number,
         timestamp: number
     ): Promise<{ hash: string; signature: string; publicKey: string; timestamp: number } | null> => {
-        const confirmed = await confirmPin('Подтвердите транзакцию', `Отправить ${amount} EDU?`);
+        const confirmed = await confirmPin('Подтвердите транзакцию', `Отправить ${amount} LVE?`);
         if (!confirmed) return null;
         return signTransaction(from, to, amount, fee, timestamp);
     }, [confirmPin, signTransaction]);

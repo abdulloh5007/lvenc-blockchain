@@ -1,11 +1,11 @@
 {
-  "name": "edu-chain-node",
+  "name": "lve-chain-node",
   "version": "1.2.0",
-  "description": "EDU Chain - Educational Blockchain Node",
+  "description": "LVE Chain - System-level encryption protocol",
   "type": "module",
   "main": "dist/api/server.js",
   "bin": {
-    "edu-chain": "./dist/cli/cli.js"
+    "lve-chain": "./dist/cli/cli.js"
   },
   "scripts": {
     "build": "tsc && chmod +x dist/cli/cli.js",
@@ -17,7 +17,7 @@
   "keywords": [
     "blockchain",
     "cryptocurrency",
-    "education"
+    "system-level-encryption"
   ],
   "author": "",
   "license": "MIT",

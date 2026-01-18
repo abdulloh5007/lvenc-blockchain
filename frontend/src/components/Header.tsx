@@ -45,7 +45,7 @@ export const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate }) => {
                     <div className="logo">
                         <span className="logo-icon"><Link size={28} /></span>
                         <div className="logo-text">
-                            <span className="logo-name">EDU Chain</span>
+                            <span className="logo-name">LVE Chain</span>
                             <span className="logo-subtitle">Educational Blockchain</span>
                         </div>
                     </div>
@@ -103,7 +103,7 @@ export const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate }) => {
             <div className={`mobile-drawer ${menuOpen ? 'open' : ''}`}>
                 <div className="drawer-header">
                     <span className="logo-icon"><Link size={24} /></span>
-                    <span className="drawer-title">EDU Chain</span>
+                    <span className="drawer-title">LVE Chain</span>
                 </div>
                 <nav className="drawer-nav">
                     {navItems.map((item) => {

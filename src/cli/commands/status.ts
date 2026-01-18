@@ -12,7 +12,7 @@ export async function showStatus(port: number): Promise<void> {
 
         console.log(`
 ╔═══════════════════════════════════════╗
-║          EDU Chain Node Status        ║
+║          LVE Chain Node Status        ║
 ╠═══════════════════════════════════════╣
 ║  Status:    ${data.status === 'ok' ? '🟢 Running' : '🔴 Error'}              ║
 ║  Blocks:    ${String(data.blocks).padEnd(20)}      ║
@@ -23,7 +23,7 @@ export async function showStatus(port: number): Promise<void> {
     } catch {
         console.log(`
 ╔═══════════════════════════════════════╗
-║          EDU Chain Node Status        ║
+║          LVE Chain Node Status        ║
 ╠═══════════════════════════════════════╣
 ║  Status:    🔴 Offline                ║
 ║                                       ║

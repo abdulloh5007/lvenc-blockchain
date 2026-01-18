@@ -153,7 +153,7 @@ app.get('/api', (_req: Request, res: Response) => {
     res.json({
         success: true,
         data: {
-            name: 'EDU Chain API',
+            name: 'LVE Chain API',
             version: '1.0.0',
             endpoints: {
                 v1: '/api/v1',
@@ -167,7 +167,7 @@ app.get('/api', (_req: Request, res: Response) => {
 // Swagger Documentation
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
     customCss: '.swagger-ui .topbar { display: none }',
-    customSiteTitle: 'EDU Chain API Docs',
+    customSiteTitle: 'LVE Chain API Docs',
 }));
 
 // JSON spec endpoint

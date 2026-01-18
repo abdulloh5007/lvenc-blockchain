@@ -28,10 +28,10 @@ export const Dashboard: React.FC = () => {
             <div className="stats-grid">
                 <StatCard icon={<Blocks size={24} />} label={t('dashboard.totalBlocks')} value={stats?.blocks || 0} />
                 <StatCard icon={<FileText size={24} />} label={t('dashboard.totalTx')} value={stats?.transactions || 0} />
-                <StatCard icon={<Coins size={24} />} label={t('dashboard.validatorReward')} value={`${stats?.validatorReward || 0} ${stats?.coinSymbol || 'EDU'}`} />
+                <StatCard icon={<Coins size={24} />} label={t('dashboard.validatorReward')} value={`${stats?.validatorReward || 0} ${stats?.coinSymbol || 'LVE'}`} />
                 <StatCard icon={<Timer size={24} />} label={t('dashboard.nextReduction')} value={`${stats?.blocksUntilNextReduction || 0} ${t('common.blocks')}`} />
-                <StatCard icon={<BarChart3 size={24} />} label={t('dashboard.totalSupply')} value={`${(stats?.totalSupply || 0).toLocaleString()} EDU`} />
-                <StatCard icon={<Scissors size={24} />} label={t('dashboard.minReward')} value={`${stats?.minReward || 1} EDU`} />
+                <StatCard icon={<BarChart3 size={24} />} label={t('dashboard.totalSupply')} value={`${(stats?.totalSupply || 0).toLocaleString()} LVE`} />
+                <StatCard icon={<Scissors size={24} />} label={t('dashboard.minReward')} value={`${stats?.minReward || 1} LVE`} />
             </div>
 
             <div className="dashboard-content">

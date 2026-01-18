@@ -130,7 +130,7 @@ export async function startNode(options: NodeOptions): Promise<void> {
             apiPort = nextPort;
         } else {
             console.log('\n❌ Aborted. Please stop the existing process or choose a different port.');
-            console.log(`   edu-chain start --port <number>\n`);
+            console.log(`   lve-chain start --port <number>\n`);
             process.exit(1);
         }
     }
@@ -145,13 +145,13 @@ export async function startNode(options: NodeOptions): Promise<void> {
             p2pPort = nextPort;
         } else {
             console.log('\n❌ Aborted. Please stop the existing process or choose a different P2P port.');
-            console.log(`   edu-chain start --p2p <number>\n`);
+            console.log(`   lve-chain start --p2p <number>\n`);
             process.exit(1);
         }
     }
 
     console.log('');
-    logger.info(`🚀 Starting EDU Chain Node...`);
+    logger.info(`🚀 Starting LVE Chain Node...`);
     logger.info(`📁 Data directory: ${options.dataDir}`);
     logger.info(`🌐 Network: ${network}`);
     logger.info(`🔌 P2P Port: ${p2pPort}`);
@@ -236,7 +236,7 @@ export async function startNode(options: NodeOptions): Promise<void> {
         // Swagger docs
         app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
             customCss: '.swagger-ui .topbar { display: none }',
-            customSiteTitle: 'EDU Chain API Docs',
+            customSiteTitle: 'LVE Chain API Docs',
         }));
 
         // Routes
@@ -361,7 +361,7 @@ export async function startNode(options: NodeOptions): Promise<void> {
     const rl = readline.createInterface({
         input: process.stdin,
         output: process.stdout,
-        prompt: 'edu-chain> '
+        prompt: 'lve-chain> '
     });
 
     rl.prompt();

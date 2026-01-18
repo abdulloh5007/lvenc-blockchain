@@ -70,7 +70,7 @@ export const TransactionsPage: React.FC = () => {
                                     <ArrowRight size={14} className="tx-arrow" />
                                     <span className="tx-to font-mono">{formatHash(tx.toAddress)}</span>
                                 </div>
-                                <div className="tx-amount-compact">{tx.amount} EDU</div>
+                                <div className="tx-amount-compact">{tx.amount} LVE</div>
                                 <span className="tx-status-dot pending"></span>
                             </div>
                         ))}
@@ -137,12 +137,12 @@ export const TransactionsPage: React.FC = () => {
 
                             <div className="tx-detail-row">
                                 <span className="tx-detail-label">{t('transactions.amount') || 'Amount'}</span>
-                                <span className="tx-detail-amount">{selectedTx.amount} EDU</span>
+                                <span className="tx-detail-amount">{selectedTx.amount} LVE</span>
                             </div>
 
                             <div className="tx-detail-row">
                                 <span className="tx-detail-label">{t('transactions.fee') || 'Fee'}</span>
-                                <span className="tx-detail-fee">{selectedTx.fee || 0} EDU</span>
+                                <span className="tx-detail-fee">{selectedTx.fee || 0} LVE</span>
                             </div>
 
                             <div className="tx-detail-row">

@@ -54,7 +54,7 @@ export const WalletPage: React.FC = () => {
         setLoading(true);
         const res = await faucet.request(address);
         if (res.success) {
-            setMessage({ type: 'success', text: 'Received 100 EDU!' });
+            setMessage({ type: 'success', text: 'Received 100 LVE!' });
             refresh();
         } else {
             setMessage({ type: 'error', text: res.error || 'Faucet failed' });
@@ -111,11 +111,11 @@ export const WalletPage: React.FC = () => {
                                         </div>
                                         <div className="wallet-balance">
                                             <span className="balance-value">{w.balance?.toLocaleString() || 0}</span>
-                                            <span className="balance-symbol">EDU</span>
+                                            <span className="balance-symbol">LVE</span>
                                         </div>
                                         <div className="wallet-actions">
                                             <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(w.address); setMessage({ type: 'success', text: t('wallet.addressCopied') }); }} title={t('common.copy')}><Copy size={16} /></Button>
-                                            <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); handleFaucet(w.address); }} disabled={loading} title="Get 100 EDU"><Droplets size={16} /></Button>
+                                            <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); handleFaucet(w.address); }} disabled={loading} title="Get 100 LVE"><Droplets size={16} /></Button>
                                             <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); handleDeleteWallet(w.address); }} title="Delete"><Trash2 size={16} /></Button>
                                         </div>
                                     </div>
@@ -127,10 +127,10 @@ export const WalletPage: React.FC = () => {
                         <Card title={t('wallet.sendTransaction')} icon={<Send size={20} />} className="send-card">
                             <div className="send-form">
                                 <div className="form-row"><span className="form-label">{t('transactions.from')}:</span><span className="font-mono">{formatAddress(selectedWallet)}</span></div>
-                                <Input label={t('wallet.toAddress')} placeholder="EDU..." value={sendTo} onChange={(e) => setSendTo(e.target.value)} />
+                                <Input label={t('wallet.toAddress')} placeholder="LVE..." value={sendTo} onChange={(e) => setSendTo(e.target.value)} />
                                 <Input label={t('wallet.amount')} type="number" placeholder="0" value={sendAmount} onChange={(e) => setSendAmount(e.target.value)} />
                                 <div className={`auto-fee-info ${feeInfo?.congestion || 'low'}`}>
-                                    <div className="fee-main"><span className="fee-label">{t('wallet.fee')}:</span><span className="fee-value">{feeInfo?.recommended || 0.1} EDU</span></div>
+                                    <div className="fee-main"><span className="fee-label">{t('wallet.fee')}:</span><span className="fee-value">{feeInfo?.recommended || 0.1} LVE</span></div>
                                 </div>
                                 <Button onClick={handleSend} loading={loading}><Send size={16} /> {t('common.send')}</Button>
                             </div>
