@@ -4,6 +4,7 @@ import { Command } from 'commander';
 import { startNode } from './commands/start.js';
 import { identityCommand } from './commands/identity.js';
 import { rewardCommand } from './commands/reward.js';
+import { poolCommand } from './commands/pool.js';
 import { config } from '../config.js';
 
 const program = new Command();
@@ -53,9 +54,10 @@ program
         await showPeers(parseInt(options.port));
     });
 
-// Add identity and reward commands BEFORE parse()
+// Add commands BEFORE parse()
 program.addCommand(identityCommand);
 program.addCommand(rewardCommand);
+program.addCommand(poolCommand);
 
 // Parse AFTER all commands are registered
 program.parse();

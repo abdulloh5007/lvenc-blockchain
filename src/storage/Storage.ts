@@ -10,6 +10,7 @@ import {
     PendingStake,
     PendingDelegation
 } from '../staking/StakingPool.js';
+import type { PoolState } from '../pool/LiquidityPool.js';
 import { logger } from '../utils/logger.js';
 
 export interface StakingData {
@@ -31,11 +32,13 @@ export class Storage {
     private dataDir: string;
     private blocksPath: string;
     private stakingPath: string;
+    private poolPath: string;
 
     constructor() {
         this.dataDir = config.storage.dataDir;
         this.blocksPath = path.join(this.dataDir, config.storage.blocksFile);
         this.stakingPath = path.join(this.dataDir, 'staking.json');
+        this.poolPath = path.join(this.dataDir, 'pool.json');
         this.ensureDirectories();
     }
 
@@ -77,6 +80,24 @@ export class Storage {
             return JSON.parse(content);
         } catch (error) {
             logger.error('Failed to load staking:', error);
+            return null;
+        }
+    }
+
+    savePool(data: PoolState): void {
+        fs.writeFileSync(this.poolPath, JSON.stringify(data, null, 2));
+        logger.debug('💾 Pool data saved to disk');
+    }
+
+    loadPool(): PoolState | null {
+        if (!fs.existsSync(this.poolPath)) {
+            return null;
+        }
+        try {
+            const content = fs.readFileSync(this.poolPath, 'utf-8');
+            return JSON.parse(content);
+        } catch (error) {
+            logger.error('Failed to load pool:', error);
             return null;
         }
     }

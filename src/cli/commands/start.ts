@@ -23,6 +23,7 @@ import { createNFTRoutes } from '../../api/routes/nft.js';
 import { createIPFSRoutes } from '../../api/routes/ipfs.js';
 import { createStakingRoutes } from '../../api/routes/staking.js';
 import { createNodeRoutes } from '../../api/routes/node.js';
+import { createPoolRoutes } from '../../api/routes/pool.js';
 
 export interface NodeOptions {
     apiPort: number;
@@ -248,6 +249,7 @@ export async function startNode(options: NodeOptions): Promise<void> {
         app.use('/api/nft', createNFTRoutes(nftManager));
         app.use('/api/ipfs', createIPFSRoutes());
         app.use('/api/staking', createStakingRoutes(blockchain));
+        app.use('/api/pool', createPoolRoutes());
         if (p2pServer) {
             app.use('/api/node', createNodeRoutes(blockchain, p2pServer));
         }

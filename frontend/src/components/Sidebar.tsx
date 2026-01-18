@@ -25,6 +25,7 @@ const navGroups = [
         items: [
             { id: '/wallet', labelKey: 'nav.wallet', icon: Wallet },
             { id: '/staking', labelKey: 'nav.staking', icon: Coins },
+            { id: '/swap', labelKey: 'Swap', icon: Coins },
         ],
     },
     {

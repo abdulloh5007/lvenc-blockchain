@@ -1,4 +1,5 @@
 import { logger } from '../utils/logger.js';
+import { sha256 } from '../utils/crypto.js';
 
 // Interfaces
 export interface StakeInfo {
@@ -417,17 +418,30 @@ export class StakingPool {
         }
     }
 
-    selectValidator(): string | null {
-        const activeValidators = Array.from(this.validators.values()).filter(v => v.isActive);
+    /**
+     * Select validator deterministically based on seed (previous block hash + block index)
+     * MUST be deterministic - all nodes must select the same validator
+     */
+    selectValidator(seed?: string): string | null {
+        const activeValidators = Array.from(this.validators.values())
+            .filter(v => v.isActive)
+            .sort((a, b) => a.address.localeCompare(b.address)); // Deterministic order
+
         if (activeValidators.length === 0) return null;
 
         // Total weight = own stake + delegated stake
         const totalWeight = activeValidators.reduce((sum, v) => sum + v.stake + v.delegatedStake, 0);
-        let random = Math.random() * totalWeight;
 
+        // Deterministic random based on seed (e.g., previousBlockHash + blockIndex)
+        // If no seed provided, use current epoch as fallback (still deterministic across nodes)
+        const seedStr = seed || `epoch-${this.currentEpoch}`;
+        const hash = sha256(seedStr);
+        const randomValue = (parseInt(hash.slice(0, 8), 16) / 0xFFFFFFFF) * totalWeight;
+
+        let cumulative = 0;
         for (const validator of activeValidators) {
-            random -= (validator.stake + validator.delegatedStake);
-            if (random <= 0) return validator.address;
+            cumulative += (validator.stake + validator.delegatedStake);
+            if (randomValue < cumulative) return validator.address;
         }
 
         return activeValidators[0].address;

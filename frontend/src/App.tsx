@@ -9,6 +9,7 @@ import {
   TransactionsPage,
   StakingPage,
   NetworkPage,
+  SwapPage,
   NFTGallery,
   NFTMint,
   NFTCollections,
@@ -32,6 +33,7 @@ function App() {
                 <Route path="/wallet" element={<WalletPage />} />
                 <Route path="/transactions" element={<TransactionsPage />} />
                 <Route path="/staking" element={<StakingPage />} />
+                <Route path="/swap" element={<SwapPage />} />
                 <Route path="/network" element={<NetworkPage />} />
 
                 {/* NFT Routes */}

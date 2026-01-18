@@ -20,6 +20,7 @@ import { createIPFSRoutes } from './routes/ipfs.js';
 import { createAdminRoutes } from './routes/admin.js';
 import { createStakingRoutes } from './routes/staking.js';
 import { createNodeRoutes } from './routes/node.js';
+import { createPoolRoutes } from './routes/pool.js';
 import { initBlockProducer, stakingPool } from '../staking/index.js';
 import {
     apiKeyAuth,
@@ -187,6 +188,7 @@ v1Router.use('/nft', createNFTRoutes(nftManager));
 v1Router.use('/ipfs', createIPFSRoutes());
 v1Router.use('/staking', createStakingRoutes(blockchain));
 v1Router.use('/node', createNodeRoutes(blockchain, p2pServer));
+v1Router.use('/pool', createPoolRoutes());
 
 // Apply mint rate limit to NFT mint endpoint
 v1Router.post('/nft/mint', mintLimiter);
@@ -207,6 +209,7 @@ app.use('/api/network', createNetworkRoutes(p2pServer));
 app.use('/api/nft', createNFTRoutes(nftManager));
 app.use('/api/ipfs', createIPFSRoutes());
 app.use('/api/staking', createStakingRoutes(blockchain));
+app.use('/api/pool', createPoolRoutes());
 app.get('/api/network-info', (_req: Request, res: Response) => {
     res.json({
         success: true,
