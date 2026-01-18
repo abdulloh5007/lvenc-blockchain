@@ -4,13 +4,14 @@ import { Command } from 'commander';
 import { startNode } from './commands/start.js';
 import { identityCommand } from './commands/identity.js';
 import { rewardCommand } from './commands/reward.js';
+import { config } from '../config.js';
 
 const program = new Command();
 
 program
     .name('edu-chain')
     .description('EDU Chain Node - Educational Blockchain Network')
-    .version('1.0.0');
+    .version(config.version.nodeVersion);
 
 program
     .command('start')

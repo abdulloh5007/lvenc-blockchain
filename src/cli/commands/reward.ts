@@ -101,27 +101,17 @@ rewardCommand
             fs.writeFileSync(identityPath, JSON.stringify(identity, null, 2), { mode: 0o600 });
 
             console.log('');
-            console.log('╔═══════════════════════════════════════════════════════════╗');
-            console.log('║        ⚠️  SAVE THIS MNEMONIC - SHOWN ONLY ONCE!          ║');
-            console.log('╠═══════════════════════════════════════════════════════════╣');
-            console.log('║                                                           ║');
-
-            // Split mnemonic into lines of 4 words
-            const words = mnemonic.split(' ');
-            for (let i = 0; i < words.length; i += 4) {
-                const line = words.slice(i, i + 4).join(' ');
-                console.log(`║  ${(i / 4 + 1)}. ${line.padEnd(52)} ║`);
-            }
-
-            console.log('║                                                           ║');
-            console.log('╠═══════════════════════════════════════════════════════════╣');
-            console.log(`║  Reward Address: ${address.slice(0, 36)}... ║`);
-            console.log(`║  Network:        ${options.network.padEnd(38)} ║`);
-            console.log('╚═══════════════════════════════════════════════════════════╝');
+            console.log('╔════════════════════════════════════════════════════════════════════════════╗');
+            console.log('║                     ✅ Reward Wallet Generated                             ║');
+            console.log('╠════════════════════════════════════════════════════════════════════════════╣');
+            console.log(`║  Reward Address: ${address}              ║`);
+            console.log(`║  Network:        ${options.network.padEnd(55)}   ║`);
+            console.log('╚════════════════════════════════════════════════════════════════════════════╝');
             console.log('');
             console.log('🔒 Write down your mnemonic and store it securely!');
-            console.log('   You can recover this wallet using:');
-            console.log(`   edu-chain wallet recover --mnemonic "your 24 words"`);
+            console.log('   Here it is:');
+            console.log('');
+            console.log(`   ${mnemonic}`);
             console.log('');
             console.log('💡 Validator rewards will be sent to this address.');
             console.log('');
@@ -160,8 +150,8 @@ rewardCommand
                 console.log('╔═══════════════════════════════════════════════════════════╗');
                 console.log('║                    💰 Reward Address                      ║');
                 console.log('╠═══════════════════════════════════════════════════════════╣');
-                console.log(`║  ${identity.rewardAddress.padEnd(55)} ║`);
-                console.log(`║  Network: ${options.network.padEnd(46)} ║`);
+                console.log(`║  ${identity.rewardAddress.padEnd(55)}  ║`);
+                console.log(`║  Network: ${options.network.padEnd(46)}  ║`);
                 console.log('╚═══════════════════════════════════════════════════════════╝');
             } else {
                 console.log('❌ No reward address configured');
