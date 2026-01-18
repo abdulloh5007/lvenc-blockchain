@@ -48,7 +48,7 @@ export class SlashingManager {
             details: `Signatures: ${sig1.slice(0, 16)}... / ${sig2.slice(0, 16)}...`,
         };
         this.evidence.push(evidence);
-        this.log.warn(`🔪 SLASHED ${validator.slice(0, 12)}... for double-sign at slot ${slot}. Penalty: ${penalty} EDU`);
+        this.log.warn(`🔪 SLASHED ${validator.slice(0, 12)}... for double-sign at slot ${slot}. Penalty: ${penalty} LVE`);
     }
     recordMissedSlot(slot: number, expectedValidator: string): void {
         let record = this.missedSlots.get(expectedValidator);
@@ -75,7 +75,7 @@ export class SlashingManager {
             details: `Missed ${missedCount} consecutive slots`,
         };
         this.evidence.push(evidence);
-        this.log.warn(`🔪 SLASHED ${validator.slice(0, 12)}... for being offline. Penalty: ${penalty} EDU`);
+        this.log.warn(`🔪 SLASHED ${validator.slice(0, 12)}... for being offline. Penalty: ${penalty} LVE`);
     }
     private updateValidatorActivity(validator: string, slot: number): void {
         const record = this.missedSlots.get(validator);

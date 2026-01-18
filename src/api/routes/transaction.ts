@@ -75,8 +75,8 @@ export function createTransactionRoutes(blockchain: Blockchain): Router {
             example: {
                 endpoint: 'POST /api/transaction/send',
                 body: {
-                    from: 'tEDU_YourSenderAddressHere',
-                    to: 'tEDU_RecipientAddressHere',
+                    from: 'tLVE_YourSenderAddressHere',
+                    to: 'tLVE_RecipientAddressHere',
                     amount: 10,
                     fee: 0.01,
                     signature: 'hex_signature_created_by_wallet',
@@ -89,7 +89,7 @@ export function createTransactionRoutes(blockchain: Blockchain): Router {
                     'Use the frontend wallet to create properly signed transactions',
                 ],
             },
-            curl_example: `curl -X POST http://localhost:3001/api/transaction/send -H "Content-Type: application/json" -d '{"from":"tEDU_...", "to":"tEDU_...", "amount":10, "fee":0.01, "signature":"...", "publicKey":"...", "timestamp":${exampleTimestamp}}'`,
+            curl_example: `curl -X POST http://localhost:3001/api/transaction/send -H "Content-Type: application/json" -d '{"from":"tLVE_...", "to":"tLVE_...", "amount":10, "fee":0.01, "signature":"...", "publicKey":"...", "timestamp":${exampleTimestamp}}'`,
         });
     });
 

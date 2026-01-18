@@ -37,10 +37,10 @@ rewardCommand
         }
 
         // Validate address format
-        if (!address.startsWith('tEDU') && !address.startsWith('EDU')) {
+        if (!address.startsWith('tLVE') && !address.startsWith('LVE')) {
             console.log('');
             console.log('❌ Invalid address format');
-            console.log('   Address must start with "tEDU" (testnet) or "EDU" (mainnet)');
+            console.log('   Address must start with "tLVE" (testnet) or "LVE" (mainnet)');
             console.log('');
             process.exit(1);
         }

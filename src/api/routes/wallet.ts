@@ -7,7 +7,7 @@ export function createWalletRoutes(blockchain: Blockchain): Router {
         const balance = blockchain.getBalance(address);
         res.json({
             success: true,
-            data: { address, balance, symbol: 'EDU' },
+            data: { address, balance, symbol: 'LVE' },
         });
     });
     router.get('/:address/transactions', (req: Request, res: Response) => {

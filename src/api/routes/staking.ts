@@ -48,11 +48,11 @@ export function createStakingRoutes(blockchain: Blockchain): Router {
             if (success) {
                 storage.saveStaking(stakingPool.toJSON());
                 const epochInfo = stakingPool.getEpochInfo();
-                log.info(`📊 ${address.slice(0, 10)}... staked ${amount} EDU (effective epoch ${epochInfo.epoch + 1})`);
+                log.info(`📊 ${address.slice(0, 10)}... staked ${amount} LVE (effective epoch ${epochInfo.epoch + 1})`);
                 res.json({
                     success: true,
                     data: {
-                        message: `Staked ${amount} EDU (effective next epoch)`,
+                        message: `Staked ${amount} LVE (effective next epoch)`,
                         currentStake: stakingPool.getStake(address),
                         pendingStake: stakingPool.getPendingStake(address),
                         effectiveEpoch: epochInfo.epoch + 1,
@@ -60,7 +60,7 @@ export function createStakingRoutes(blockchain: Blockchain): Router {
                     },
                 });
             } else {
-                res.status(400).json({ success: false, error: 'Staking failed. Minimum stake is 100 EDU.' });
+                res.status(400).json({ success: false, error: 'Staking failed. Minimum stake is 100 LVE.' });
             }
         } catch (error) {
             res.status(400).json({ success: false, error: error instanceof Error ? error.message : 'Staking failed' });
@@ -79,7 +79,7 @@ export function createStakingRoutes(blockchain: Blockchain): Router {
             res.json({
                 success: true,
                 data: {
-                    message: `Unstake requested: ${amount} EDU (available after epoch ${request.epochEffective})`,
+                    message: `Unstake requested: ${amount} LVE (available after epoch ${request.epochEffective})`,
                     effectiveEpoch: request.epochEffective,
                     remainingStake: stakingPool.getStake(address),
                 },
@@ -101,10 +101,10 @@ export function createStakingRoutes(blockchain: Blockchain): Router {
             blockchain.addTransaction(tx);
             storage.saveBlockchain(blockchain.toJSON());
             storage.saveStaking(stakingPool.toJSON());
-            log.info(`💰 ${address.slice(0, 10)}... claimed ${released} EDU from unstake`);
+            log.info(`💰 ${address.slice(0, 10)}... claimed ${released} LVE from unstake`);
             res.json({
                 success: true,
-                data: { message: `Claimed ${released} EDU`, amount: released, transactionId: tx.id },
+                data: { message: `Claimed ${released} LVE`, amount: released, transactionId: tx.id },
             });
         } else {
             res.json({
@@ -132,17 +132,17 @@ export function createStakingRoutes(blockchain: Blockchain): Router {
             if (success) {
                 storage.saveStaking(stakingPool.toJSON());
                 const epochInfo = stakingPool.getEpochInfo();
-                log.info(`📊 ${delegator.slice(0, 10)}... delegated ${amount} EDU to ${validator.slice(0, 10)}...`);
+                log.info(`📊 ${delegator.slice(0, 10)}... delegated ${amount} LVE to ${validator.slice(0, 10)}...`);
                 res.json({
                     success: true,
                     data: {
-                        message: `Delegated ${amount} EDU to validator (effective next epoch)`,
+                        message: `Delegated ${amount} LVE to validator (effective next epoch)`,
                         effectiveEpoch: epochInfo.epoch + 1,
                         delegations: stakingPool.getDelegations(delegator),
                     },
                 });
             } else {
-                res.status(400).json({ success: false, error: 'Delegation failed. Minimum is 10 EDU to active validator.' });
+                res.status(400).json({ success: false, error: 'Delegation failed. Minimum is 10 LVE to active validator.' });
             }
         } catch (error) {
             res.status(400).json({ success: false, error: error instanceof Error ? error.message : 'Delegation failed' });
@@ -163,11 +163,11 @@ export function createStakingRoutes(blockchain: Blockchain): Router {
                 blockchain.addTransaction(tx);
                 storage.saveBlockchain(blockchain.toJSON());
                 storage.saveStaking(stakingPool.toJSON());
-                log.info(`🔓 ${delegator.slice(0, 10)}... undelegated ${amount} EDU from ${validator.slice(0, 10)}...`);
+                log.info(`🔓 ${delegator.slice(0, 10)}... undelegated ${amount} LVE from ${validator.slice(0, 10)}...`);
                 res.json({
                     success: true,
                     data: {
-                        message: `Undelegated ${amount} EDU`,
+                        message: `Undelegated ${amount} LVE`,
                         transactionId: tx.id,
                         remainingDelegations: stakingPool.getDelegations(delegator),
                     },

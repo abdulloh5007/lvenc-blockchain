@@ -30,7 +30,7 @@ const INJECTION_PATTERNS = [
 
 // Max lengths for different field types
 const MAX_LENGTHS = {
-    address: 50,      // EDU addresses
+    address: 50,      // LVE addresses
     hash: 128,        // Transaction/block hashes
     name: 100,        // Collection/wallet names
     description: 1000,// Descriptions
@@ -158,8 +158,8 @@ function validateAndSanitize(obj: Record<string, unknown>, path: string = ''): R
  * Validate blockchain address format
  */
 export function isValidAddress(address: string): boolean {
-    // EDU addresses start with "EDU" followed by 40 hex characters
-    return /^EDU[a-fA-F0-9]{40}$/.test(address);
+    // LVE addresses start with "LVE" followed by 40 hex characters
+    return /^LVE[a-fA-F0-9]{40}$/.test(address);
 }
 
 /**

@@ -155,15 +155,15 @@ export class Blockchain {
 
     /**
      * Get PoS reward with Solana-style gradual inflation reduction
-     * Start: 10 EDU, Min: 1 EDU, reduces by 0.5% every 100,000 blocks
+     * Start: 10 LVE, Min: 1 LVE, reduces by 0.5% every 100,000 blocks
      */
     getPoSReward(): number {
         const INITIAL_REWARD = 10;
         const MIN_REWARD = 1;
-        const REDUCTION_INTERVAL = 100000; // blocks
-        const REDUCTION_RATE = 0.995; // 0.5% reduction
-        const reductions = Math.floor(this.chain.length / REDUCTION_INTERVAL);
-        const reward = INITIAL_REWARD * Math.pow(REDUCTION_RATE, reductions);
+        const RLVECTION_INTERVAL = 100000; // blocks
+        const RLVECTION_RATE = 0.995; // 0.5% reduction
+        const reductions = Math.floor(this.chain.length / RLVECTION_INTERVAL);
+        const reward = INITIAL_REWARD * Math.pow(RLVECTION_RATE, reductions);
         return Math.max(MIN_REWARD, Math.round(reward * 100) / 100);
     }
 
@@ -247,7 +247,7 @@ export class Blockchain {
         const remainingTx = sortedByFee.slice(config.blockchain.maxTxPerBlock);
         const totalFees = txToInclude.reduce((sum, tx) => SafeMath.add(sum, tx.fee), 0);
         // Solana-style gradual inflation reduction
-        // Start: 10 EDU, Min: 1 EDU, reduces by 0.5% every 100,000 blocks
+        // Start: 10 LVE, Min: 1 LVE, reduces by 0.5% every 100,000 blocks
         const validatorReward = this.getPoSReward();
         const totalReward = SafeMath.add(validatorReward, totalFees);
         const rewardTx = new Transaction(null, validatorAddress, totalReward, 0);

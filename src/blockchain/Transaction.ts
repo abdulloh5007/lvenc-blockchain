@@ -73,7 +73,7 @@ export class Transaction implements TransactionData {
         const publicKey = keyPair.getPublic('hex');
 
         // Create address from public key for verification
-        const addressFromKey = 'EDU' + sha256(publicKey).substring(0, 40);
+        const addressFromKey = 'LVE' + sha256(publicKey).substring(0, 40);
 
         if (addressFromKey !== this.fromAddress) {
             throw new Error('Cannot sign transaction for other wallets!');

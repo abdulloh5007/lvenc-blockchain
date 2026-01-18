@@ -106,7 +106,7 @@ export async function startNode(options: NodeOptions): Promise<void> {
 ║   ███████╗██████╔╝╚██████╔╝    ╚██████╗██║  ██║██║  ██║   ║
 ║   ╚══════╝╚═════╝  ╚═════╝      ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝   ║
 ║                                                           ║
-║   ${options.bootstrapMode ? 'BOOTSTRAP NODE' : 'EDU CHAIN Node'} v${config.version.nodeVersion}${options.bootstrapMode ? '                    ' : '                        '}║
+║   ${options.bootstrapMode ? 'BOOTSTRAP NODE' : 'LVE CHAIN Node'} v${config.version.nodeVersion}${options.bootstrapMode ? '                    ' : '                        '}║
 ╚═══════════════════════════════════════════════════════════╝
     `);
 

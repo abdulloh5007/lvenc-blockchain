@@ -19,8 +19,8 @@ const options: swaggerJsdoc.Options = {
 - **P2P сеть** с автоматической синхронизацией
 
 ### Сети:
-- **Mainnet**: EDU_ адреса
-- **Testnet**: tEDU_ адреса
+- **Mainnet**: LVE_ адреса
+- **Testnet**: tLVE_ адреса
 
 ### Версия протокола: 1
             `,
@@ -179,7 +179,7 @@ const options: swaggerJsdoc.Options = {
                         id: { type: 'string', description: 'Transaction ID (hash)' },
                         fromAddress: { type: 'string', description: 'Sender address', nullable: true },
                         toAddress: { type: 'string', description: 'Recipient address' },
-                        amount: { type: 'number', description: 'Amount in EDU' },
+                        amount: { type: 'number', description: 'Amount in LVE' },
                         fee: { type: 'number', description: 'Transaction fee' },
                         timestamp: { type: 'integer', description: 'Unix timestamp' },
                         signature: { type: 'string', description: 'Transaction signature' },
@@ -192,14 +192,14 @@ const options: swaggerJsdoc.Options = {
                     properties: {
                         address: { type: 'string', description: 'Wallet address' },
                         balance: { type: 'number', description: 'Available balance' },
-                        symbol: { type: 'string', example: 'EDU' },
+                        symbol: { type: 'string', example: 'LVE' },
                     },
                 },
                 WalletData: {
                     type: 'object',
                     properties: {
                         publicKey: { type: 'string', description: 'secp256k1 public key' },
-                        address: { type: 'string', description: 'EDU address (EDU_ or tEDU_)' },
+                        address: { type: 'string', description: 'LVE address (LVE_ or tLVE_)' },
                         label: { type: 'string', nullable: true },
                         createdAt: { type: 'integer' },
                     },
@@ -354,7 +354,7 @@ const options: swaggerJsdoc.Options = {
                                 schema: {
                                     type: 'object',
                                     properties: {
-                                        rewardAddress: { type: 'string', description: 'Wallet address (tEDU_... or EDU_...)' },
+                                        rewardAddress: { type: 'string', description: 'Wallet address (tLVE_... or LVE_...)' },
                                     },
                                     required: ['rewardAddress'],
                                 },
@@ -535,7 +535,7 @@ const options: swaggerJsdoc.Options = {
                                                 properties: {
                                                     address: { type: 'string' },
                                                     balance: { type: 'number' },
-                                                    symbol: { type: 'string', example: 'EDU' },
+                                                    symbol: { type: 'string', example: 'LVE' },
                                                 },
                                             },
                                         },

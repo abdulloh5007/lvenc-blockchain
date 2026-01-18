@@ -4,8 +4,8 @@ const isTestnet = process.env.NETWORK_MODE !== 'mainnet';
 // ALL nodes must use these values to have same genesis hash
 const GENESIS_CONFIG = {
     // Fixed testnet faucet address (do not change!)
-    testnetFaucetAddress: 'tEDU0000000000000000000000000000000000000001',
-    mainnetFaucetAddress: 'EDU0000000000000000000000000000000000000001',
+    testnetFaucetAddress: 'tLVE0000000000000000000000000000000000000001',
+    mainnetFaucetAddress: 'LVE0000000000000000000000000000000000000001',
     // Fixed timestamp (January 1, 2026 00:00:00 UTC)
     timestamp: 1767225600000,
 };
@@ -42,9 +42,9 @@ export const config = {
         validatorReward: 50,
         halvingInterval: 100,
         genesisAmount: 1000000,
-        coinName: isTestnet ? 'tEDU' : 'EDU',
-        coinSymbol: isTestnet ? 'tEDU' : 'EDU',
-        addressPrefix: isTestnet ? 'tEDU' : 'EDU',
+        coinName: isTestnet ? 'tLVE' : 'LVE',
+        coinSymbol: isTestnet ? 'tLVE' : 'LVE',
+        addressPrefix: isTestnet ? 'tLVE' : 'LVE',
         maxTxPerBlock: 10,
         maxPendingTx: 100,
         minFee: 0.1,

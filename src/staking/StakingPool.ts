@@ -187,7 +187,7 @@ export class StakingPool {
             });
         }
 
-        this.log.info(`📊 Stake queued: ${amount} EDU from ${address.slice(0, 10)}... (effective epoch ${epochEffective})`);
+        this.log.info(`📊 Stake queued: ${amount} LVE from ${address.slice(0, 10)}... (effective epoch ${epochEffective})`);
         return true;
     }
 
@@ -214,7 +214,7 @@ export class StakingPool {
         this.stakes.set(address, stake);
         this.updateValidator(address);
 
-        this.log.info(`🔓 Unstake queued: ${amount} EDU (effective epoch ${epochEffective})`);
+        this.log.info(`🔓 Unstake queued: ${amount} LVE (effective epoch ${epochEffective})`);
         return request;
     }
 
@@ -232,7 +232,7 @@ export class StakingPool {
 
         this.pendingUnstakes.set(address, remaining);
         if (totalReleased > 0) {
-            this.log.info(`✅ Released ${totalReleased} EDU from unstake`);
+            this.log.info(`✅ Released ${totalReleased} LVE from unstake`);
         }
         return totalReleased;
     }
@@ -259,7 +259,7 @@ export class StakingPool {
             epochEffective,
         });
 
-        this.log.info(`📊 Delegation queued: ${amount} EDU from ${delegator.slice(0, 10)}... to ${validator.slice(0, 10)}... (effective epoch ${epochEffective})`);
+        this.log.info(`📊 Delegation queued: ${amount} LVE from ${delegator.slice(0, 10)}... to ${validator.slice(0, 10)}... (effective epoch ${epochEffective})`);
         return true;
     }
 
@@ -292,7 +292,7 @@ export class StakingPool {
             this.validators.set(pending.validator, validator);
         }
 
-        this.log.info(`✅ Delegation activated: ${pending.amount} EDU to ${pending.validator.slice(0, 10)}...`);
+        this.log.info(`✅ Delegation activated: ${pending.amount} LVE to ${pending.validator.slice(0, 10)}...`);
     }
 
     undelegate(delegator: string, validator: string, amount: number): boolean {
@@ -318,7 +318,7 @@ export class StakingPool {
             this.validators.set(validator, validatorInfo);
         }
 
-        this.log.info(`🔓 Undelegated: ${amount} EDU from ${validator.slice(0, 10)}...`);
+        this.log.info(`🔓 Undelegated: ${amount} LVE from ${validator.slice(0, 10)}...`);
         return true;
     }
 
@@ -382,7 +382,7 @@ export class StakingPool {
         }
 
         this.updateValidator(address);
-        this.log.warn(`⚠️ Slashed ${slashAmount} EDU from ${address.slice(0, 10)}... Reason: ${reason}`);
+        this.log.warn(`⚠️ Slashed ${slashAmount} LVE from ${address.slice(0, 10)}... Reason: ${reason}`);
         return slashAmount;
     }
 
