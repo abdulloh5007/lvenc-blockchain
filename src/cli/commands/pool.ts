@@ -1,10 +1,11 @@
 /**
  * Pool CLI Command
  * Commands for AMM liquidity pool operations
+ * Uses PoolStateManager for on-chain synced pool state
  */
 
 import { Command } from 'commander';
-import { liquidityPool } from '../../pool/index.js';
+import { poolStateManager } from '../../pool/index.js';
 import { storage } from '../../storage/index.js';
 
 export const poolCommand = new Command('pool')
@@ -18,11 +19,9 @@ poolCommand
     .action(() => {
         // Load pool state
         const poolData = storage.loadPool();
-        if (poolData) {
-            liquidityPool.loadFromData(poolData);
-        }
+        poolStateManager.loadState(poolData);
 
-        const info = liquidityPool.getPoolInfo();
+        const info = poolStateManager.getPoolInfo();
 
         if (!info.initialized) {
             console.log(`
@@ -59,11 +58,9 @@ poolCommand
     .requiredOption('--amount <number>', 'Amount to swap')
     .action((options) => {
         const poolData = storage.loadPool();
-        if (poolData) {
-            liquidityPool.loadFromData(poolData);
-        }
+        poolStateManager.loadState(poolData);
 
-        if (!liquidityPool.isInitialized()) {
+        if (!poolStateManager.isInitialized()) {
             console.log('❌ Pool not initialized');
             process.exit(1);
         }
@@ -81,7 +78,7 @@ poolCommand
         }
 
         try {
-            const quote = liquidityPool.getSwapQuote(token, amount);
+            const quote = poolStateManager.getSwapQuote(token, amount);
             const tokenOut = token === 'EDU' ? 'USDT' : 'EDU';
 
             console.log(`
@@ -110,9 +107,7 @@ poolCommand
     .requiredOption('--usdt <number>', 'USDT amount')
     .action((options) => {
         const poolData = storage.loadPool();
-        if (poolData) {
-            liquidityPool.loadFromData(poolData);
-        }
+        poolStateManager.loadState(poolData);
 
         const eduAmount = parseFloat(options.edu);
         const usdtAmount = parseFloat(options.usdt);
@@ -123,16 +118,18 @@ poolCommand
         }
 
         try {
-            const result = liquidityPool.addLiquidity(options.address, eduAmount, usdtAmount);
-            storage.savePool(liquidityPool.toJSON());
+            // Use block 0 for CLI (will be replaced with actual block in block producer)
+            const blockIndex = 0;
+            const result = poolStateManager.addLiquidity(options.address, eduAmount, usdtAmount, blockIndex);
+            storage.savePool(poolStateManager.getState());
 
             console.log(`
 ╔═══════════════════════════════════════════════════════════╗
 ║                 ✅ Liquidity Added                        ║
 ╠═══════════════════════════════════════════════════════════╣
-║  EDU Added:      ${result.eduAdded.toFixed(4).padEnd(38)} ║
-║  USDT Added:     ${result.usdtAdded.toFixed(4).padEnd(38)} ║
-║  LP Tokens:      ${result.lpTokensMinted.toFixed(4).padEnd(38)} ║
+║  EDU Added:      ${eduAmount.toFixed(4).padEnd(38)} ║
+║  USDT Added:     ${usdtAmount.toFixed(4).padEnd(38)} ║
+║  LP Tokens:      ${result.lpTokens.toFixed(4).padEnd(38)} ║
 ╚═══════════════════════════════════════════════════════════╝
             `);
         } catch (error) {
@@ -150,9 +147,7 @@ poolCommand
     .requiredOption('--lp <number>', 'LP tokens to burn')
     .action((options) => {
         const poolData = storage.loadPool();
-        if (poolData) {
-            liquidityPool.loadFromData(poolData);
-        }
+        poolStateManager.loadState(poolData);
 
         const lpTokens = parseFloat(options.lp);
         if (isNaN(lpTokens) || lpTokens <= 0) {
@@ -161,16 +156,17 @@ poolCommand
         }
 
         try {
-            const result = liquidityPool.removeLiquidity(options.address, lpTokens);
-            storage.savePool(liquidityPool.toJSON());
+            const blockIndex = 0;
+            const result = poolStateManager.removeLiquidity(options.address, lpTokens, blockIndex);
+            storage.savePool(poolStateManager.getState());
 
             console.log(`
 ╔═══════════════════════════════════════════════════════════╗
 ║                 ✅ Liquidity Removed                      ║
 ╠═══════════════════════════════════════════════════════════╣
-║  LP Burned:      ${result.lpTokensBurned.toFixed(4).padEnd(38)} ║
-║  EDU Received:   ${result.eduReceived.toFixed(4).padEnd(38)} ║
-║  USDT Received:  ${result.usdtReceived.toFixed(4).padEnd(38)} ║
+║  LP Burned:      ${lpTokens.toFixed(4).padEnd(38)} ║
+║  EDU Received:   ${result.eduAmount.toFixed(4).padEnd(38)} ║
+║  USDT Received:  ${result.usdtAmount.toFixed(4).padEnd(38)} ║
 ╚═══════════════════════════════════════════════════════════╝
             `);
         } catch (error) {
@@ -189,11 +185,9 @@ poolCommand
     .option('--min-out <number>', 'Minimum output (slippage protection)', '0')
     .action((options) => {
         const poolData = storage.loadPool();
-        if (poolData) {
-            liquidityPool.loadFromData(poolData);
-        }
+        poolStateManager.loadState(poolData);
 
-        if (!liquidityPool.isInitialized()) {
+        if (!poolStateManager.isInitialized()) {
             console.log('❌ Pool not initialized');
             process.exit(1);
         }
@@ -213,8 +207,9 @@ poolCommand
         }
 
         try {
-            const result = liquidityPool.swap(token, amount, minOut);
-            storage.savePool(liquidityPool.toJSON());
+            const blockIndex = 0;
+            const result = poolStateManager.swap(token, amount, minOut, blockIndex);
+            storage.savePool(poolStateManager.getState());
 
             const tokenOut = token === 'EDU' ? 'USDT' : 'EDU';
 
@@ -222,10 +217,9 @@ poolCommand
 ╔═══════════════════════════════════════════════════════════╗
 ║                    ✅ Swap Executed                       ║
 ╠═══════════════════════════════════════════════════════════╣
-║  Sold:           ${result.amountIn.toFixed(4)} ${token.padEnd(33)} ║
+║  Sold:           ${amount.toFixed(4)} ${token.padEnd(33)} ║
 ║  Received:       ${result.amountOut.toFixed(4)} ${tokenOut.padEnd(33)} ║
 ║  Fee:            ${result.fee.toFixed(4)} ${token.padEnd(33)} ║
-║  Price Impact:   ${result.priceImpact.toFixed(2)}%${' '.repeat(33)} ║
 ╚═══════════════════════════════════════════════════════════╝
             `);
         } catch (error) {

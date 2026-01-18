@@ -4,10 +4,11 @@
  * CONSTRAINTS:
  * - Only GET endpoints (no state mutation via API)
  * - All write operations must go through transactions
+ * Uses PoolStateManager for on-chain synced state
  */
 
 import { Router, Request, Response } from 'express';
-import { liquidityPool } from '../../pool/index.js';
+import { poolStateManager } from '../../pool/index.js';
 import { storage } from '../../storage/index.js';
 
 export function createPoolRoutes(): Router {
@@ -15,16 +16,18 @@ export function createPoolRoutes(): Router {
 
     // Load pool state on startup
     const poolData = storage.loadPool();
-    if (poolData) {
-        liquidityPool.loadFromData(poolData);
-    }
+    poolStateManager.loadState(poolData);
 
     /**
      * GET /api/pool/info
      * Get pool information (reserves, price, TVL)
      */
     router.get('/info', (_req: Request, res: Response) => {
-        const info = liquidityPool.getPoolInfo();
+        // Reload from storage to get latest state
+        const poolData = storage.loadPool();
+        poolStateManager.loadState(poolData);
+
+        const info = poolStateManager.getPoolInfo();
 
         res.json({
             success: true,
@@ -41,16 +44,15 @@ export function createPoolRoutes(): Router {
                 tvl: {
                     edu: info.reserveEDU,
                     usdt: info.reserveUSDT,
-                    // Total value locked in USDT equivalent
-                    totalUSDT: info.reserveUSDT * 2, // Both sides equal value
+                    totalUSDT: info.reserveUSDT * 2,
                 },
                 lp: {
                     totalTokens: info.totalLPTokens,
                     providers: info.lpProviders,
                 },
-                timestamps: {
-                    createdAt: info.createdAt,
-                    lastSwapAt: info.lastSwapAt,
+                blocks: {
+                    createdAt: info.createdAtBlock,
+                    lastUpdate: info.lastUpdateBlock,
                 },
             },
         });
@@ -59,7 +61,6 @@ export function createPoolRoutes(): Router {
     /**
      * GET /api/pool/quote
      * Get swap quote without executing
-     * Query params: from (EDU|USDT), amount (number)
      */
     router.get('/quote', (req: Request, res: Response) => {
         const { from, amount } = req.query;
@@ -90,7 +91,11 @@ export function createPoolRoutes(): Router {
             return;
         }
 
-        if (!liquidityPool.isInitialized()) {
+        // Reload state
+        const poolData = storage.loadPool();
+        poolStateManager.loadState(poolData);
+
+        if (!poolStateManager.isInitialized()) {
             res.status(400).json({
                 success: false,
                 error: 'Pool not initialized',
@@ -99,7 +104,7 @@ export function createPoolRoutes(): Router {
         }
 
         try {
-            const quote = liquidityPool.getSwapQuote(token, amountNum);
+            const quote = poolStateManager.getSwapQuote(token, amountNum);
             const tokenOut = token === 'EDU' ? 'USDT' : 'EDU';
 
             res.json({
@@ -107,12 +112,12 @@ export function createPoolRoutes(): Router {
                 data: {
                     tokenIn: token,
                     tokenOut,
-                    amountIn: quote.amountIn,
+                    amountIn: amountNum,
                     amountOut: quote.amountOut,
                     fee: quote.fee,
                     feePercent: 0.3,
                     priceImpact: quote.priceImpact,
-                    executionPrice: quote.amountOut / quote.amountIn,
+                    executionPrice: quote.amountOut / amountNum,
                 },
             });
         } catch (error) {
@@ -130,16 +135,20 @@ export function createPoolRoutes(): Router {
     router.get('/lp/:address', (req: Request, res: Response) => {
         const { address } = req.params;
 
-        const balance = liquidityPool.getLPBalance(address);
-        const totalLP = liquidityPool.getTotalLPTokens();
-        const sharePercent = totalLP > 0 ? (balance / totalLP) * 100 : 0;
+        // Reload state
+        const poolData = storage.loadPool();
+        poolStateManager.loadState(poolData);
+
+        const balance = poolStateManager.getLPBalance(address);
+        const info = poolStateManager.getPoolInfo();
+        const sharePercent = info.totalLPTokens > 0 ? (balance / info.totalLPTokens) * 100 : 0;
 
         res.json({
             success: true,
             data: {
                 address,
                 lpBalance: balance,
-                totalLPTokens: totalLP,
+                totalLPTokens: info.totalLPTokens,
                 sharePercent,
             },
         });

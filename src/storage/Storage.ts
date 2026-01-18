@@ -10,7 +10,7 @@ import {
     PendingStake,
     PendingDelegation
 } from '../staking/StakingPool.js';
-import type { PoolState } from '../pool/LiquidityPool.js';
+import type { OnChainPoolState } from '../pool/PoolStateManager.js';
 import { logger } from '../utils/logger.js';
 
 export interface StakingData {
@@ -84,12 +84,12 @@ export class Storage {
         }
     }
 
-    savePool(data: PoolState): void {
+    savePool(data: OnChainPoolState): void {
         fs.writeFileSync(this.poolPath, JSON.stringify(data, null, 2));
         logger.debug('💾 Pool data saved to disk');
     }
 
-    loadPool(): PoolState | null {
+    loadPool(): OnChainPoolState | null {
         if (!fs.existsSync(this.poolPath)) {
             return null;
         }

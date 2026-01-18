@@ -8,6 +8,8 @@ import { ChunkSyncRequest, ChunkSyncResponse, MessageType, P2PMessage } from '..
 import { Blockchain, Block } from '../../blockchain/index.js';
 import { config } from '../../config.js';
 import { logger } from '../../utils/logger.js';
+import { processBlockPoolOperations, poolStateManager } from '../../pool/index.js';
+import { storage } from '../../storage/index.js';
 
 export class BlockSync {
     private blockchain: Blockchain;
@@ -126,6 +128,14 @@ export class BlockSync {
             if (block.previousHash === latestLocal.hash && block.index === latestLocal.index + 1) {
                 this.blockchain.chain.push(block);
                 logger.info(`🆕 Received and added block ${block.index}`);
+
+                // Process pool operations in this block
+                if (block.transactions && block.transactions.length > 0) {
+                    const poolOpsProcessed = processBlockPoolOperations(block.transactions, block.index);
+                    if (poolOpsProcessed > 0) {
+                        logger.info(`🏊 Processed ${poolOpsProcessed} pool operations in block ${block.index}`);
+                    }
+                }
             } else if (block.index > latestLocal.index + 1) {
                 // We're behind, request sync
                 this.broadcast({ type: MessageType.QUERY_LATEST, data: null });
@@ -134,4 +144,13 @@ export class BlockSync {
             logger.error('Failed to process new block:', error);
         }
     }
+
+    // Load pool state on construction
+    private loadPoolState(): void {
+        const poolData = storage.loadPool();
+        if (poolData) {
+            poolStateManager.loadState(poolData);
+        }
+    }
 }
+
