@@ -96,17 +96,20 @@ async function findAvailablePort(startPort: number): Promise<number> {
 }
 
 export async function startNode(options: NodeOptions): Promise<void> {
+    const version = `v${config.version.nodeVersion}`;
+    const mode = options.bootstrapMode ? 'BOOTSTRAP NODE' : 'LVE CHAIN Node';
+
     console.log(`
 ╔═══════════════════════════════════════════════════════════╗
 ║                                                           ║
-║   ███████╗██████╗ ██╗   ██╗     ██████╗██╗  ██╗ █████╗    ║
-║   ██╔════╝██╔══██╗██║   ██║    ██╔════╝██║  ██║██╔══██╗   ║
-║   █████╗  ██║  ██║██║   ██║    ██║     ███████║███████║   ║
-║   ██╔══╝  ██║  ██║██║   ██║    ██║     ██╔══██║██╔══██║   ║
-║   ███████╗██████╔╝╚██████╔╝    ╚██████╗██║  ██║██║  ██║   ║
-║   ╚══════╝╚═════╝  ╚═════╝      ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝   ║
+║   ██╗    ██╗   ██╗███████╗███╗   ██╗ ██████╗              ║
+║   ██║    ██║   ██║██╔════╝████╗  ██║██╔════╝              ║
+║   ██║    ██║   ██║█████╗  ██╔██╗ ██║██║                   ║
+║   ██║    ╚██╗ ██╔╝██╔══╝  ██║╚██╗██║██║                   ║
+║   ███████╗╚████╔╝ ███████╗██║ ╚████║╚██████╗              ║
+║   ╚══════╝ ╚═══╝  ╚══════╝╚═╝  ╚═══╝ ╚═════╝              ║
 ║                                                           ║
-║   ${options.bootstrapMode ? 'BOOTSTRAP NODE' : 'LVE CHAIN Node'} v${config.version.nodeVersion}${options.bootstrapMode ? '                    ' : '                        '}║
+║   ${mode} ${version}                                      ║
 ╚═══════════════════════════════════════════════════════════╝
     `);
 

@@ -59,10 +59,10 @@ export const identityCommand = new Command('identity')
             console.log('╔═══════════════════════════════════════════════════════════╗');
             console.log('║                    🔑 Node Identity                       ║');
             console.log('╠═══════════════════════════════════════════════════════════╣');
-            console.log(`║  Node ID:        ${shortId} ║`);
-            console.log(`║  Reward Address: ${(identity.rewardAddress || 'Not set').padEnd(40)} ║`);
-            console.log(`║  Created:        ${createdDate.padEnd(40)} ║`);
-            console.log(`║  Network:        ${options.network.padEnd(40)} ║`);
+            console.log(`║  Node ID:        ${shortId.padEnd(39)} ║`);
+            console.log(`║  Reward Address: ${(identity.rewardAddress || 'Not set').padEnd(39)} ║`);
+            console.log(`║  Created:        ${createdDate.padEnd(39)} ║`);
+            console.log(`║  Network:        ${options.network.padEnd(39)} ║`);
             console.log('╚═══════════════════════════════════════════════════════════╝');
             console.log('');
             console.log('💡 To bind a reward address:');

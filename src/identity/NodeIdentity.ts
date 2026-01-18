@@ -61,15 +61,20 @@ export class NodeIdentity {
     async showFirstRunWarning(): Promise<void> {
         if (!this.isNewIdentity) return;
 
+        const nodeIdShort = `${this.nodeId.slice(0, 20)}...${this.nodeId.slice(-12)}`;
+        const backupPath = this.identityPath.length > 41
+            ? `${this.identityPath.slice(0, 38)}...`
+            : this.identityPath;
+
         console.log('');
         console.log('╔═══════════════════════════════════════════════════════════╗');
         console.log('║           ⚠️  IMPORTANT: Node Identity Created            ║');
         console.log('╠═══════════════════════════════════════════════════════════╣');
-        console.log(`║  Node ID: ${this.nodeId.slice(0, 16)}...${this.nodeId.slice(-8)}               ║`);
-        console.log(`║  Backup:  ${this.identityPath.padEnd(43)} ║`);
+        console.log(`║  Node ID: ${nodeIdShort.padEnd(46)} ║`);
+        console.log(`║  Backup:  ${backupPath.padEnd(46)} ║`);
         console.log('╠═══════════════════════════════════════════════════════════╣');
         console.log('║  This key controls your validator rewards!                ║');
-        console.log('║  Keep it safe and never share your private key.          ║');
+        console.log('║  Keep it safe and never share your private key.           ║');
         console.log('╚═══════════════════════════════════════════════════════════╝');
         console.log('');
 
