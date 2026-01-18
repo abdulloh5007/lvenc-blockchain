@@ -45,18 +45,18 @@ echo "⚠️  WARNING: This is MAINNET - real tokens!"
 echo ""
 
 # Stop existing instance if running
-pm2 delete edu-mainnet 2>/dev/null || true
+pm2 delete lve-mainnet 2>/dev/null || true
 
 # Start with PM2
-pm2 start "npx edu-chain start --network mainnet" --name edu-mainnet
+pm2 start "npx lve-chain start --network mainnet" --name lve-mainnet
 
 # Save PM2 process list (survives reboot)
 pm2 save
 
 echo ""
 echo "✅ Node started! Useful commands:"
-echo "   pm2 logs edu-mainnet     # View logs"
+echo "   pm2 logs lve-mainnet     # View logs"
 echo "   pm2 status               # Check status"  
-echo "   pm2 restart edu-mainnet  # Restart node"
-echo "   pm2 stop edu-mainnet     # Stop node"
+echo "   pm2 restart lve-mainnet  # Restart node"
+echo "   pm2 stop lve-mainnet     # Stop node"
 echo ""

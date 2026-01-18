@@ -43,18 +43,18 @@ echo "📡 P2P: ws://0.0.0.0:6001"
 echo ""
 
 # Stop existing instance if running
-pm2 delete edu-testnet 2>/dev/null || true
+pm2 delete lve-testnet 2>/dev/null || true
 
 # Start with PM2
-pm2 start "npx edu-chain start --network testnet" --name edu-testnet
+pm2 start "npx lve-chain start --network testnet" --name lve-testnet
 
 # Save PM2 process list (survives reboot)
 pm2 save
 
 echo ""
 echo "✅ Node started! Useful commands:"
-echo "   pm2 logs edu-testnet     # View logs"
+echo "   pm2 logs lve-testnet     # View logs"
 echo "   pm2 status               # Check status"
-echo "   pm2 restart edu-testnet  # Restart node"
-echo "   pm2 stop edu-testnet     # Stop node"
+echo "   pm2 restart lve-testnet  # Restart node"
+echo "   pm2 stop lve-testnet     # Stop node"
 echo ""

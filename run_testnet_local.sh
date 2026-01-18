@@ -3,4 +3,4 @@
 # Run: ./run_testnet.sh
 
 echo "🚀 Starting EDU Chain Testnet Node..."
-npm run build && npx edu-chain start --network testnet
+npm run build && npx lve-chain start --network testnet

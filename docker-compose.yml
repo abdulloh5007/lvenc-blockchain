@@ -3,7 +3,7 @@ version: '3.8'
 services:
   node1:
     build: .
-    container_name: edu-chain-node1
+    container_name: lve-chain-node1
     ports:
       - "3001:3001"
       - "6001:6001"
@@ -15,7 +15,7 @@ services:
 
   node2:
     build: .
-    container_name: edu-chain-node2
+    container_name: lve-chain-node2
     ports:
       - "3002:3001"
       - "6002:6001"
@@ -30,7 +30,7 @@ services:
 
   node3:
     build: .
-    container_name: edu-chain-node3
+    container_name: lve-chain-node3
     ports:
       - "3003:3001"
       - "6003:6001"
@@ -45,4 +45,4 @@ services:
 
 networks:
   default:
-    name: edu-chain-network
+    name: lve-chain-network
