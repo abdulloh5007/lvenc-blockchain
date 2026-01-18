@@ -89,7 +89,7 @@ export class Transaction implements TransactionData {
      * This is called during addTransaction and block validation
      */
     isValid(): boolean {
-        // Mining rewards and faucet transactions don't need signature
+        // Mining rewards (fromAddress === null) don't need signature
         if (this.fromAddress === null) {
             return true;
         }
