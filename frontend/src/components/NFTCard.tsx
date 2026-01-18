@@ -10,12 +10,22 @@ interface NFTCardProps {
 
 const formatAddress = (addr: string) => `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 
+// Convert ipfs:// URLs to gateway URLs for display
+const ipfsToGateway = (url: string): string => {
+    if (url.startsWith('ipfs://')) {
+        const cid = url.replace('ipfs://', '');
+        // Use dweb.link gateway (Protocol Labs, reliable)
+        return `https://dweb.link/ipfs/${cid}`;
+    }
+    return url;
+};
+
 export const NFTCard: React.FC<NFTCardProps> = ({ nft, onClick }) => {
     return (
         <div className="nft-card" onClick={onClick}>
             <div className="nft-image-container">
                 <img
-                    src={nft.metadata.image}
+                    src={ipfsToGateway(nft.metadata.image)}
                     alt={nft.metadata.name}
                     className="nft-image"
                     onError={(e) => {

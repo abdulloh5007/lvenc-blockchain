@@ -62,6 +62,10 @@
     z-index: 10;
 }
 
+.collapse-btn svg {
+    margin: 0 !important;
+}
+
 /* Navigation */
 .sidebar-nav {
     flex: 1;
@@ -216,34 +220,56 @@
     background: rgba(99, 102, 241, 0.1);
 }
 
-/* Mobile Menu Button - Top RIGHT */
+/* Mobile Menu Toggle - Unified button with icon transform */
 .mobile-menu-toggle {
     display: none;
     position: fixed;
     top: 16px;
     right: 16px;
-    z-index: 200;
+    z-index: 300;
     background: var(--bg-card);
     border: 1px solid var(--border-color);
-    border-radius: 8px;
+    border-radius: 10px;
     padding: 10px;
     cursor: pointer;
     color: var(--text-primary);
+    transition: transform 0.2s ease, background 0.2s ease;
 }
 
-/* Mobile Close Button - Top RIGHT (when sidebar open) */
-.mobile-close-btn {
-    display: none;
-    position: fixed;
-    top: 16px;
-    right: 16px;
-    z-index: 200;
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 10px;
-    cursor: pointer;
-    color: var(--text-primary);
+.mobile-menu-toggle:active {
+    transform: scale(0.95);
+}
+
+.mobile-menu-toggle svg {
+    margin: 0 !important;
+}
+
+.mobile-menu-toggle .toggle-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.2s ease, transform 0.3s ease;
+}
+
+.mobile-menu-toggle .menu-icon {
+    opacity: 1;
+    transform: rotate(0deg);
+}
+
+.mobile-menu-toggle .close-icon {
+    position: absolute;
+    opacity: 0;
+    transform: rotate(-90deg);
+}
+
+.mobile-menu-toggle.open .menu-icon {
+    opacity: 0;
+    transform: rotate(90deg);
+}
+
+.mobile-menu-toggle.open .close-icon {
+    opacity: 1;
+    transform: rotate(0deg);
 }
 
 /* Mobile Overlay */

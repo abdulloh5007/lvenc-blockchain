@@ -93,17 +93,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => 
 
     return (
         <>
-            {/* Mobile Menu Button - Top Right */}
-            <button className="mobile-menu-toggle" onClick={() => setMobileOpen(true)}>
-                <Menu size={24} />
+            {/* Mobile Menu Toggle - Single button that transforms */}
+            <button
+                className={`mobile-menu-toggle ${mobileOpen ? 'open' : ''}`}
+                onClick={() => setMobileOpen(!mobileOpen)}
+            >
+                <span className="toggle-icon menu-icon"><Menu size={24} /></span>
+                <span className="toggle-icon close-icon"><X size={24} /></span>
             </button>
-
-            {/* Mobile Close Button - Top Right (when sidebar open) */}
-            {mobileOpen && (
-                <button className="mobile-close-btn" onClick={() => setMobileOpen(false)}>
-                    <X size={24} />
-                </button>
-            )}
 
             {/* Mobile Overlay */}
             <div className={`mobile-overlay ${mobileOpen ? 'open' : ''}`} onClick={() => setMobileOpen(false)} />

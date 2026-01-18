@@ -113,7 +113,7 @@ export const NFTMint: React.FC = () => {
             attributes,
         };
 
-        // Get the wallet's mnemonic from the stored wallets
+        // Get the wallet's privateKey from the stored wallets
         const wallet = wallets.find(w => w.address === selectedWallet);
         if (!wallet) {
             setMessage({ type: 'error', text: 'Кошелёк не найден' });
@@ -122,7 +122,7 @@ export const NFTMint: React.FC = () => {
             return;
         }
 
-        const res = await nft.mint(selectedWallet, metadata, wallet.mnemonic, undefined, royalty);
+        const res = await nft.mint(selectedWallet, metadata, wallet.privateKey, undefined, royalty);
 
         if (res.success && res.data) {
             setMessage({ type: 'success', text: `NFT #${res.data.tokenId} создан!` });

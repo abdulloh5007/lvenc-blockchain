@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Delete } from 'lucide-react';
 import * as encryption from '../utils/encryption';
 import './PinModal.css';
@@ -14,16 +14,6 @@ interface PinModalProps {
     description?: string;
 }
 
-/**
- * Universal PinModal Component
- * 
- * Handles:
- * 1. Setup: Create -> Confirm -> Save (via onSetPin callback)
- * 2. Unlock: Enter -> Verify -> Unlock (via onUnlock callback)
- * 3. Confirm: Enter -> Verify -> Callback
- * 
- * Note: Does NOT use usePinContext to avoid circular dependency when used inside PinProvider
- */
 export const PinModal: React.FC<PinModalProps> = ({
     isOpen,
     onClose,
@@ -31,25 +21,17 @@ export const PinModal: React.FC<PinModalProps> = ({
     onSuccess,
     onSetPin,
     onUnlock,
-    title,
+    title: _title,
     description
 }) => {
-    // State
     const [pin, setPinValue] = useState<string>('');
     const [tempPin, setTempPin] = useState<string>('');
     const [stage, setStage] = useState<'create' | 'confirm'>('create');
     const [isError, setIsError] = useState<boolean>(false);
+    const [isSuccess, setIsSuccess] = useState<boolean>(false);
     const [shaking, setShaking] = useState<boolean>(false);
     const [activeKey, setActiveKey] = useState<string | null>(null);
-
-    // Computed display text
-    const getTitle = () => {
-        if (title) return title;
-        if (mode === 'setup') return stage === 'create' ? 'Создать PIN' : 'Подтвердить PIN';
-        if (mode === 'unlock') return 'Введите PIN';
-        if (mode === 'confirm') return 'Подтвердите действие';
-        return 'Введите PIN';
-    };
+    const [processing, setProcessing] = useState<boolean>(false);
 
     const getSubtitle = () => {
         if (description) return description;
@@ -68,27 +50,14 @@ export const PinModal: React.FC<PinModalProps> = ({
             setTempPin('');
             setStage('create');
             setIsError(false);
+            setIsSuccess(false);
             setShaking(false);
             setActiveKey(null);
+            setProcessing(false);
         }
     }, [isOpen, mode]);
 
-    const handleDigit = (digit: string) => {
-        setPinValue(prev => {
-            if (prev.length < 4) {
-                setIsError(false);
-                return prev + digit;
-            }
-            return prev;
-        });
-    };
-
-    const handleDelete = () => {
-        setPinValue(prev => prev.slice(0, -1));
-        setIsError(false);
-    };
-
-    const triggerError = () => {
+    const triggerError = useCallback(() => {
         setIsError(true);
         setShaking(true);
         if (navigator.vibrate) navigator.vibrate(200);
@@ -97,22 +66,33 @@ export const PinModal: React.FC<PinModalProps> = ({
             setPinValue('');
             setIsError(false);
         }, 500);
-    };
+    }, []);
 
-    const handleComplete = () => {
+    const triggerSuccess = useCallback((callback: () => void) => {
+        setIsSuccess(true);
+        setProcessing(true);
+        setTimeout(() => {
+            callback();
+        }, 400);
+    }, []);
+
+    const handleComplete = useCallback((currentPin: string) => {
+        if (processing) return;
+
         // 1. SETUP MODE
         if (mode === 'setup') {
             if (stage === 'create') {
-                if (pin.length === 4) {
-                    setTempPin(pin);
-                    setPinValue('');
-                    setStage('confirm');
-                }
+                setTempPin(currentPin);
+                setPinValue('');
+                setStage('confirm');
+                return;
             } else {
-                if (pin === tempPin) {
-                    onSetPin?.(pin);
-                    onSuccess?.();
-                    onClose();
+                if (currentPin === tempPin) {
+                    triggerSuccess(() => {
+                        onSetPin?.(currentPin);
+                        onSuccess?.();
+                        onClose();
+                    });
                 } else {
                     triggerError();
                 }
@@ -122,9 +102,11 @@ export const PinModal: React.FC<PinModalProps> = ({
 
         // 2. UNLOCK MODE
         if (mode === 'unlock') {
-            const success = onUnlock?.(pin) ?? false;
+            const success = onUnlock?.(currentPin) ?? false;
             if (success) {
-                onSuccess?.();
+                triggerSuccess(() => {
+                    onSuccess?.();
+                });
             } else {
                 triggerError();
             }
@@ -133,26 +115,48 @@ export const PinModal: React.FC<PinModalProps> = ({
 
         // 3. CONFIRM MODE
         if (mode === 'confirm') {
-            const isValid = encryption.verifyPin(pin);
+            const isValid = encryption.verifyPin(currentPin);
             if (isValid) {
-                onSuccess?.();
-                onClose();
+                triggerSuccess(() => {
+                    onSuccess?.();
+                    onClose();
+                });
             } else {
                 triggerError();
             }
             return;
         }
-    };
+    }, [mode, stage, tempPin, onSetPin, onSuccess, onClose, onUnlock, triggerError, triggerSuccess, processing]);
 
-    const isButtonActive = pin.length === 4;
-
-    const handleAction = () => {
-        if (isButtonActive) handleComplete();
-    };
-
-    // Keyboard support with visual feedback
+    // Auto-submit when 4 digits entered
     useEffect(() => {
-        if (!isOpen) return;
+        if (pin.length === 4 && !processing) {
+            handleComplete(pin);
+        }
+    }, [pin, handleComplete, processing]);
+
+    const handleDigit = (digit: string) => {
+        if (processing) return;
+        setPinValue(prev => {
+            if (prev.length < 4) {
+                setIsError(false);
+                setIsSuccess(false);
+                return prev + digit;
+            }
+            return prev;
+        });
+    };
+
+    const handleDelete = () => {
+        if (processing) return;
+        setPinValue(prev => prev.slice(0, -1));
+        setIsError(false);
+        setIsSuccess(false);
+    };
+
+    // Keyboard support
+    useEffect(() => {
+        if (!isOpen || processing) return;
 
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.key >= '0' && e.key <= '9') {
@@ -161,8 +165,6 @@ export const PinModal: React.FC<PinModalProps> = ({
             } else if (e.key === 'Backspace') {
                 setActiveKey('Backspace');
                 handleDelete();
-            } else if (e.key === 'Enter') {
-                if (isButtonActive) handleAction();
             } else if (e.key === 'Escape') {
                 onClose();
             }
@@ -178,7 +180,7 @@ export const PinModal: React.FC<PinModalProps> = ({
             window.removeEventListener('keydown', handleKeyDown);
             window.removeEventListener('keyup', handleKeyUp);
         };
-    }, [isOpen, pin, stage, tempPin, mode, isButtonActive]);
+    }, [isOpen, processing]);
 
     if (!isOpen) return null;
 
@@ -189,14 +191,14 @@ export const PinModal: React.FC<PinModalProps> = ({
                 onClick={e => e.stopPropagation()}
             >
                 <div className="pin-content">
-                    <h2 className="pin-title">{getTitle()}</h2>
+                    {/* <h2 className="pin-title">{getTitle()}</h2> */}
                     <p className="pin-subtitle">{getSubtitle()}</p>
 
                     <div className="pin-dots">
                         {[0, 1, 2, 3].map((i) => (
                             <div
                                 key={i}
-                                className={`pin-dot ${i < pin.length ? 'filled' : ''} ${isError ? 'error' : ''}`}
+                                className={`pin-dot ${i < pin.length ? 'filled' : ''} ${isError ? 'error' : ''} ${isSuccess ? 'success' : ''}`}
                             />
                         ))}
                     </div>
@@ -207,6 +209,7 @@ export const PinModal: React.FC<PinModalProps> = ({
                                 key={num}
                                 className={`pin-key ${activeKey === num.toString() ? 'active-key' : ''}`}
                                 onClick={() => handleDigit(num.toString())}
+                                disabled={processing}
                             >
                                 {num}
                             </button>
@@ -215,24 +218,18 @@ export const PinModal: React.FC<PinModalProps> = ({
                         <button
                             className={`pin-key ${activeKey === '0' ? 'active-key' : ''}`}
                             onClick={() => handleDigit('0')}
+                            disabled={processing}
                         >
                             0
                         </button>
                         <button
                             className={`pin-key pin-key-delete ${activeKey === 'Backspace' ? 'active-key' : ''}`}
                             onClick={handleDelete}
+                            disabled={processing}
                         >
                             <Delete size={24} />
                         </button>
                     </div>
-
-                    <button
-                        className={`pin-action-btn ${isButtonActive ? 'active' : ''}`}
-                        onClick={handleAction}
-                        disabled={!isButtonActive}
-                    >
-                        {mode === 'setup' && stage === 'create' ? 'Продолжить' : 'Подтвердить'}
-                    </button>
                 </div>
             </div>
         </div>

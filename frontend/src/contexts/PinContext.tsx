@@ -28,7 +28,7 @@ interface PinProviderProps {
 export const PinProvider: React.FC<PinProviderProps> = ({ children }) => {
     // Clear session on page load to force PIN re-entry
     // This runs once on initial mount (page load/refresh)
-    const [initialized] = useState(() => {
+    useState(() => {
         // Always lock wallet on page load
         sessionStorage.removeItem('wallet_unlocked');
         sessionStorage.removeItem('wallet_pin');
@@ -38,9 +38,6 @@ export const PinProvider: React.FC<PinProviderProps> = ({ children }) => {
     const [isSetup, setIsSetup] = useState(() => encryption.isWalletSetUp());
     const [isLocked, setIsLocked] = useState(true); // Always start locked
     const [decryptedData, setDecryptedData] = useState<string | null>(null);
-
-    // DEBUG: Log state on mount
-    console.log('[PinContext] isSetup:', isSetup, 'isLocked:', isLocked, 'initialized:', initialized);
 
     // Confirm PIN modal state
     const [confirmState, setConfirmState] = useState<{

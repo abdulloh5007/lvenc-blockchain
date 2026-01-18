@@ -92,6 +92,12 @@
     background-color: #ff3b30;
 }
 
+.pin-dot.success {
+    border-color: #34c759;
+    background-color: #34c759;
+    transform: scale(1.2);
+}
+
 /* Keypad */
 .pin-keypad {
     display: grid;
