@@ -14,6 +14,7 @@ import { logger } from '../../utils/logger.js';
 import { NFTManager } from '../../nft/index.js';
 import { initBlockProducer, stakingPool } from '../../staking/index.js';
 import { config } from '../../config.js';
+import { boxCenter, boxEmpty } from '../../utils/box.js';
 
 import { createBlockchainRoutes } from '../../api/routes/blockchain.js';
 import { createWalletRoutes } from '../../api/routes/wallet.js';
@@ -98,20 +99,21 @@ async function findAvailablePort(startPort: number): Promise<number> {
 export async function startNode(options: NodeOptions): Promise<void> {
     const version = `v${config.version.nodeVersion}`;
     const mode = options.bootstrapMode ? 'BOOTSTRAP NODE' : 'LVE CHAIN Node';
+    const versionLine = `${mode} ${version}`;
 
-    console.log(`
-╔═══════════════════════════════════════════════════════════╗
-║                                                           ║
-║   ██╗    ██╗   ██╗███████╗███╗   ██╗ ██████╗              ║
-║   ██║    ██║   ██║██╔════╝████╗  ██║██╔════╝              ║
-║   ██║    ██║   ██║█████╗  ██╔██╗ ██║██║                   ║
-║   ██║    ╚██╗ ██╔╝██╔══╝  ██║╚██╗██║██║                   ║
-║   ███████╗╚████╔╝ ███████╗██║ ╚████║╚██████╗              ║
-║   ╚══════╝ ╚═══╝  ╚══════╝╚═╝  ╚═══╝ ╚═════╝              ║
-║                                                           ║
-║   ${mode} ${version}                                      ║
-╚═══════════════════════════════════════════════════════════╝
-    `);
+    console.log('');
+    console.log('╔═══════════════════════════════════════════════════════════╗');
+    console.log(boxEmpty());
+    console.log(boxCenter('██╗    ██╗   ██╗███████╗███╗   ██╗ ██████╗'));
+    console.log(boxCenter('██║    ██║   ██║██╔════╝████╗  ██║██╔════╝'));
+    console.log(boxCenter('██║    ██║   ██║█████╗  ██╔██╗ ██║██║'));
+    console.log(boxCenter('██║    ╚██╗ ██╔╝██╔══╝  ██║╚██╗██║██║'));
+    console.log(boxCenter('███████╗╚████╔╝ ███████╗██║ ╚████║╚██████╗'));
+    console.log(boxCenter('╚══════╝ ╚═══╝  ╚══════╝╚═╝  ╚═══╝ ╚═════╝'));
+    console.log(boxEmpty());
+    console.log(boxCenter(versionLine));
+    console.log('╚═══════════════════════════════════════════════════════════╝');
+    console.log('');
 
     // Interactive network selection if not specified via CLI
     let network = options.network;

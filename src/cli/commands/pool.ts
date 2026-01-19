@@ -1,229 +1,202 @@
-/**
- * Pool CLI Command
- * Commands for AMM liquidity pool operations
- * Uses PoolStateManager for on-chain synced pool state
- */
-
 import { Command } from 'commander';
 import { poolStateManager } from '../../pool/index.js';
 import { storage } from '../../storage/index.js';
+import { boxCenter, boxSeparator, boxTop, boxBottom, boxEmpty } from '../../utils/box.js';
 
 export const poolCommand = new Command('pool')
     .description('Liquidity pool operations');
 
-// ========== INFO ==========
-
+// INFO command
 poolCommand
     .command('info')
-    .description('Show pool information')
-    .action(() => {
-        // Load pool state
+    .description('Show liquidity pool information')
+    .action(async () => {
         const poolData = storage.loadPool();
-        poolStateManager.loadState(poolData);
+        if (poolData) {
+            poolStateManager.loadState(poolData);
+        }
 
         const info = poolStateManager.getPoolInfo();
 
         if (!info.initialized) {
-            console.log(`
-╔═══════════════════════════════════════════════════════════╗
-║                    💧 Liquidity Pool                      ║
-╠═══════════════════════════════════════════════════════════╣
-║  Status: NOT INITIALIZED                                  ║
-║                                                           ║
-║  Use 'lve-chain pool add' to create the pool              ║
-╚═══════════════════════════════════════════════════════════╝
-            `);
+            console.log('');
+            console.log(boxTop());
+            console.log(boxCenter('💧 Liquidity Pool'));
+            console.log(boxSeparator());
+            console.log(boxCenter('Status: NOT INITIALIZED'));
+            console.log(boxEmpty());
+            console.log(boxCenter("Use 'lve-chain pool add' to create the pool"));
+            console.log(boxBottom());
+            console.log('');
             return;
         }
 
-        console.log(`
-╔═══════════════════════════════════════════════════════════╗
-║                    💧 Liquidity Pool                      ║
-╠═══════════════════════════════════════════════════════════╣
-║  Reserve LVE:    ${info.reserveLVE.toFixed(4).padEnd(38)} ║
-║  Reserve UZS:   ${info.reserveUZS.toFixed(4).padEnd(38)} ║
-║  Price (LVE):    ${info.priceLVE.toFixed(6).padEnd(38)} UZS║
-║  Total LP:       ${info.totalLPTokens.toFixed(4).padEnd(38)} ║
-║  LP Providers:   ${String(info.lpProviders).padEnd(38)} ║
-╚═══════════════════════════════════════════════════════════╝
-        `);
+        console.log('');
+        console.log(boxTop());
+        console.log(boxCenter('💧 Liquidity Pool'));
+        console.log(boxSeparator());
+        console.log(boxCenter(`Reserve LVE:    ${info.reserveLVE.toFixed(4)}`));
+        console.log(boxCenter(`Reserve UZS:    ${info.reserveUZS.toFixed(4)}`));
+        console.log(boxCenter(`Price (LVE):    ${info.priceLVE.toFixed(6)} UZS`));
+        console.log(boxCenter(`Price (UZS):    ${info.priceUZS.toFixed(6)} LVE`));
+        console.log(boxCenter(`Total LP:       ${info.totalLPTokens.toFixed(4)}`));
+        console.log(boxCenter(`LP Providers:   ${info.lpProviders}`));
+        console.log(boxBottom());
+        console.log('');
     });
 
-// ========== QUOTE ==========
-
+// QUOTE command
 poolCommand
     .command('quote')
-    .description('Get swap quote without executing')
+    .description('Get swap quote')
     .requiredOption('--from <token>', 'Token to swap from (LVE or UZS)')
-    .requiredOption('--amount <number>', 'Amount to swap')
-    .action((options) => {
+    .requiredOption('--amount <number>', 'Amount to swap', parseFloat)
+    .action(async (options) => {
         const poolData = storage.loadPool();
-        poolStateManager.loadState(poolData);
-
-        if (!poolStateManager.isInitialized()) {
-            console.log('❌ Pool not initialized');
-            process.exit(1);
+        if (poolData) {
+            poolStateManager.loadState(poolData);
         }
 
-        const token = options.from.toUpperCase() as 'LVE' | 'UZS';
-        if (token !== 'LVE' && token !== 'UZS') {
-            console.log('❌ Invalid token. Use LVE or UZS');
-            process.exit(1);
-        }
+        const info = poolStateManager.getPoolInfo();
 
-        const amount = parseFloat(options.amount);
-        if (isNaN(amount) || amount <= 0) {
-            console.log('❌ Invalid amount');
-            process.exit(1);
+        if (!info.initialized) {
+            console.log('');
+            console.log(boxTop());
+            console.log(boxCenter('💧 Liquidity Pool'));
+            console.log(boxSeparator());
+            console.log(boxCenter('Pool not initialized'));
+            console.log(boxEmpty());
+            console.log(boxCenter("Use 'lve-chain pool add' first"));
+            console.log(boxBottom());
+            console.log('');
+            return;
         }
 
         try {
-            const quote = poolStateManager.getSwapQuote(token, amount);
-            const tokenOut = token === 'LVE' ? 'UZS' : 'LVE';
+            const quote = poolStateManager.getSwapQuote(options.from.toUpperCase(), options.amount);
+            const tokenOut = options.from.toUpperCase() === 'LVE' ? 'UZS' : 'LVE';
 
-            console.log(`
-╔═══════════════════════════════════════════════════════════╗
-║                    💱 Swap Quote                          ║
-╠═══════════════════════════════════════════════════════════╣
-║  Input:          ${amount.toFixed(4)} ${token.padEnd(33)} ║
-║  Output:         ${quote.amountOut.toFixed(4)} ${tokenOut.padEnd(33)} ║
-║  Fee (0.3%):     ${quote.fee.toFixed(4)} ${token.padEnd(33)} ║
-║  Price Impact:   ${quote.priceImpact.toFixed(2)}%${' '.repeat(33)} ║
-╚═══════════════════════════════════════════════════════════╝
-            `);
+            console.log('');
+            console.log(boxTop());
+            console.log(boxCenter('💱 Swap Quote'));
+            console.log(boxSeparator());
+            console.log(boxCenter(`From:          ${options.amount} ${options.from.toUpperCase()}`));
+            console.log(boxCenter(`To:            ${quote.amountOut.toFixed(6)} ${tokenOut}`));
+            console.log(boxCenter(`Fee:           ${quote.fee.toFixed(6)} ${options.from.toUpperCase()}`));
+            console.log(boxCenter(`Price Impact:  ${quote.priceImpact.toFixed(2)}%`));
+            console.log(boxBottom());
+            console.log('');
         } catch (error) {
-            console.log(`❌ ${error instanceof Error ? error.message : 'Quote failed'}`);
-            process.exit(1);
+            console.error(`❌ Quote failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
     });
 
-// ========== ADD LIQUIDITY ==========
-
+// ADD command
 poolCommand
     .command('add')
     .description('Add liquidity to pool')
-    .requiredOption('--address <address>', 'Provider address')
-    .requiredOption('--lve <number>', 'LVE amount')
-    .requiredOption('--uzs <number>', 'UZS amount')
-    .action((options) => {
+    .requiredOption('--address <address>', 'Your wallet address')
+    .requiredOption('--lve <number>', 'Amount of LVE to add', parseFloat)
+    .requiredOption('--uzs <number>', 'Amount of UZS to add', parseFloat)
+    .action(async (options) => {
         const poolData = storage.loadPool();
-        poolStateManager.loadState(poolData);
-
-        const lveAmount = parseFloat(options.lve);
-        const uzsAmount = parseFloat(options.uzs);
-
-        if (isNaN(lveAmount) || isNaN(uzsAmount) || lveAmount <= 0 || uzsAmount <= 0) {
-            console.log('❌ Invalid amounts');
-            process.exit(1);
+        if (poolData) {
+            poolStateManager.loadState(poolData);
         }
 
         try {
-            // Use block 0 for CLI (will be replaced with actual block in block producer)
-            const blockIndex = 0;
-            const result = poolStateManager.addLiquidity(options.address, lveAmount, uzsAmount, blockIndex);
+            const result = poolStateManager.addLiquidity(
+                options.address,
+                options.lve,
+                options.uzs,
+                0
+            );
+
             storage.savePool(poolStateManager.getState());
 
-            console.log(`
-╔═══════════════════════════════════════════════════════════╗
-║                 ✅ Liquidity Added                        ║
-╠═══════════════════════════════════════════════════════════╣
-║  LVE Added:      ${lveAmount.toFixed(4).padEnd(38)} ║
-║  UZS Added:     ${uzsAmount.toFixed(4).padEnd(38)} ║
-║  LP Tokens:      ${result.lpTokens.toFixed(4).padEnd(38)} ║
-╚═══════════════════════════════════════════════════════════╝
-            `);
+            console.log('');
+            console.log(boxTop());
+            console.log(boxCenter('➕ Liquidity Added'));
+            console.log(boxSeparator());
+            console.log(boxCenter(`Added:   ${options.lve} LVE + ${options.uzs} UZS`));
+            console.log(boxCenter(`LP:      ${result.lpTokens.toFixed(4)} tokens`));
+            console.log(boxBottom());
+            console.log('');
         } catch (error) {
-            console.log(`❌ ${error instanceof Error ? error.message : 'Add liquidity failed'}`);
-            process.exit(1);
+            console.error(`❌ Add liquidity failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
     });
 
-// ========== REMOVE LIQUIDITY ==========
-
+// REMOVE command
 poolCommand
     .command('remove')
     .description('Remove liquidity from pool')
-    .requiredOption('--address <address>', 'Provider address')
-    .requiredOption('--lp <number>', 'LP tokens to burn')
-    .action((options) => {
+    .requiredOption('--address <address>', 'Your wallet address')
+    .requiredOption('--lp <number>', 'Amount of LP tokens to burn', parseFloat)
+    .action(async (options) => {
         const poolData = storage.loadPool();
-        poolStateManager.loadState(poolData);
-
-        const lpTokens = parseFloat(options.lp);
-        if (isNaN(lpTokens) || lpTokens <= 0) {
-            console.log('❌ Invalid LP amount');
-            process.exit(1);
+        if (poolData) {
+            poolStateManager.loadState(poolData);
         }
 
         try {
-            const blockIndex = 0;
-            const result = poolStateManager.removeLiquidity(options.address, lpTokens, blockIndex);
+            const result = poolStateManager.removeLiquidity(
+                options.address,
+                options.lp,
+                0
+            );
+
             storage.savePool(poolStateManager.getState());
 
-            console.log(`
-╔═══════════════════════════════════════════════════════════╗
-║                 ✅ Liquidity Removed                      ║
-╠═══════════════════════════════════════════════════════════╣
-║  LP Burned:      ${lpTokens.toFixed(4).padEnd(38)} ║
-║  LVE Received:   ${result.lveAmount.toFixed(4).padEnd(38)} ║
-║  UZS Received:  ${result.uzsAmount.toFixed(4).padEnd(38)} ║
-╚═══════════════════════════════════════════════════════════╝
-            `);
+            console.log('');
+            console.log(boxTop());
+            console.log(boxCenter('➖ Liquidity Removed'));
+            console.log(boxSeparator());
+            console.log(boxCenter(`Burned:  ${options.lp} LP tokens`));
+            console.log(boxCenter(`Got:     ${result.lveAmount.toFixed(6)} LVE`));
+            console.log(boxCenter(`Got:     ${result.uzsAmount.toFixed(6)} UZS`));
+            console.log(boxBottom());
+            console.log('');
         } catch (error) {
-            console.log(`❌ ${error instanceof Error ? error.message : 'Remove liquidity failed'}`);
-            process.exit(1);
+            console.error(`❌ Remove liquidity failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
     });
 
-// ========== SWAP ==========
-
+// SWAP command
 poolCommand
     .command('swap')
-    .description('Swap tokens')
+    .description('Execute a swap')
     .requiredOption('--from <token>', 'Token to swap from (LVE or UZS)')
-    .requiredOption('--amount <number>', 'Amount to swap')
-    .option('--min-out <number>', 'Minimum output (slippage protection)', '0')
-    .action((options) => {
+    .requiredOption('--amount <number>', 'Amount to swap', parseFloat)
+    .requiredOption('--min-out <number>', 'Minimum amount out (slippage protection)', parseFloat)
+    .action(async (options) => {
         const poolData = storage.loadPool();
-        poolStateManager.loadState(poolData);
-
-        if (!poolStateManager.isInitialized()) {
-            console.log('❌ Pool not initialized');
-            process.exit(1);
-        }
-
-        const token = options.from.toUpperCase() as 'LVE' | 'UZS';
-        if (token !== 'LVE' && token !== 'UZS') {
-            console.log('❌ Invalid token. Use LVE or UZS');
-            process.exit(1);
-        }
-
-        const amount = parseFloat(options.amount);
-        const minOut = parseFloat(options.minOut);
-
-        if (isNaN(amount) || amount <= 0) {
-            console.log('❌ Invalid amount');
-            process.exit(1);
+        if (poolData) {
+            poolStateManager.loadState(poolData);
         }
 
         try {
-            const blockIndex = 0;
-            const result = poolStateManager.swap(token, amount, minOut, blockIndex);
+            const result = poolStateManager.swap(
+                options.from.toUpperCase(),
+                options.amount,
+                options.minOut,
+                0
+            );
+
             storage.savePool(poolStateManager.getState());
 
-            const tokenOut = token === 'LVE' ? 'UZS' : 'LVE';
+            const tokenOut = options.from.toUpperCase() === 'LVE' ? 'UZS' : 'LVE';
 
-            console.log(`
-╔═══════════════════════════════════════════════════════════╗
-║                    ✅ Swap Executed                       ║
-╠═══════════════════════════════════════════════════════════╣
-║  Sold:           ${amount.toFixed(4)} ${token.padEnd(33)} ║
-║  Received:       ${result.amountOut.toFixed(4)} ${tokenOut.padEnd(33)} ║
-║  Fee:            ${result.fee.toFixed(4)} ${token.padEnd(33)} ║
-╚═══════════════════════════════════════════════════════════╝
-            `);
+            console.log('');
+            console.log(boxTop());
+            console.log(boxCenter('💱 Swap Successful'));
+            console.log(boxSeparator());
+            console.log(boxCenter(`In:   ${options.amount} ${options.from.toUpperCase()}`));
+            console.log(boxCenter(`Out:  ${result.amountOut.toFixed(6)} ${tokenOut}`));
+            console.log(boxCenter(`Fee:  ${result.fee.toFixed(6)} ${options.from.toUpperCase()}`));
+            console.log(boxBottom());
+            console.log('');
         } catch (error) {
-            console.log(`❌ ${error instanceof Error ? error.message : 'Swap failed'}`);
-            process.exit(1);
+            console.error(`❌ ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
     });

@@ -10,6 +10,7 @@ import * as crypto from 'crypto';
 import * as readline from 'readline';
 import { logger } from '../utils/logger.js';
 import { config } from '../config.js';
+import { boxCenter, boxSeparator, boxTop, boxBottom } from '../utils/box.js';
 
 export const IDENTITY_VERSION = 1;
 export const IDENTITY_ALGO = 'ed25519';
@@ -62,20 +63,20 @@ export class NodeIdentity {
         if (!this.isNewIdentity) return;
 
         const nodeIdShort = `${this.nodeId.slice(0, 20)}...${this.nodeId.slice(-12)}`;
-        const backupPath = this.identityPath.length > 41
-            ? `${this.identityPath.slice(0, 38)}...`
+        const backupPath = this.identityPath.length > 50
+            ? `${this.identityPath.slice(0, 47)}...`
             : this.identityPath;
 
         console.log('');
-        console.log('╔═══════════════════════════════════════════════════════════╗');
-        console.log('║           ⚠️  IMPORTANT: Node Identity Created            ║');
-        console.log('╠═══════════════════════════════════════════════════════════╣');
-        console.log(`║  Node ID: ${nodeIdShort.padEnd(46)} ║`);
-        console.log(`║  Backup:  ${backupPath.padEnd(46)} ║`);
-        console.log('╠═══════════════════════════════════════════════════════════╣');
-        console.log('║  This key controls your validator rewards!                ║');
-        console.log('║  Keep it safe and never share your private key.           ║');
-        console.log('╚═══════════════════════════════════════════════════════════╝');
+        console.log(boxTop());
+        console.log(boxCenter('⚠️  IMPORTANT: Node Identity Created'));
+        console.log(boxSeparator());
+        console.log(boxCenter(`Node ID: ${nodeIdShort}`));
+        console.log(boxCenter(`Backup:  ${backupPath}`));
+        console.log(boxSeparator());
+        console.log(boxCenter('This key controls your validator rewards!'));
+        console.log(boxCenter('Keep it safe and never share your private key.'));
+        console.log(boxBottom());
         console.log('');
 
         // Wait for acknowledgment in interactive mode

@@ -1,41 +1,66 @@
 /**
  * Box Formatting Utility
- * Creates properly formatted CLI boxes with correct spacing
+ * Creates properly formatted CLI boxes with CENTERED content
  */
 
-const BOX_WIDTH = 59; // Inner width (between ║ symbols)
+export const BOX_WIDTH = 59; // Default inner width (between ║ symbols)
 
 /**
- * Create a padded line for box output
- * @param content The text content
- * @param width Box inner width (default: 59)
- * @returns Formatted line with ║ borders and proper padding
+ * Calculate optimal box width based on content
+ * Adds 4 chars padding (2 on each side)
  */
-export function boxLine(content: string, width: number = BOX_WIDTH): string {
-    // Account for emoji width (some emojis take 2 character spaces)
-    const emojiCount = (content.match(/[\u{1F300}-\u{1F9FF}]|[\u2600-\u26FF]/gu) || []).length;
-    const visibleLength = content.length + emojiCount;
-    const padding = width - visibleLength;
-
-    if (padding < 0) {
-        // Truncate if too long
-        return `║  ${content.substring(0, width - 3)}... ║`;
+export function autoWidth(lines: string[], minWidth: number = BOX_WIDTH): number {
+    let maxLen = minWidth;
+    for (const line of lines) {
+        const len = getVisibleLength(line) + 4; // +4 for padding
+        if (len > maxLen) maxLen = len;
     }
-
-    return `║  ${content}${' '.repeat(padding - 2)} ║`;
+    return maxLen;
 }
 
 /**
- * Create a centered line for box output
+ * Get visible length of text (accounting for emojis and ANSI codes)
+ */
+function getVisibleLength(text: string): number {
+    // Remove ANSI color codes
+    const noAnsi = text.replace(/\u001b\[[0-9;]*m/g, '');
+
+    // Count emoji as 2 chars (they take 2 terminal columns)
+    const emojiCount = (noAnsi.match(/[\u{1F300}-\u{1F9FF}]|[\u2600-\u26FF]/gu) || []).length;
+
+    return noAnsi.length + emojiCount;
+}
+
+/**
+ * Create a CENTERED line for box output
  */
 export function boxCenter(content: string, width: number = BOX_WIDTH): string {
-    const emojiCount = (content.match(/[\u{1F300}-\u{1F9FF}]|[\u2600-\u26FF]/gu) || []).length;
-    const visibleLength = content.length + emojiCount;
+    const visibleLength = getVisibleLength(content);
     const totalPadding = width - visibleLength;
+
+    if (totalPadding < 0) {
+        // Truncate if too long
+        return `║${content.substring(0, width)}║`;
+    }
+
     const leftPad = Math.floor(totalPadding / 2);
     const rightPad = totalPadding - leftPad;
 
     return `║${' '.repeat(leftPad)}${content}${' '.repeat(rightPad)}║`;
+}
+
+/**
+ * Create a LEFT-ALIGNED line for box output
+ */
+export function boxLine(content: string, width: number = BOX_WIDTH): string {
+    const visibleLength = getVisibleLength(content);
+    const padding = width - visibleLength;
+
+    if (padding < 0) {
+        return `║${content.substring(0, width)}║`;
+    }
+
+    return `║${content}${' '.repeat(padding)}║`;
 }
 
 /**
@@ -67,12 +92,12 @@ export function boxEmpty(width: number = BOX_WIDTH): string {
 }
 
 /**
- * Create a complete box with multiple lines
+ * Create a complete box with multiple lines (centered)
  */
 export function box(lines: string[], width: number = BOX_WIDTH): string[] {
     return [
         boxTop(width),
-        ...lines.map(line => boxLine(line, width)),
+        ...lines.map(line => boxCenter(line, width)),
         boxBottom(width),
     ];
 }

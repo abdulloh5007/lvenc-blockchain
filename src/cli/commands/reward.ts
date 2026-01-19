@@ -6,7 +6,10 @@
 import { Command } from 'commander';
 import * as fs from 'fs';
 import * as path from 'path';
+import { generateMnemonic, mnemonicToSeedSync } from 'bip39';
+import * as crypto from 'crypto';
 import { Wallet } from '../../wallet/index.js';
+import { boxCenter, boxSeparator, boxTop, boxBottom } from '../../utils/box.js';
 
 // Helper to get data dir based on network
 function getDataDir(network: string, dataDir?: string): string {
@@ -100,13 +103,17 @@ rewardCommand
             identity.rewardAddress = address;
             fs.writeFileSync(identityPath, JSON.stringify(identity, null, 2), { mode: 0o600 });
 
+            const addressLine = `Reward Address: ${address}`;
+            const networkLine = `Network:        ${options.network}`;
+            const w = Math.max(59, addressLine.length + 4, networkLine.length + 4);
+
             console.log('');
-            console.log('╔═══════════════════════════════════════════════════════════╗');
-            console.log('║               ✅ Reward Wallet Generated                  ║');
-            console.log('╠═══════════════════════════════════════════════════════════╣');
-            console.log(`║  Reward Address: ${address.padEnd(39)} ║`);
-            console.log(`║  Network:        ${options.network.padEnd(39)} ║`);
-            console.log('╚═══════════════════════════════════════════════════════════╝');
+            console.log(boxTop(w));
+            console.log(boxCenter('Reward Wallet Generated', w));
+            console.log(boxSeparator(w));
+            console.log(boxCenter(addressLine, w));
+            console.log(boxCenter(networkLine, w));
+            console.log(boxBottom(w));
             console.log('');
             console.log('🔒 Write down your mnemonic and store it securely!');
             console.log('   Here it is:');

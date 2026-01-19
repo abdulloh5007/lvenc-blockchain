@@ -6,6 +6,7 @@
 import { Command } from 'commander';
 import * as fs from 'fs';
 import * as path from 'path';
+import { boxCenter, boxSeparator, boxTop, boxBottom, boxEmpty } from '../../utils/box.js';
 
 interface IdentityData {
     nodeId: string;
@@ -56,14 +57,14 @@ export const identityCommand = new Command('identity')
             const shortId = `${identity.nodeId.slice(0, 16)}...${identity.nodeId.slice(-16)}`;
 
             console.log('');
-            console.log('╔═══════════════════════════════════════════════════════════╗');
-            console.log('║                    🔑 Node Identity                       ║');
-            console.log('╠═══════════════════════════════════════════════════════════╣');
-            console.log(`║  Node ID:        ${shortId.padEnd(39)} ║`);
-            console.log(`║  Reward Address: ${(identity.rewardAddress || 'Not set').padEnd(39)} ║`);
-            console.log(`║  Created:        ${createdDate.padEnd(39)} ║`);
-            console.log(`║  Network:        ${options.network.padEnd(39)} ║`);
-            console.log('╚═══════════════════════════════════════════════════════════╝');
+            console.log(boxTop());
+            console.log(boxCenter('🔑 Node Identity'));
+            console.log(boxSeparator());
+            console.log(boxCenter(`Node ID:        ${shortId}`));
+            console.log(boxCenter(`Reward Address: ${identity.rewardAddress || 'Not set'}`));
+            console.log(boxCenter(`Created:        ${createdDate}`));
+            console.log(boxCenter(`Network:        ${options.network}`));
+            console.log(boxBottom());
             console.log('');
             console.log('💡 To bind a reward address:');
             console.log(`   lve-chain reward bind <address> -n ${options.network}`);
