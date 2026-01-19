@@ -24,3 +24,14 @@ export {
     createAddLiquidityTransaction,
     createRemoveLiquidityTransaction,
 } from './poolModule.js';
+
+// Pool-Supply Integration
+export {
+    initializePoolFromAllocation,
+    addLiquidityFromAllocation,
+    recordSwapWithBurn,
+    getLiquidityStatus,
+    getInitialLiquidityParams,
+    INITIAL_LVE_LIQUIDITY,
+    INITIAL_UZS_LIQUIDITY,
+} from './PoolLiquidityBridge.js';
