@@ -1,14 +1,14 @@
 /**
- * Pool API Routes (Read-Only)
+ * Pool API Routes
  * 
  * CONSTRAINTS:
- * - Only GET endpoints (no state mutation via API)
- * - All write operations must go through transactions
+ * - Most endpoints are read-only
+ * - Init endpoint for testnet bootstrap only
  * Uses PoolStateManager for on-chain synced state
  */
 
 import { Router, Request, Response } from 'express';
-import { poolStateManager } from '../../pool/index.js';
+import { poolStateManager, initializePoolFromAllocation, getLiquidityStatus, INITIAL_LVE_LIQUIDITY, INITIAL_UZS_LIQUIDITY } from '../../pool/index.js';
 import { storage } from '../../storage/index.js';
 
 export function createPoolRoutes(): Router {
@@ -17,6 +17,84 @@ export function createPoolRoutes(): Router {
     // Load pool state on startup
     const poolData = storage.loadPool();
     poolStateManager.loadState(poolData);
+
+    /**
+     * POST /api/pool/init
+     * Initialize pool from LIQUIDITY allocation (testnet bootstrap)
+     */
+    router.post('/init', (req: Request, res: Response) => {
+        try {
+            if (poolStateManager.isInitialized()) {
+                res.status(400).json({
+                    success: false,
+                    error: 'Pool already initialized',
+                });
+                return;
+            }
+
+            const { address, lve, uzs } = req.body;
+
+            if (!address) {
+                res.status(400).json({
+                    success: false,
+                    error: 'Provider address required',
+                });
+                return;
+            }
+
+            const lveAmount = lve || INITIAL_LVE_LIQUIDITY;
+            const uzsAmount = uzs || INITIAL_UZS_LIQUIDITY;
+            const blockIndex = 0; // Genesis
+
+            const result = initializePoolFromAllocation(address, blockIndex, lveAmount, uzsAmount);
+
+            // Save pool state
+            storage.savePool(poolStateManager.getState());
+
+            res.json({
+                success: true,
+                data: {
+                    lpTokens: result.lpTokens,
+                    startPrice: result.startPrice,
+                    lveAmount,
+                    uzsAmount,
+                    provider: address,
+                },
+            });
+        } catch (error) {
+            res.status(500).json({
+                success: false,
+                error: error instanceof Error ? error.message : 'Init failed',
+            });
+        }
+    });
+
+    /**
+     * GET /api/pool/liquidity-status
+     * Get LIQUIDITY allocation status
+     */
+    router.get('/liquidity-status', (_req: Request, res: Response) => {
+        try {
+            const status = getLiquidityStatus();
+
+            res.json({
+                success: true,
+                data: {
+                    totalAllocation: status.totalAllocation,
+                    released: status.released,
+                    locked: status.locked,
+                    inPool: status.inPool,
+                    burned: status.burned,
+                    percentReleased: ((status.released / status.totalAllocation) * 100).toFixed(2),
+                },
+            });
+        } catch (error) {
+            res.status(500).json({
+                success: false,
+                error: error instanceof Error ? error.message : 'Status failed',
+            });
+        }
+    });
 
     /**
      * GET /api/pool/info

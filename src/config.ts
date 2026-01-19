@@ -37,6 +37,8 @@ const SYNC_CONFIG = {
 export const config = {
     network_mode: isTestnet ? 'testnet' : 'mainnet',
     isTestnet,
+    // Chain ID for transaction replay protection
+    chainId: isTestnet ? 'lvenc-testnet-1' : 'lvenc-mainnet-1',
     blockchain: {
         difficulty: 5,
         validatorReward: 50,
@@ -52,7 +54,19 @@ export const config = {
     network: {
         p2pPort: 6001,
         apiPort: 3001,
+        // Bootstrap nodes for testnet (add your seed nodes here)
+        bootstrapNodes: isTestnet ? [
+            // 'ws://seed1.lvenc.io:6001',
+            // 'ws://seed2.lvenc.io:6001',
+        ] : [],
         initialPeers: [],
+    },
+    // Pool configuration
+    pool: {
+        initialLVE: 100_000,        // 100K LVE
+        initialUZS: 5_000_000,      // 5M UZS = 1 LVE = 50 UZS
+        feePercent: 0.3,            // 0.3% swap fee
+        burnPercent: 30,            // 30% of fees burned
     },
     storage: {
         dataDir: isTestnet ? './data/testnet' : './data/mainnet',
