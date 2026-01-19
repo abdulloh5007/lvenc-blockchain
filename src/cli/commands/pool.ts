@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { poolStateManager, initializePoolFromAllocation, getLiquidityStatus, INITIAL_LVE_LIQUIDITY, INITIAL_UZS_LIQUIDITY } from '../../pool/index.js';
+import { poolStateManager, initializePoolFromAllocation, getLiquidityStatus, INITIAL_LVE_LIQUIDITY, INITIAL_USDT_LIQUIDITY } from '../../pool/index.js';
 import { storage } from '../../storage/index.js';
 import { boxCenter, boxSeparator, boxTop, boxBottom, boxEmpty } from '../../utils/box.js';
 import { getNodeIdentity } from '../../identity/NodeIdentity.js';
@@ -10,10 +10,10 @@ export const poolCommand = new Command('pool')
 // INIT command - Initialize pool from LIQUIDITY allocation
 poolCommand
     .command('init')
-    .description('Initialize pool from LIQUIDITY allocation (100K LVE + 5M UZS)')
+    .description('Initialize pool from LIQUIDITY allocation (100K LVE + 5M USDT)')
     .requiredOption('--address <address>', 'Provider wallet address')
     .option('--lve <number>', 'Custom LVE amount', parseFloat)
-    .option('--uzs <number>', 'Custom UZS amount', parseFloat)
+    .option('--usdt <number>', 'Custom USDT amount', parseFloat)
     .option('--force', 'Force reinitialize (dangerous!)')
     .action(async (options) => {
         const poolData = storage.loadPool();
@@ -34,7 +34,7 @@ poolCommand
 
         try {
             const lveAmount = options.lve || INITIAL_LVE_LIQUIDITY;
-            const uzsAmount = options.uzs || INITIAL_UZS_LIQUIDITY;
+            const usdtAmount = options.usdt || INITIAL_USDT_LIQUIDITY;
             const provider = options.address;
             const blockIndex = 0; // Genesis
 
@@ -44,16 +44,16 @@ poolCommand
             console.log(boxSeparator());
             console.log(boxCenter(`Provider: ${provider.slice(0, 20)}...`));
             console.log(boxCenter(`LVE:      ${lveAmount.toLocaleString()}`));
-            console.log(boxCenter(`UZS:      ${uzsAmount.toLocaleString()}`));
-            console.log(boxCenter(`Price:    1 LVE = ${(uzsAmount / lveAmount).toFixed(2)} UZS`));
+            console.log(boxCenter(`USDT:      ${usdtAmount.toLocaleString()}`));
+            console.log(boxCenter(`Price:    1 LVE = ${(usdtAmount / lveAmount).toFixed(2)} USDT`));
             console.log(boxSeparator());
 
-            const result = initializePoolFromAllocation(provider, blockIndex, lveAmount, uzsAmount);
+            const result = initializePoolFromAllocation(provider, blockIndex, lveAmount, usdtAmount);
 
             console.log(boxCenter('✅ Pool Initialized Successfully!'));
             console.log(boxEmpty());
             console.log(boxCenter(`LP Tokens: ${result.lpTokens.toLocaleString()}`));
-            console.log(boxCenter(`Start Price: 1 LVE = ${result.startPrice} UZS`));
+            console.log(boxCenter(`Start Price: 1 LVE = ${result.startPrice} USDT`));
             console.log(boxBottom());
             console.log('');
 
@@ -118,9 +118,9 @@ poolCommand
         console.log(boxCenter('💧 Liquidity Pool'));
         console.log(boxSeparator());
         console.log(boxCenter(`Reserve LVE:    ${info.reserveLVE.toFixed(4)}`));
-        console.log(boxCenter(`Reserve UZS:    ${info.reserveUZS.toFixed(4)}`));
-        console.log(boxCenter(`Price (LVE):    ${info.priceLVE.toFixed(6)} UZS`));
-        console.log(boxCenter(`Price (UZS):    ${info.priceUZS.toFixed(6)} LVE`));
+        console.log(boxCenter(`Reserve USDT:    ${info.reserveUSDT.toFixed(4)}`));
+        console.log(boxCenter(`Price (LVE):    ${info.priceLVE.toFixed(6)} USDT`));
+        console.log(boxCenter(`Price (USDT):    ${info.priceUSDT.toFixed(6)} LVE`));
         console.log(boxCenter(`Total LP:       ${info.totalLPTokens.toFixed(4)}`));
         console.log(boxCenter(`LP Providers:   ${info.lpProviders}`));
         console.log(boxBottom());
@@ -131,7 +131,7 @@ poolCommand
 poolCommand
     .command('quote')
     .description('Get swap quote')
-    .requiredOption('--from <token>', 'Token to swap from (LVE or UZS)')
+    .requiredOption('--from <token>', 'Token to swap from (LVE or USDT)')
     .requiredOption('--amount <number>', 'Amount to swap', parseFloat)
     .action(async (options) => {
         const poolData = storage.loadPool();
@@ -156,7 +156,7 @@ poolCommand
 
         try {
             const quote = poolStateManager.getSwapQuote(options.from.toUpperCase(), options.amount);
-            const tokenOut = options.from.toUpperCase() === 'LVE' ? 'UZS' : 'LVE';
+            const tokenOut = options.from.toUpperCase() === 'LVE' ? 'USDT' : 'LVE';
 
             console.log('');
             console.log(boxTop());
@@ -179,7 +179,7 @@ poolCommand
     .description('Add liquidity to pool')
     .requiredOption('--address <address>', 'Your wallet address')
     .requiredOption('--lve <number>', 'Amount of LVE to add', parseFloat)
-    .requiredOption('--uzs <number>', 'Amount of UZS to add', parseFloat)
+    .requiredOption('--usdt <number>', 'Amount of USDT to add', parseFloat)
     .action(async (options) => {
         const poolData = storage.loadPool();
         if (poolData) {
@@ -190,7 +190,7 @@ poolCommand
             const result = poolStateManager.addLiquidity(
                 options.address,
                 options.lve,
-                options.uzs,
+                options.usdt,
                 0
             );
 
@@ -200,7 +200,7 @@ poolCommand
             console.log(boxTop());
             console.log(boxCenter('➕ Liquidity Added'));
             console.log(boxSeparator());
-            console.log(boxCenter(`Added:   ${options.lve} LVE + ${options.uzs} UZS`));
+            console.log(boxCenter(`Added:   ${options.lve} LVE + ${options.usdt} USDT`));
             console.log(boxCenter(`LP:      ${result.lpTokens.toFixed(4)} tokens`));
             console.log(boxBottom());
             console.log('');
@@ -236,7 +236,7 @@ poolCommand
             console.log(boxSeparator());
             console.log(boxCenter(`Burned:  ${options.lp} LP tokens`));
             console.log(boxCenter(`Got:     ${result.lveAmount.toFixed(6)} LVE`));
-            console.log(boxCenter(`Got:     ${result.uzsAmount.toFixed(6)} UZS`));
+            console.log(boxCenter(`Got:     ${result.usdtAmount.toFixed(6)} USDT`));
             console.log(boxBottom());
             console.log('');
         } catch (error) {
@@ -248,7 +248,7 @@ poolCommand
 poolCommand
     .command('swap')
     .description('Execute a swap')
-    .requiredOption('--from <token>', 'Token to swap from (LVE or UZS)')
+    .requiredOption('--from <token>', 'Token to swap from (LVE or USDT)')
     .requiredOption('--amount <number>', 'Amount to swap', parseFloat)
     .requiredOption('--min-out <number>', 'Minimum amount out (slippage protection)', parseFloat)
     .action(async (options) => {
@@ -267,7 +267,7 @@ poolCommand
 
             storage.savePool(poolStateManager.getState());
 
-            const tokenOut = options.from.toUpperCase() === 'LVE' ? 'UZS' : 'LVE';
+            const tokenOut = options.from.toUpperCase() === 'LVE' ? 'USDT' : 'LVE';
 
             console.log('');
             console.log(boxTop());

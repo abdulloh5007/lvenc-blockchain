@@ -8,7 +8,7 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { poolStateManager, initializePoolFromAllocation, getLiquidityStatus, INITIAL_LVE_LIQUIDITY, INITIAL_UZS_LIQUIDITY } from '../../pool/index.js';
+import { poolStateManager, initializePoolFromAllocation, getLiquidityStatus, INITIAL_LVE_LIQUIDITY, INITIAL_USDT_LIQUIDITY } from '../../pool/index.js';
 import { storage } from '../../storage/index.js';
 
 export function createPoolRoutes(): Router {
@@ -32,7 +32,7 @@ export function createPoolRoutes(): Router {
                 return;
             }
 
-            const { address, lve, uzs } = req.body;
+            const { address, lve, usdt } = req.body;
 
             if (!address) {
                 res.status(400).json({
@@ -43,10 +43,10 @@ export function createPoolRoutes(): Router {
             }
 
             const lveAmount = lve || INITIAL_LVE_LIQUIDITY;
-            const uzsAmount = uzs || INITIAL_UZS_LIQUIDITY;
+            const usdtAmount = usdt || INITIAL_USDT_LIQUIDITY;
             const blockIndex = 0; // Genesis
 
-            const result = initializePoolFromAllocation(address, blockIndex, lveAmount, uzsAmount);
+            const result = initializePoolFromAllocation(address, blockIndex, lveAmount, usdtAmount);
 
             // Save pool state
             storage.savePool(poolStateManager.getState());
@@ -57,7 +57,7 @@ export function createPoolRoutes(): Router {
                     lpTokens: result.lpTokens,
                     startPrice: result.startPrice,
                     lveAmount,
-                    uzsAmount,
+                    usdtAmount,
                     provider: address,
                 },
             });
@@ -113,16 +113,16 @@ export function createPoolRoutes(): Router {
                 initialized: info.initialized,
                 reserves: {
                     lve: info.reserveLVE,
-                    uzs: info.reserveUZS,
+                    usdt: info.reserveUSDT,
                 },
                 price: {
-                    lvePerUsdt: info.priceUZS,
-                    uzsPerEdu: info.priceLVE,
+                    lvePerUsdt: info.priceUSDT,
+                    usdtPerEdu: info.priceLVE,
                 },
                 tvl: {
                     lve: info.reserveLVE,
-                    uzs: info.reserveUZS,
-                    totalUZS: info.reserveUZS * 2,
+                    usdt: info.reserveUSDT,
+                    totalUSDT: info.reserveUSDT * 2,
                 },
                 lp: {
                     totalTokens: info.totalLPTokens,
@@ -146,16 +146,16 @@ export function createPoolRoutes(): Router {
         if (!from || !amount) {
             res.status(400).json({
                 success: false,
-                error: 'Required query params: from (LVE|UZS), amount (number)',
+                error: 'Required query params: from (LVE|USDT), amount (number)',
             });
             return;
         }
 
-        const token = String(from).toUpperCase() as 'LVE' | 'UZS';
-        if (token !== 'LVE' && token !== 'UZS') {
+        const token = String(from).toUpperCase() as 'LVE' | 'USDT';
+        if (token !== 'LVE' && token !== 'USDT') {
             res.status(400).json({
                 success: false,
-                error: 'Invalid token. Use LVE or UZS',
+                error: 'Invalid token. Use LVE or USDT',
             });
             return;
         }
@@ -183,7 +183,7 @@ export function createPoolRoutes(): Router {
 
         try {
             const quote = poolStateManager.getSwapQuote(token, amountNum);
-            const tokenOut = token === 'LVE' ? 'UZS' : 'LVE';
+            const tokenOut = token === 'LVE' ? 'USDT' : 'LVE';
 
             res.json({
                 success: true,

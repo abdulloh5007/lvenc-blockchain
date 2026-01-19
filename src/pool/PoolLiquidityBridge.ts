@@ -9,8 +9,8 @@
  * 4. Price is determined by AMM, not supply logic
  * 
  * INITIAL LIQUIDITY (mainnet/testnet):
- * - 100,000 LVE + 5,000,000 UZS
- * - Starting price: 1 LVE = 50 UZS
+ * - 100,000 LVE + 5,000,000 USDT
+ * - Starting price: 1 LVE = 50 USDT
  */
 
 import { tokenSupplyManager, ALLOCATIONS } from '../blockchain/TokenSupplyManager.js';
@@ -22,7 +22,7 @@ const log = logger.child('PoolBridge');
 
 // Initial liquidity parameters
 const INITIAL_LVE_LIQUIDITY = 100_000;      // 100K LVE
-const INITIAL_UZS_LIQUIDITY = 5_000_000;    // 5M UZS (1 LVE = 50 UZS)
+const INITIAL_USDT_LIQUIDITY = 5_000_000;    // 5M USDT (1 LVE = 50 USDT)
 
 // Track released liquidity
 let releasedLiquidity = 0;
@@ -35,7 +35,7 @@ export function initializePoolFromAllocation(
     provider: string,
     blockIndex: number,
     lveAmount: number = INITIAL_LVE_LIQUIDITY,
-    uzsAmount: number = INITIAL_UZS_LIQUIDITY
+    usdtAmount: number = INITIAL_USDT_LIQUIDITY
 ): { lpTokens: number; startPrice: number } {
     // Check if pool already initialized
     if (poolStateManager.isInitialized()) {
@@ -57,13 +57,13 @@ export function initializePoolFromAllocation(
     releasedLiquidity += lveAmount;
 
     // Initialize pool with released tokens
-    const result = poolStateManager.initializePool(provider, lveAmount, uzsAmount, blockIndex);
+    const result = poolStateManager.initializePool(provider, lveAmount, usdtAmount, blockIndex);
 
-    const startPrice = uzsAmount / lveAmount;
+    const startPrice = usdtAmount / lveAmount;
 
     log.info(`🚀 Pool initialized from LIQUIDITY allocation:`);
-    log.info(`   📊 ${lveAmount.toLocaleString()} LVE + ${uzsAmount.toLocaleString()} UZS`);
-    log.info(`   💰 Starting price: 1 LVE = ${startPrice} UZS`);
+    log.info(`   📊 ${lveAmount.toLocaleString()} LVE + ${usdtAmount.toLocaleString()} USDT`);
+    log.info(`   💰 Starting price: 1 LVE = ${startPrice} USDT`);
     log.info(`   🎫 LP tokens: ${result.lpTokens.toLocaleString()}`);
 
     return {
@@ -78,7 +78,7 @@ export function initializePoolFromAllocation(
 export function addLiquidityFromAllocation(
     provider: string,
     lveAmount: number,
-    uzsAmount: number,
+    usdtAmount: number,
     blockIndex: number
 ): { lpTokens: number } {
     if (!poolStateManager.isInitialized()) {
@@ -100,7 +100,7 @@ export function addLiquidityFromAllocation(
     releasedLiquidity += lveAmount;
 
     // Add to pool
-    const result = poolStateManager.addLiquidity(provider, lveAmount, uzsAmount, blockIndex);
+    const result = poolStateManager.addLiquidity(provider, lveAmount, usdtAmount, blockIndex);
 
     log.info(`➕ Added ${lveAmount.toLocaleString()} LVE from LIQUIDITY allocation`);
 
@@ -111,7 +111,7 @@ export function addLiquidityFromAllocation(
  * Record swap burn (30% of swap fee is burned)
  */
 export function recordSwapWithBurn(
-    tokenIn: 'LVE' | 'UZS',
+    tokenIn: 'LVE' | 'USDT',
     amountIn: number,
     minAmountOut: number,
     blockIndex: number
@@ -159,15 +159,15 @@ export function getLiquidityStatus(): {
  */
 export function getInitialLiquidityParams(): {
     lve: number;
-    uzs: number;
+    usdt: number;
     startPrice: number;
 } {
     return {
         lve: INITIAL_LVE_LIQUIDITY,
-        uzs: INITIAL_UZS_LIQUIDITY,
-        startPrice: INITIAL_UZS_LIQUIDITY / INITIAL_LVE_LIQUIDITY,
+        usdt: INITIAL_USDT_LIQUIDITY,
+        startPrice: INITIAL_USDT_LIQUIDITY / INITIAL_LVE_LIQUIDITY,
     };
 }
 
 // Export constants
-export { INITIAL_LVE_LIQUIDITY, INITIAL_UZS_LIQUIDITY };
+export { INITIAL_LVE_LIQUIDITY, INITIAL_USDT_LIQUIDITY };

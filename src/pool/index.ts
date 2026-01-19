@@ -33,5 +33,8 @@ export {
     getLiquidityStatus,
     getInitialLiquidityParams,
     INITIAL_LVE_LIQUIDITY,
-    INITIAL_UZS_LIQUIDITY,
+    INITIAL_USDT_LIQUIDITY,
 } from './PoolLiquidityBridge.js';
+
+// Price Display (UZS conversion for display only)
+export { PriceDisplayService, priceDisplayService, USDT_TO_UZS_RATE } from './PriceDisplayService.js';

@@ -64,7 +64,7 @@ export const config = {
     // Pool configuration
     pool: {
         initialLVE: 100_000,        // 100K LVE
-        initialUZS: 5_000_000,      // 5M UZS = 1 LVE = 50 UZS
+        initialUSDT: 5_000,      // 5M UZS = 1 LVE = 50 UZS
         feePercent: 0.3,            // 0.3% swap fee
         burnPercent: 30,            // 30% of fees burned
     },
