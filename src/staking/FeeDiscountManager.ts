@@ -2,17 +2,24 @@
  * Fee Discount Manager
  * Provides fee discounts based on staking amount
  * 
- * Utility for LVE token: stake more → pay less fees
+ * TWO MODES:
+ * 1. Tier-based: fixed tiers (Bronze/Silver/Gold/Diamond)
+ * 2. Dynamic: logarithmic scale (smooth progression)
  * 
- * Discount tiers:
- * - 0-99 LVE staked: 0% discount
- * - 100-999 LVE: 10% discount  
- * - 1000-9999 LVE: 25% discount
- * - 10000+ LVE: 50% discount
+ * Dynamic formula: discount = min(50, log10(stake) * 10)
+ * - 10 LVE = 10% discount
+ * - 100 LVE = 20% discount
+ * - 1000 LVE = 30% discount
+ * - 10000 LVE = 40% discount
+ * - 100000 LVE = 50% discount (max)
  */
 
 import { stakingPool } from '../staking/StakingPool.js';
 import { logger } from '../utils/logger.js';
+
+const USE_DYNAMIC_DISCOUNT = true;   // Use log-based instead of tiers
+const MAX_DISCOUNT_PERCENT = 50;     // Maximum discount cap
+const MIN_STAKE_FOR_DISCOUNT = 10;   // Minimum stake to get any discount
 
 interface DiscountTier {
     minStake: number;
@@ -31,6 +38,18 @@ export class FeeDiscountManager {
     private log = logger.child('FeeDiscount');
 
     /**
+     * Calculate dynamic discount using logarithmic scale
+     * Provides smooth progression: discount = log10(stake) * 10, max 50%
+     */
+    calculateDynamicDiscount(stake: number): number {
+        if (stake < MIN_STAKE_FOR_DISCOUNT) return 0;
+
+        // log10(10) = 1 → 10%, log10(100) = 2 → 20%, etc.
+        const discount = Math.log10(stake) * 10;
+        return Math.min(MAX_DISCOUNT_PERCENT, Math.max(0, discount));
+    }
+
+    /**
      * Get discount tier for an address based on staking amount
      */
     getDiscountTier(address: string): DiscountTier {
@@ -47,6 +66,7 @@ export class FeeDiscountManager {
 
     /**
      * Calculate discounted fee for an address
+     * Uses dynamic or tier-based discount depending on config
      */
     calculateDiscountedFee(address: string, baseFee: number): {
         originalFee: number;
@@ -54,17 +74,31 @@ export class FeeDiscountManager {
         discountAmount: number;
         discountPercent: number;
         tier: string;
+        mode: 'dynamic' | 'tier';
     } {
-        const tier = this.getDiscountTier(address);
-        const discountAmount = (baseFee * tier.discountPercent) / 100;
+        const stake = stakingPool.getStake(address);
+        let discountPercent: number;
+        let tier: string;
+
+        if (USE_DYNAMIC_DISCOUNT) {
+            discountPercent = this.calculateDynamicDiscount(stake);
+            tier = `Dynamic (${stake.toFixed(0)} LVE)`;
+        } else {
+            const tierInfo = this.getDiscountTier(address);
+            discountPercent = tierInfo.discountPercent;
+            tier = tierInfo.name;
+        }
+
+        const discountAmount = (baseFee * discountPercent) / 100;
         const discountedFee = baseFee - discountAmount;
 
         return {
             originalFee: baseFee,
             discountedFee,
             discountAmount,
-            discountPercent: tier.discountPercent,
-            tier: tier.name,
+            discountPercent,
+            tier,
+            mode: USE_DYNAMIC_DISCOUNT ? 'dynamic' : 'tier',
         };
     }
 

@@ -4,9 +4,10 @@
  * 
  * Features:
  * - Create proposals
- * - Vote with stake weight
+ * - Vote with stake weight (linear or quadratic)
  * - Execute passed proposals
  * - Quorum and threshold requirements
+ * - Anti-whale: quadratic voting option
  */
 
 import { stakingPool } from '../staking/StakingPool.js';
@@ -18,6 +19,7 @@ const MIN_PROPOSAL_STAKE = 1000;    // Need 1000 LVE staked to create proposal
 const VOTING_PERIOD_BLOCKS = 1000;  // ~8 hours at 30s blocks
 const QUORUM_PERCENT = 10;          // 10% of total stake must vote
 const PASS_THRESHOLD = 51;          // 51% of votes must be YES
+const USE_QUADRATIC_VOTING = true;  // Enable anti-whale quadratic voting
 
 type ProposalStatus = 'active' | 'passed' | 'rejected' | 'executed' | 'expired';
 type VoteChoice = 'yes' | 'no' | 'abstain';
@@ -25,7 +27,8 @@ type VoteChoice = 'yes' | 'no' | 'abstain';
 interface Vote {
     voter: string;
     choice: VoteChoice;
-    weight: number;
+    rawStake: number;      // Original stake amount
+    weight: number;        // Voting weight (sqrt if quadratic)
     timestamp: number;
 }
 
@@ -119,15 +122,19 @@ export class GovernanceManager {
             throw new Error('Already voted');
         }
 
-        // Get vote weight from stake
-        const weight = stakingPool.getStake(voter);
-        if (weight <= 0) {
+        // Get stake
+        const rawStake = stakingPool.getStake(voter);
+        if (rawStake <= 0) {
             throw new Error('Must stake LVE to vote');
         }
+
+        // Calculate voting weight (quadratic = sqrt to limit whale influence)
+        const weight = USE_QUADRATIC_VOTING ? Math.sqrt(rawStake) : rawStake;
 
         const vote: Vote = {
             voter,
             choice,
+            rawStake,
             weight,
             timestamp: Date.now(),
         };
@@ -140,7 +147,8 @@ export class GovernanceManager {
         else if (choice === 'no') proposal.noWeight += weight;
         else proposal.abstainWeight += weight;
 
-        this.log.info(`🗳️ Vote cast: ${voter.slice(0, 12)}... voted ${choice} (${weight} LVE)`);
+        this.log.info(`🗳️ Vote cast: ${voter.slice(0, 12)}... voted ${choice} (${rawStake} LVE → ${weight.toFixed(2)} voting power)`);
+        return true;
         return true;
     }
 
