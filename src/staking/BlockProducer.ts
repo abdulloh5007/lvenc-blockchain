@@ -1,6 +1,7 @@
 import { Blockchain, Transaction } from '../blockchain/index.js';
 import { stakingPool } from './StakingPool.js';
 import { vrfSelector } from './VRFSelector.js';
+import { slashingManager } from './SlashingManager.js';
 import { storage } from '../storage/index.js';
 import { logger } from '../utils/logger.js';
 import { sha256 } from '../utils/crypto.js';
@@ -106,6 +107,16 @@ export class BlockProducer {
             };
             const block = this.blockchain.createPoSBlock(validatorAddress, signFn);
             (block as { slotNumber?: number }).slotNumber = currentSlot;
+
+            // Record block signature for double-sign detection
+            const blockSignature = sha256(block.hash + validatorAddress + currentSlot.toString());
+            const isValidSignature = slashingManager.recordBlockSignature(currentSlot, validatorAddress, blockSignature);
+
+            if (!isValidSignature) {
+                this.log.error(`🔪 Double-sign detected for validator ${validatorAddress.slice(0, 12)}... at slot ${currentSlot}!`);
+                // Block is rejected, validator already slashed
+                return;
+            }
 
             // Get base reward
             const baseReward = this.blockchain.getCurrentReward();

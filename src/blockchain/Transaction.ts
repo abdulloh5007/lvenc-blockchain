@@ -12,6 +12,7 @@ export interface TransactionData {
     fee: number;                 // Transaction fee (goes to miner)
     timestamp: number;
     nonce?: number;              // Per-address sequential counter for replay protection
+    chainId?: string;            // Chain identifier for cross-chain replay protection
     signature?: string;
 }
 
@@ -23,6 +24,7 @@ export class Transaction implements TransactionData {
     public fee: number;
     public timestamp: number;
     public nonce?: number;
+    public chainId?: string;
     public signature?: string;
 
     constructor(
@@ -32,7 +34,8 @@ export class Transaction implements TransactionData {
         fee: number = 0,
         timestamp?: number,
         id?: string,
-        nonce?: number
+        nonce?: number,
+        chainId?: string
     ) {
         this.id = id || uuidv4();
         this.fromAddress = fromAddress;
@@ -41,6 +44,7 @@ export class Transaction implements TransactionData {
         this.fee = fee;
         this.timestamp = timestamp || Date.now();
         this.nonce = nonce;
+        this.chainId = chainId;
     }
 
     /**
@@ -51,7 +55,7 @@ export class Transaction implements TransactionData {
     }
 
     /**
-     * Calculate the hash of this transaction (includes nonce for replay protection)
+     * Calculate the hash of this transaction (includes nonce and chainId for replay protection)
      */
     calculateHash(): string {
         return sha256(
@@ -60,7 +64,8 @@ export class Transaction implements TransactionData {
             this.amount.toString() +
             this.fee.toString() +
             this.timestamp.toString() +
-            (this.nonce !== undefined ? this.nonce.toString() : '')
+            (this.nonce !== undefined ? this.nonce.toString() : '') +
+            (this.chainId || '')
         );
     }
 
@@ -146,6 +151,7 @@ export class Transaction implements TransactionData {
             fee: this.fee,
             timestamp: this.timestamp,
             nonce: this.nonce,
+            chainId: this.chainId,
             signature: this.signature,
         };
     }
@@ -161,7 +167,8 @@ export class Transaction implements TransactionData {
             data.fee || 0,
             data.timestamp,
             data.id,
-            data.nonce
+            data.nonce,
+            data.chainId
         );
         tx.signature = data.signature;
         return tx;
