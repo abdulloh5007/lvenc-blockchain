@@ -611,7 +611,7 @@ export class StakingPool {
     /**
      * Apply stake from transaction (internal, no validation)
      */
-    private applyStakeFromTx(address: string, amount: number): void {
+    applyStakeFromTx(address: string, amount: number): void {
         const existing = this.stakes.get(address);
         if (existing) {
             existing.amount += amount;
@@ -630,7 +630,7 @@ export class StakingPool {
     /**
      * Apply unstake from transaction (internal)
      */
-    private applyUnstakeFromTx(address: string, amount: number): void {
+    applyUnstakeFromTx(address: string, amount: number): void {
         const existing = this.stakes.get(address);
         if (existing) {
             existing.amount = Math.max(0, existing.amount - amount);
@@ -646,7 +646,7 @@ export class StakingPool {
     /**
      * Apply delegation from transaction (internal)
      */
-    private applyDelegateFromTx(delegator: string, validator: string, amount: number): void {
+    applyDelegateFromTx(delegator: string, validator: string, amount: number): void {
         const delegation: Delegation = {
             delegator,
             validator,
@@ -673,7 +673,7 @@ export class StakingPool {
     /**
      * Apply undelegation from transaction (internal)
      */
-    private applyUndelegateFromTx(delegator: string, validator: string, amount: number): void {
+    applyUndelegateFromTx(delegator: string, validator: string, amount: number): void {
         const delegations = this.delegations.get(delegator);
         if (delegations) {
             const del = delegations.find(d => d.validator === validator);

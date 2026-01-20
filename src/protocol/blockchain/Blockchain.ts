@@ -283,6 +283,25 @@ export class Blockchain {
         addCheckpoint(block.index, block.hash);
         this.pendingTransactions = remainingTx;
         this.updateBalanceCache();
+
+        // Process staking transactions from the new block
+        // This is where staking state changes are applied (on-chain staking)
+        for (const tx of txToInclude) {
+            if (tx.type === 'STAKE' && tx.fromAddress) {
+                stakingPool.applyStakeFromTx(tx.fromAddress, tx.amount);
+                logger.info(`📊 STAKE applied: ${tx.fromAddress.slice(0, 12)}... staked ${tx.amount} LVE`);
+            } else if (tx.type === 'UNSTAKE' && tx.fromAddress) {
+                stakingPool.applyUnstakeFromTx(tx.fromAddress, tx.amount);
+                logger.info(`📊 UNSTAKE applied: ${tx.fromAddress.slice(0, 12)}... unstaked ${tx.amount} LVE`);
+            } else if (tx.type === 'DELEGATE' && tx.fromAddress && tx.data) {
+                stakingPool.applyDelegateFromTx(tx.fromAddress, tx.data, tx.amount);
+                logger.info(`📊 DELEGATE applied: ${tx.fromAddress.slice(0, 12)}... delegated ${tx.amount} LVE`);
+            } else if (tx.type === 'UNDELEGATE' && tx.fromAddress && tx.data) {
+                stakingPool.applyUndelegateFromTx(tx.fromAddress, tx.data, tx.amount);
+                logger.info(`📊 UNDELEGATE applied: ${tx.fromAddress.slice(0, 12)}... undelegated ${tx.amount} LVE`);
+            }
+        }
+
         this.updateFinality();
         logger.info(`🏦 PoS Block ${block.index} validated! Reward: ${totalReward} ${config.blockchain.coinSymbol}`);
         if (this.onBlockMined) {
