@@ -3,10 +3,14 @@ import { wallet, networkApi } from '../api/client';
 import { usePinContext } from '../contexts';
 import { ec as EC } from 'elliptic';
 import { sha256 } from 'js-sha256';
-import wordlist from '../data/wordlist.json';
+import * as bip39 from 'bip39';
+import HDKey from 'hdkey';
 
 const elliptic = new EC('secp256k1');
 let addressPrefix = 'tLVE';
+
+// BIP-44 derivation path (same as backend Wallet.ts)
+const BIP44_PATH = "m/44'/60'/0'/0/0";
 
 async function loadNetworkPrefix(): Promise<void> {
     try {
@@ -27,19 +31,28 @@ export interface LocalWallet {
     createdAt: number;
 }
 
+/**
+ * Generate BIP-39 mnemonic using proper entropy
+ */
 function generateMnemonic(wordCount: 12 | 24 = 24): string {
-    const words: string[] = [];
-    const array = new Uint32Array(wordCount);
-    crypto.getRandomValues(array);
-    for (let i = 0; i < wordCount; i++) {
-        const index = array[i] % wordlist.length;
-        words.push(wordlist[index]);
-    }
-    return words.join(' ');
+    const entropyBytes = wordCount === 12 ? 16 : 32;
+    const entropy = new Uint8Array(entropyBytes);
+    crypto.getRandomValues(entropy);
+    return bip39.entropyToMnemonic(Buffer.from(entropy).toString('hex'));
 }
 
+/**
+ * Derive private key from mnemonic using BIP-44 standard
+ * MUST match backend Wallet.ts derivation exactly!
+ */
 function mnemonicToPrivateKey(mnemonic: string): string {
-    return sha256(mnemonic);
+    const seed = bip39.mnemonicToSeedSync(mnemonic.trim());
+    const hdkey = HDKey.fromMasterSeed(seed);
+    const child = hdkey.derive(BIP44_PATH);
+    if (!child.privateKey) {
+        throw new Error('Failed to derive private key');
+    }
+    return child.privateKey.toString('hex');
 }
 
 function generateWallet(label: string = 'Wallet', wordCount: 12 | 24 = 24): LocalWallet {
@@ -53,15 +66,16 @@ function generateWallet(label: string = 'Wallet', wordCount: 12 | 24 = 24): Loca
 }
 
 function importFromMnemonic(mnemonic: string, label: string = 'Imported'): LocalWallet {
-    const words = mnemonic.trim().toLowerCase().split(/\s+/);
-    // Support both 12 and 24 words for import
-    if (words.length !== 12 && words.length !== 24) throw new Error('Mnemonic must be 12 or 24 words');
-    const privateKey = mnemonicToPrivateKey(mnemonic.trim().toLowerCase());
+    const trimmed = mnemonic.trim().toLowerCase();
+    if (!bip39.validateMnemonic(trimmed)) {
+        throw new Error('Invalid mnemonic phrase');
+    }
+    const privateKey = mnemonicToPrivateKey(trimmed);
     const keyPair = elliptic.keyFromPrivate(privateKey, 'hex');
     const publicKey = keyPair.getPublic('hex');
     const hash = sha256(publicKey);
     const address = addressPrefix + hash.substring(0, 40);
-    return { address, publicKey, privateKey, mnemonic: mnemonic.trim().toLowerCase(), label, createdAt: Date.now() };
+    return { address, publicKey, privateKey, mnemonic: trimmed, label, createdAt: Date.now() };
 }
 
 export interface WalletWithBalance extends LocalWallet {
