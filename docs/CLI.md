@@ -1,34 +1,35 @@
-# EDU Chain CLI Reference
+# LVE Chain CLI Reference v2.0.0
 
-Полное руководство по командам EDU Chain Node.
+Полное руководство по командам LVE Chain Node.
 
 ## Быстрый старт
 
 ```bash
-# Запустить ноду
-edu-chain start -n testnet
+# Запустить ноду с ролью
+lve-chain start --role rpc --network testnet
 
 # Посмотреть identity
-edu-chain identity
+lve-chain identity
 
 # Привязать reward address
-edu-chain reward generate
+lve-chain reward generate
 ```
 
 ---
 
 ## Команды
 
-### `edu-chain start`
+### `lve-chain start`
 
-Запуск ноды.
+Запуск ноды с указанием роли.
 
 ```bash
-edu-chain start [options]
+lve-chain start [options]
 ```
 
 | Опция | Описание | По умолчанию |
 |-------|----------|--------------|
+| `-r, --role <role>` | Роль ноды (full/validator/rpc/light) | - |
 | `-n, --network <name>` | Сеть (mainnet/testnet) | `mainnet` |
 | `-p, --port <number>` | API порт | `3001` |
 | `--p2p <number>` | P2P порт | `6001` |
@@ -37,26 +38,35 @@ edu-chain start [options]
 | `--no-api` | Запуск без API сервера | - |
 | `-b, --bootstrap` | Режим bootstrap ноды | - |
 
+**Роли:**
+
+| Роль | P2P | API | Block Prod | Staking |
+|------|-----|-----|------------|---------|
+| `full` | ✅ | ❌ | ❌ | ❌ |
+| `validator` | ✅ | ❌ | ✅ | ✅ |
+| `rpc` | ✅ | ✅ | ❌ | ❌ |
+| `light` | headers | ❌ | ❌ | ❌ |
+
 **Примеры:**
 ```bash
-# Testnet с кастомными портами
-edu-chain start -n testnet -p 4001 --p2p 7001
+# RPC нода с API
+lve-chain start --role rpc --network testnet
 
-# Подключиться к конкретной ноде
-edu-chain start -s wss://seed1.lvenc.site
+# Full node подключённая к seed
+lve-chain start --role full --seed wss://seed1.lvenc.site
 
-# Только P2P без API
-edu-chain start --no-api
+# Validator с кастомными портами
+lve-chain start --role validator -p 4001 --p2p 7001
 ```
 
 ---
 
-### `edu-chain identity`
+### `lve-chain identity`
 
 Показать криптографическую identity ноды.
 
 ```bash
-edu-chain identity [options]
+lve-chain identity [options]
 ```
 
 | Опция | Описание |
@@ -64,104 +74,65 @@ edu-chain identity [options]
 | `-d, --data-dir <path>` | Папка данных |
 | `--export` | Экспорт в JSON формате |
 
-**Пример вывода:**
-```
-╔═══════════════════════════════════════════════════════════╗
-║                    🔑 Node Identity                       ║
-╠═══════════════════════════════════════════════════════════╣
-║  Node ID:        302a3005...4a7851a5                      ║
-║  Reward Address: tEDU_abc123...                           ║
-║  Created:        2026-01-17                               ║
-║  File:           ./data/testnet/identity.key              ║
-╚═══════════════════════════════════════════════════════════╝
-```
-
 ---
 
-### `edu-chain reward`
+### `lve-chain reward`
 
 Управление reward address для получения наград валидатора.
 
 #### `reward show`
-
-Показать текущий reward address.
-
 ```bash
-edu-chain reward show
+lve-chain reward show
 ```
 
 #### `reward bind <address>`
-
-Привязать существующий адрес кошелька.
-
 ```bash
-edu-chain reward bind tEDU_your_wallet_address
+lve-chain reward bind tLVE_your_wallet_address
 ```
 
 #### `reward generate`
-
-Создать новый кошелёк и привязать его.
-
 ```bash
-edu-chain reward generate
+lve-chain reward generate
 ```
 
-**⚠️ Важно:** Мнемоник показывается только один раз! Сохраните его надёжно.
-
-**Пример вывода:**
-```
-╔═══════════════════════════════════════════════════════════╗
-║        ⚠️  SAVE THIS MNEMONIC - SHOWN ONLY ONCE!          ║
-╠═══════════════════════════════════════════════════════════╣
-║  1. word1 word2 word3 word4                               ║
-║  2. word5 word6 word7 word8                               ║
-║  3. word9 word10 word11 word12                            ║
-╠═══════════════════════════════════════════════════════════╣
-║  Reward Address: tEDU_abc123...                           ║
-╚═══════════════════════════════════════════════════════════╝
-```
+**⚠️ Важно:** Мнемоник показывается только один раз!
 
 ---
 
-### `edu-chain status`
+### `lve-chain status`
 
 Показать статус работающей ноды.
 
 ```bash
-edu-chain status [options]
+lve-chain status [-p <port>]
 ```
-
-| Опция | Описание | По умолчанию |
-|-------|----------|--------------|
-| `-p, --port <number>` | API порт | `3001` |
 
 ---
 
-### `edu-chain peers`
+### `lve-chain peers`
 
 Показать подключённых пиров.
 
 ```bash
-edu-chain peers [options]
+lve-chain peers [-p <port>]
 ```
 
 ---
 
-## API Endpoints для операторов
+## Runners (Предустановленные запуски)
 
-Доступны когда нода запущена:
-
-| Endpoint | Описание |
-|----------|----------|
-| `GET /api/node/status` | Полный статус ноды (identity, version, network) |
-| `GET /api/node/health` | Health check для мониторинга |
-| `GET /api/node/version` | Версия ноды |
-| `GET /api/network/identity` | Public identity info |
-| `POST /api/network/identity/reward` | Привязать reward address через API |
-
-**Пример:**
 ```bash
-curl http://localhost:3001/api/node/status | jq
+# RPC node с API
+./runners/rpc/start.sh
+
+# Full node
+./runners/full/start.sh
+
+# Validator node
+./runners/validator/start.sh
+
+# Light node
+./runners/light/start.sh
 ```
 
 ---
@@ -170,24 +141,15 @@ curl http://localhost:3001/api/node/status | jq
 
 | Файл | Описание |
 |------|----------|
-| `data/identity.key` | Криптографическая identity ноды (Ed25519) |
-| `data/blockchain.json` | Данные блокчейна |
-| `data/staking.json` | Данные стейкинга |
+| `data/<network>/identity.key` | Криптографическая identity (Ed25519) |
+| `data/<network>/blocks.json` | Данные блокчейна |
+| `data/<network>/staking.json` | Данные стейкинга |
 
-**⚠️ Важно:** Файл `identity.key` содержит приватный ключ. Никогда не делитесь им!
-
----
-
-## Переменные окружения
-
-| Переменная | Описание |
-|------------|----------|
-| `NODE_ENV` | Окружение (development/production) |
-| `LOG_LEVEL` | Уровень логирования (debug/info/warn/error) |
+**⚠️ Важно:** `identity.key` содержит приватный ключ. Никогда не делитесь им!
 
 ---
 
 ## Ссылки
 
-- [Главный README](../README.md)
-- [API Documentation](/api/docs)
+- [VPS Bootstrap Guide](./VPS_BOOTSTRAP_GUIDE.md)
+- [Runners README](../runners/README.md)

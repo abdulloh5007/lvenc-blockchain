@@ -1,10 +1,10 @@
 #!/bin/bash
-# EDU Chain - Node Update Script
+# LVE Chain - Node Update Script v2.0.0
 # Run: ./update_node.sh
 
 echo ""
 echo "╔═══════════════════════════════════════════════════╗"
-echo "║          EDU Chain Node Update                    ║"
+echo "║          LVE Chain Node Update                    ║"
 echo "╚═══════════════════════════════════════════════════╝"
 echo ""
 
@@ -43,12 +43,14 @@ echo ""
 echo "╔═══════════════════════════════════════════════════╗"
 echo "║         ✅ Update Complete!                       ║"
 echo "╠═══════════════════════════════════════════════════╣"
-echo "║  Restart your node:                               ║"
-echo "║    ./run_testnet_local.sh                         ║"
-echo "║    ./run_mainnet_local.sh                         ║"
+echo "║  Restart your node using runners:                 ║"
 echo "║                                                   ║"
-echo "║  Or run in cloud server:                          ║"
-echo "║    ./run_testnet_vps.sh                           ║"
-echo "║    ./run_mainnet_vps.sh                           ║"
+echo "║    ./runners/rpc/start.sh       (RPC + API)       ║"
+echo "║    ./runners/full/start.sh      (Full node)       ║"
+echo "║    ./runners/validator/start.sh (Validator)       ║"
+echo "║    ./runners/light/start.sh     (Light node)      ║"
+echo "║                                                   ║"
+echo "║  Or using PM2:                                    ║"
+echo "║    pm2 restart lve-rpc                            ║"
 echo "╚═══════════════════════════════════════════════════╝"
 echo ""
