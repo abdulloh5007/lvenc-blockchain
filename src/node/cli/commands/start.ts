@@ -470,12 +470,40 @@ export async function startNode(options: NodeOptions): Promise<void> {
                 break;
 
             case 'info':
-                console.log(`\n📋 Node Info:`);
-                console.log(`   API Port: ${apiPort}`);
-                console.log(`   P2P Port: ${p2pPort}`);
-                console.log(`   Network: ${network}`);
-                console.log(`   Data Dir: ${options.dataDir}`);
-                console.log(`   Latest Block: #${blockchain.getLatestBlock().index}\n`);
+                const infoRewardAddr = nodeIdentity.getRewardAddress();
+                const infoStake = infoRewardAddr ? stakingPool.getStake(infoRewardAddr) : 0;
+                const infoMinStake = 100; // chainParams.staking.minValidatorSelfStake
+                const infoRemaining = Math.max(0, infoMinStake - infoStake);
+                const infoIsValidator = infoStake >= infoMinStake;
+
+                console.log('');
+                console.log(boxTop());
+                console.log(boxCenter('Node Info'));
+                console.log(boxSeparator());
+                console.log(boxCenter(`Network:       ${network}`));
+                console.log(boxCenter(`API Port:      ${apiPort}`));
+                console.log(boxCenter(`P2P Port:      ${p2pPort}`));
+                console.log(boxCenter(`Latest Block:  #${blockchain.getLatestBlock().index}`));
+                console.log(boxSeparator());
+                console.log(boxCenter('Validator Status'));
+                console.log(boxSeparator());
+                if (infoRewardAddr) {
+                    const shortAddr = `${infoRewardAddr.slice(0, 12)}...${infoRewardAddr.slice(-8)}`;
+                    console.log(boxCenter(`Reward Address: ${shortAddr}`));
+                    console.log(boxCenter(`Staked:         ${infoStake} LVE`));
+                    console.log(boxCenter(`Min Required:   ${infoMinStake} LVE`));
+                    if (infoIsValidator) {
+                        console.log(boxCenter(`Status:         ACTIVE VALIDATOR`));
+                    } else {
+                        console.log(boxCenter(`Remaining:      ${infoRemaining} LVE`));
+                        console.log(boxCenter(`Status:         INACTIVE`));
+                    }
+                } else {
+                    console.log(boxCenter('Reward Address: Not configured'));
+                    console.log(boxCenter('Run: lve-chain reward generate'));
+                }
+                console.log(boxBottom());
+                console.log('');
                 break;
 
             case 'help':
