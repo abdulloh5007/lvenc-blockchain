@@ -70,9 +70,17 @@ export interface NetworkInfo {
     symbol: string;
     addressPrefix: string;
     faucetEnabled: boolean;
+    chainId: string;  // Required for canonical tx hash
 }
 export const networkApi = {
     getInfo: () => fetchApi<NetworkInfo>('/network-info'),
+    // Get next nonce for an address (required for replay protection)
+    getNonce: (address: string) => fetchApi<{
+        address: string;
+        lastNonce: number;
+        nextNonce: number;
+        pendingCount: number;
+    }>(`/nonce/${address}`),
 };
 
 
@@ -171,15 +179,17 @@ export const staking = {
     getEpoch: () => fetchApi<EpochInfo>('/staking/epoch'),
 
     // Staking
-    stake: (address: string, amount: number) => fetchApi<{
+    // Client signs tx locally with ed25519, API only relays to mempool
+    // Canonical format: sha256(chainId + txType + from + to + amount + fee + nonce)
+    stake: (address: string, amount: number, signature: string, publicKey: string, nonce: number, chainId: string, signatureScheme: 'ed25519' = 'ed25519') => fetchApi<{
         message: string;
-        currentStake: number;
-        pendingStake: number;
+        txId: string;
+        status: string;
+        amount: number;
         effectiveEpoch: number;
-        validators: number
     }>('/staking/stake', {
         method: 'POST',
-        body: JSON.stringify({ address, amount }),
+        body: JSON.stringify({ address, amount, signature, publicKey, nonce, chainId, signatureScheme }),
     }),
     unstake: (address: string, amount: number) => fetchApi<{
         message: string;
@@ -194,14 +204,15 @@ export const staking = {
         body: JSON.stringify({ address }),
     }),
 
-    // Delegation
-    delegate: (delegator: string, validator: string, amount: number) => fetchApi<{
+    // Delegation - Client signs tx locally with ed25519, API only relays
+    // Canonical format: sha256(chainId + txType + from + to + amount + fee + nonce)
+    delegate: (delegator: string, validator: string, amount: number, signature: string, publicKey: string, nonce: number, chainId: string, signatureScheme: 'ed25519' = 'ed25519') => fetchApi<{
         message: string;
         effectiveEpoch: number;
         delegations: Delegation[];
     }>('/staking/delegate', {
         method: 'POST',
-        body: JSON.stringify({ delegator, validator, amount }),
+        body: JSON.stringify({ delegator, validator, amount, signature, publicKey, nonce, chainId, signatureScheme }),
     }),
     undelegate: (delegator: string, validator: string, amount: number) => fetchApi<{
         message: string;

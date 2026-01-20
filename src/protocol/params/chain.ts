@@ -44,6 +44,13 @@ export const chainParams = {
         slashPercent: 50,             // Slash percentage for violations
         defaultCommission: 10,        // Default validator commission %
         epochDuration: 100,           // Blocks per epoch
+
+        // Unbonding period (funds locked after unstake)
+        unbondingEpochs: isTestnet ? 3 : 21,  // 3 epochs testnet, 21 mainnet (~7 days)
+
+        // Jailing parameters
+        jailDurationEpochs: isTestnet ? 2 : 7,  // How long validator is jailed
+        maxJailCount: 3,                        // Max jails before permanent ban
     },
 
     // Version protocol (for upgrade coordination)

@@ -1,11 +1,13 @@
 import { v4 as uuidv4 } from 'uuid';
 import { sha256 } from '../utils/crypto.js';
-import elliptic from 'elliptic';
+import * as ed from '@noble/ed25519';
 
-const ec = new elliptic.ec('secp256k1');
+// Signature scheme - ed25519 is the ONLY accepted scheme
+// secp256k1 is DEPRECATED and will be rejected for new transactions
+export type SignatureScheme = 'ed25519';
 
 // Transaction types for on-chain staking
-export type TransactionType = 'TRANSFER' | 'STAKE' | 'UNSTAKE' | 'DELEGATE' | 'UNDELEGATE';
+export type TransactionType = 'TRANSFER' | 'STAKE' | 'UNSTAKE' | 'DELEGATE' | 'UNDELEGATE' | 'CLAIM_REWARD';
 
 export interface TransactionData {
     id: string;
@@ -13,11 +15,13 @@ export interface TransactionData {
     fromAddress: string | null;  // null for mining rewards
     toAddress: string;
     amount: number;
-    fee: number;                 // Transaction fee (goes to miner)
+    fee: number;                 // Transaction fee (goes to validator)
     timestamp: number;
     nonce?: number;              // Per-address sequential counter for replay protection
     chainId?: string;            // Chain identifier for cross-chain replay protection
-    signature?: string;
+    signature?: string;          // Ed25519 signature (hex)
+    publicKey?: string;          // Ed25519 public key (hex) for verification
+    signatureScheme?: SignatureScheme;  // Must be 'ed25519'
     data?: string;               // Optional data field (e.g., validator address for delegation)
 }
 
@@ -32,6 +36,8 @@ export class Transaction implements TransactionData {
     public nonce?: number;
     public chainId?: string;
     public signature?: string;
+    public publicKey?: string;           // Ed25519 public key for verification
+    public signatureScheme?: SignatureScheme;  // Must be 'ed25519'
     public data?: string;
 
     constructor(
@@ -44,7 +50,9 @@ export class Transaction implements TransactionData {
         nonce?: number,
         chainId?: string,
         type: TransactionType = 'TRANSFER',
-        data?: string
+        data?: string,
+        signatureScheme?: SignatureScheme,
+        publicKey?: string
     ) {
         this.id = id || uuidv4();
         this.type = type;
@@ -56,6 +64,8 @@ export class Transaction implements TransactionData {
         this.nonce = nonce;
         this.chainId = chainId;
         this.data = data;
+        this.signatureScheme = signatureScheme;
+        this.publicKey = publicKey;
     }
 
     /**
@@ -73,46 +83,90 @@ export class Transaction implements TransactionData {
     }
 
     /**
-     * Calculate the hash of this transaction (includes nonce and chainId for replay protection)
+     * Calculate the CANONICAL hash of this transaction for signing
+     * 
+     * SECURITY: This hash is used for signature verification.
+     * All nodes MUST produce identical hash for identical tx.
+     * 
+     * Domain separation via chainId + txType prevents:
+     * - Cross-chain replay attacks (chainId)
+     * - Transaction type confusion attacks (txType)
+     * 
+     * Replay protection via nonce:
+     * - Each account has a sequence number
+     * - Tx is valid only if nonce = account.nonce
+     * 
+     * EXCLUDED: timestamp (non-deterministic), signature, id
+     * 
+     * Format: sha256(chainId || txType || from || to || amount || fee || nonce)
      */
     calculateHash(): string {
+        // For user transactions, nonce and chainId are REQUIRED
+        // Coinbase/reward transactions are exempt
+        if (this.fromAddress && this.nonce === undefined) {
+            throw new Error('Nonce is required for user transactions');
+        }
+        if (this.fromAddress && !this.chainId) {
+            throw new Error('ChainId is required for user transactions');
+        }
+
         return sha256(
-            (this.fromAddress || '') +
-            this.toAddress +
-            this.amount.toString() +
-            this.fee.toString() +
-            this.timestamp.toString() +
-            (this.nonce !== undefined ? this.nonce.toString() : '') +
-            (this.chainId || '')
+            (this.chainId || '') +           // Domain: network
+            this.type +                       // Domain: tx type
+            (this.fromAddress || '') +        // Sender
+            this.toAddress +                  // Recipient
+            this.amount.toString() +          // Amount
+            this.fee.toString() +             // Fee
+            (this.nonce !== undefined ? this.nonce.toString() : '')  // Sequence
         );
     }
 
     /**
-     * Sign the transaction with a private key
+     * Sign the transaction with an ed25519 private key (async)
+     * 
+     * NOTE: This method is for server-side/testing use only.
+     * In production, client signs transactions locally and sends signature.
+     * 
+     * @param privateKey - 32-byte ed25519 private key (hex)
      */
-    sign(privateKey: string): void {
-        // Verify the fromAddress matches the public key derived from private key
-        const keyPair = ec.keyFromPrivate(privateKey, 'hex');
-        const publicKey = keyPair.getPublic('hex');
+    async signEd25519(privateKey: string): Promise<void> {
+        // Get public key from private key
+        const privateKeyBytes = Buffer.from(privateKey, 'hex');
+        const publicKeyBytes = await ed.getPublicKeyAsync(privateKeyBytes);
+        const publicKeyHex = Buffer.from(publicKeyBytes).toString('hex');
 
-        // Create address from public key for verification
-        const addressFromKey = 'LVE' + sha256(publicKey).substring(0, 40);
+        // Create address from ed25519 public key (native format, NOT Ethereum-style)
+        // Format: prefix + sha256(publicKey).slice(0, 40)
+        const prefix = this.chainId?.includes('testnet') ? 'tLVE' : 'LVE';
+        const addressFromKey = prefix + sha256(publicKeyHex).substring(0, 40);
 
         if (addressFromKey !== this.fromAddress) {
             throw new Error('Cannot sign transaction for other wallets!');
         }
 
+        // Sign canonical hash with ed25519
         const hash = this.calculateHash();
-        const signature = keyPair.sign(hash, 'base64');
-        this.signature = signature.toDER('hex');
+        const hashBytes = Buffer.from(hash, 'hex');
+        const signatureBytes = await ed.signAsync(hashBytes, privateKeyBytes);
+
+        this.signature = Buffer.from(signatureBytes).toString('hex');
+        this.publicKey = publicKeyHex;
+        this.signatureScheme = 'ed25519';
     }
 
     /**
-     * Verify the transaction signature cryptographically
+     * @deprecated Use signEd25519 instead. secp256k1 is no longer supported.
+     */
+    sign(_privateKey: string): void {
+        throw new Error('secp256k1 signing is deprecated. Use signEd25519() or client-side ed25519 signing.');
+    }
+
+    /**
+     * Verify the transaction is valid for inclusion in mempool/block
      * This is called during addTransaction and block validation
      */
     isValid(): boolean {
-        // Mining rewards and coinbase transactions don't need signature
+        // Mining rewards and coinbase transactions don't need signature/nonce/chainId
         // Check for null, empty string, or special system addresses
         if (this.fromAddress === null ||
             this.fromAddress === '' ||
@@ -123,6 +177,15 @@ export class Transaction implements TransactionData {
             this.fromAddress?.startsWith('tLVE000000000000000000') ||
             this.fromAddress?.startsWith('LVE000000000000000000')) {
             return true;
+        }
+
+        // ========== REPLAY PROTECTION ==========
+        // All user transactions MUST have nonce and chainId
+        if (this.nonce === undefined) {
+            throw new Error('Nonce is required for replay protection');
+        }
+        if (!this.chainId) {
+            throw new Error('ChainId is required for cross-chain replay protection');
         }
 
         // Staking transaction validation
@@ -158,39 +221,72 @@ export class Transaction implements TransactionData {
             throw new Error('No signature in this transaction');
         }
 
-        // NOTE: Full cryptographic verification requires the public key
-        // which is provided separately during API transaction submission
-        // This basic check ensures signature exists and has valid DER format
+        // ========== ED25519 ENFORCEMENT ==========
+        // signatureScheme must be explicitly 'ed25519'
+        if (this.signatureScheme !== 'ed25519') {
+            throw new Error('signatureScheme must be explicitly set to "ed25519"');
+        }
+
+        // publicKey must be provided for verification
+        if (!this.publicKey || this.publicKey.length === 0) {
+            throw new Error('publicKey is required for signature verification');
+        }
+
+        // Basic signature format check
+        // Ed25519 signatures are exactly 64 bytes (128 hex chars)
         try {
-            // Check if signature is valid DER format (basic sanity check)
-            if (this.signature.length < 70 || this.signature.length > 144) {
-                return false; // DER signatures are typically 70-72 bytes (140-144 hex chars)
+            if (this.signature.length !== 128) {
+                throw new Error(`Invalid ed25519 signature length: ${this.signature.length} (expected 128 hex chars)`);
+            }
+            // Ed25519 public keys are exactly 32 bytes (64 hex chars)
+            if (this.publicKey.length !== 64) {
+                throw new Error(`Invalid ed25519 public key length: ${this.publicKey.length} (expected 64 hex chars)`);
             }
             return true;
+        } catch (e) {
+            if (e instanceof Error) throw e;
+            return false;
+        }
+    }
+
+    /**
+     * Verify ed25519 signature with public key (async)
+     * 
+     * @param publicKey - 32-byte ed25519 public key (hex)
+     * @returns true if signature is valid
+     */
+    async verifyEd25519(publicKey?: string): Promise<boolean> {
+        if (this.fromAddress === null) {
+            return true;  // Coinbase tx
+        }
+
+        const pubKey = publicKey || this.publicKey;
+        if (!this.signature || !pubKey) {
+            return false;
+        }
+
+        // Enforce ed25519 scheme for new transactions
+        if (this.signatureScheme && this.signatureScheme !== 'ed25519') {
+            return false;  // Reject non-ed25519 schemes
+        }
+
+        try {
+            const hash = this.calculateHash();
+            const hashBytes = Buffer.from(hash, 'hex');
+            const signatureBytes = Buffer.from(this.signature, 'hex');
+            const publicKeyBytes = Buffer.from(pubKey, 'hex');
+
+            return await ed.verifyAsync(signatureBytes, hashBytes, publicKeyBytes);
         } catch {
             return false;
         }
     }
 
     /**
-     * Verify signature with public key
+     * @deprecated Use verifyEd25519 instead. secp256k1 is no longer supported.
      */
-    verifyWithPublicKey(publicKey: string): boolean {
-        if (this.fromAddress === null) {
-            return true;
-        }
-
-        if (!this.signature) {
-            return false;
-        }
-
-        try {
-            const keyPair = ec.keyFromPublic(publicKey, 'hex');
-            const hash = this.calculateHash();
-            return keyPair.verify(hash, this.signature);
-        } catch {
-            return false;
-        }
+    verifyWithPublicKey(_publicKey: string): boolean {
+        throw new Error('secp256k1 verification is deprecated. Use verifyEd25519().');
     }
 
     /**
@@ -208,6 +304,8 @@ export class Transaction implements TransactionData {
             nonce: this.nonce,
             chainId: this.chainId,
             signature: this.signature,
+            publicKey: this.publicKey,
+            signatureScheme: this.signatureScheme,
             data: this.data,
         };
     }
@@ -226,7 +324,9 @@ export class Transaction implements TransactionData {
             data.nonce,
             data.chainId,
             data.type || 'TRANSFER',
-            data.data
+            data.data,
+            data.signatureScheme,
+            data.publicKey
         );
         tx.signature = data.signature;
         return tx;

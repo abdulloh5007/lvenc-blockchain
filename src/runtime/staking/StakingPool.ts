@@ -48,6 +48,10 @@ export interface ValidatorInfo {
     totalRewards: number;
     slashCount: number;
     isActive: boolean;
+    // Jailing status
+    isJailed: boolean;
+    jailedUntilEpoch: number;  // Epoch when jail ends (0 = not jailed)
+    jailCount: number;          // Total times jailed
 }
 
 export interface EpochInfo {
@@ -63,6 +67,9 @@ const MIN_DELEGATION = chainParams.staking.minDelegation;
 const EPOCH_DURATION = chainParams.staking.epochDuration;
 const DEFAULT_COMMISSION = chainParams.staking.defaultCommission;
 const SLASH_PERCENT = chainParams.staking.slashPercent;
+const UNBONDING_EPOCHS = chainParams.staking.unbondingEpochs;
+const JAIL_DURATION_EPOCHS = chainParams.staking.jailDurationEpochs;
+const MAX_JAIL_COUNT = chainParams.staking.maxJailCount;
 
 export class StakingPool {
     private stakes: Map<string, StakeInfo> = new Map();
@@ -149,6 +156,15 @@ export class StakingPool {
             }
         }
 
+        // Auto-unjail validators whose jail period has expired
+        for (const [address, validator] of this.validators) {
+            if (validator.isJailed &&
+                validator.jailedUntilEpoch !== Number.MAX_SAFE_INTEGER &&
+                validator.jailedUntilEpoch <= this.currentEpoch) {
+                this.unjailValidator(address);
+            }
+        }
+
         this.log.info(`🔄 Epoch transition: ${this.currentEpoch - 1} → ${this.currentEpoch}`);
     }
 
@@ -199,7 +215,8 @@ export class StakingPool {
             return null;
         }
 
-        const epochEffective = this.currentEpoch + 1;
+        // Unbonding period: funds locked for UNBONDING_EPOCHS
+        const epochEffective = this.currentEpoch + UNBONDING_EPOCHS;
         const request: UnstakeRequest = {
             address,
             amount,
@@ -215,7 +232,7 @@ export class StakingPool {
         this.stakes.set(address, stake);
         this.updateValidator(address);
 
-        this.log.info(`🔓 Unstake queued: ${amount} LVE (effective epoch ${epochEffective})`);
+        this.log.info(`🔓 Unstake queued: ${amount} LVE (unbonding ${UNBONDING_EPOCHS} epochs, effective epoch ${epochEffective})`);
         return request;
     }
 
@@ -380,11 +397,86 @@ export class StakingPool {
         if (validator) {
             validator.slashCount++;
             this.validators.set(address, validator);
+
+            // Auto-jail on slash
+            this.jailValidator(address, reason);
         }
 
         this.updateValidator(address);
         this.log.warn(`⚠️ Slashed ${slashAmount} LVE from ${address.slice(0, 10)}... Reason: ${reason}`);
         return slashAmount;
+    }
+
+    // ========== JAILING ==========
+
+    /**
+     * Jail a validator for JAIL_DURATION_EPOCHS
+     * Jailed validators cannot produce blocks or earn rewards
+     */
+    jailValidator(address: string, reason: string): boolean {
+        const validator = this.validators.get(address);
+        if (!validator) return false;
+
+        validator.jailCount++;
+
+        // Permanent ban after MAX_JAIL_COUNT jails
+        if (validator.jailCount >= MAX_JAIL_COUNT) {
+            validator.isJailed = true;
+            validator.jailedUntilEpoch = Number.MAX_SAFE_INTEGER;  // Permanent
+            validator.isActive = false;
+            this.validators.set(address, validator);
+            this.log.warn(`🔒 PERMANENTLY BANNED: ${address.slice(0, 10)}... (${validator.jailCount} jails)`);
+            return true;
+        }
+
+        validator.isJailed = true;
+        validator.jailedUntilEpoch = this.currentEpoch + JAIL_DURATION_EPOCHS;
+        validator.isActive = false;
+        this.validators.set(address, validator);
+
+        this.log.warn(`🔒 JAILED: ${address.slice(0, 10)}... until epoch ${validator.jailedUntilEpoch}. Reason: ${reason}`);
+        return true;
+    }
+
+    /**
+     * Unjail a validator (called automatically at epoch transition or manually)
+     */
+    unjailValidator(address: string): boolean {
+        const validator = this.validators.get(address);
+        if (!validator || !validator.isJailed) return false;
+
+        // Cannot unjail if permanent ban
+        if (validator.jailedUntilEpoch === Number.MAX_SAFE_INTEGER) {
+            this.log.warn(`Cannot unjail ${address.slice(0, 10)}...: permanent ban`);
+            return false;
+        }
+
+        // Cannot unjail before time
+        if (this.currentEpoch < validator.jailedUntilEpoch) {
+            this.log.warn(`Cannot unjail ${address.slice(0, 10)}...: ${validator.jailedUntilEpoch - this.currentEpoch} epochs remaining`);
+            return false;
+        }
+
+        validator.isJailed = false;
+        validator.jailedUntilEpoch = 0;
+
+        // Re-activate if stake is sufficient
+        const stake = this.stakes.get(address);
+        if (stake && stake.amount >= MIN_STAKE) {
+            validator.isActive = true;
+        }
+
+        this.validators.set(address, validator);
+        this.log.info(`🔓 UNJAILED: ${address.slice(0, 10)}...`);
+        return true;
+    }
+
+    /**
+     * Check if validator is currently jailed
+     */
+    isValidatorJailed(address: string): boolean {
+        const validator = this.validators.get(address);
+        return validator?.isJailed ?? false;
     }
 
     // ========== VALIDATOR MANAGEMENT ==========
@@ -415,6 +507,9 @@ export class StakingPool {
                 totalRewards: 0,
                 slashCount: 0,
                 isActive: true,
+                isJailed: false,
+                jailedUntilEpoch: 0,
+                jailCount: 0,
             });
         }
     }
@@ -422,10 +517,11 @@ export class StakingPool {
     /**
      * Select validator deterministically based on seed (previous block hash + block index)
      * MUST be deterministic - all nodes must select the same validator
+     * Jailed validators are excluded from selection
      */
     selectValidator(seed?: string): string | null {
         const activeValidators = Array.from(this.validators.values())
-            .filter(v => v.isActive)
+            .filter(v => v.isActive && !v.isJailed)  // Exclude jailed
             .sort((a, b) => a.address.localeCompare(b.address)); // Deterministic order
 
         if (activeValidators.length === 0) return null;

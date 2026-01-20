@@ -210,6 +210,9 @@ app.use('/api/pool', createPoolRoutes());
 
 // Faucet routes (testnet only)
 import { createFaucetRoutes } from './routes/faucet.js';
+import { nonceManager } from '../../protocol/security/nonce-manager.js';
+import { chainParams } from '../../protocol/params/index.js';
+
 app.use('/api/faucet', createFaucetRoutes());
 
 app.get('/api/network-info', (_req: Request, res: Response) => {
@@ -221,6 +224,27 @@ app.get('/api/network-info', (_req: Request, res: Response) => {
             symbol: config.blockchain.coinSymbol,
             addressPrefix: config.blockchain.addressPrefix,
             faucetEnabled: config.faucet.enabled,
+            chainId: chainParams.chainId,  // Required for canonical tx hash
+        },
+    });
+});
+
+// Nonce endpoint for replay protection
+// Client MUST fetch nonce before signing any transaction
+app.get('/api/nonce/:address', (req: Request, res: Response) => {
+    const { address } = req.params;
+    if (!address) {
+        res.status(400).json({ success: false, error: 'Address is required' });
+        return;
+    }
+    const nonceInfo = nonceManager.getNonceInfo(address);
+    res.json({
+        success: true,
+        data: {
+            address,
+            lastNonce: nonceInfo.lastNonce,
+            nextNonce: nonceInfo.nextNonce,
+            pendingCount: nonceInfo.pendingCount,
         },
     });
 });

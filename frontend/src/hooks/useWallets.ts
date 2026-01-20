@@ -1,15 +1,17 @@
 import { useState, useEffect, useCallback } from 'react';
 import { wallet, networkApi } from '../api/client';
 import { usePinContext } from '../contexts';
-import { ec as EC } from 'elliptic';
+import * as ed from '@noble/ed25519';
 import { sha256 } from 'js-sha256';
 import * as bip39 from 'bip39';
 import HDKey from 'hdkey';
 
-const elliptic = new EC('secp256k1');
+// Ed25519 is the ONLY accepted signature scheme
+// secp256k1 is DEPRECATED
 let addressPrefix = 'tLVE';
 
-// BIP-44 derivation path (same as backend Wallet.ts)
+// BIP-44 derivation path for ed25519 (SLIP-0010)
+// Using coin type 60 for backwards compatibility, but generating ed25519 keys
 const BIP44_PATH = "m/44'/60'/0'/0/0";
 
 async function loadNetworkPrefix(): Promise<void> {
@@ -52,30 +54,62 @@ function mnemonicToPrivateKey(mnemonic: string): string {
     if (!child.privateKey) {
         throw new Error('Failed to derive private key');
     }
-    return child.privateKey.toString('hex');
+    // Use first 32 bytes as ed25519 private key seed
+    return child.privateKey.toString('hex').slice(0, 64);
 }
 
-function generateWallet(label: string = 'Wallet', wordCount: 12 | 24 = 24): LocalWallet {
+/**
+ * Generate new ed25519 wallet from mnemonic
+ * Returns async because ed25519 key derivation is async
+ */
+async function generateWalletAsync(label: string = 'Wallet', wordCount: 12 | 24 = 24): Promise<LocalWallet> {
     const mnemonic = generateMnemonic(wordCount);
     const privateKey = mnemonicToPrivateKey(mnemonic);
-    const keyPair = elliptic.keyFromPrivate(privateKey, 'hex');
-    const publicKey = keyPair.getPublic('hex');
+
+    // Get ed25519 public key from private key (32 bytes)
+    const privateKeyBytes = hexToBytes(privateKey);
+    const publicKeyBytes = await ed.getPublicKeyAsync(privateKeyBytes);
+    const publicKey = bytesToHex(publicKeyBytes);
+
+    // Create address from ed25519 public key (native format, NOT Ethereum-style)
     const hash = sha256(publicKey);
     const address = addressPrefix + hash.substring(0, 40);
+
     return { address, publicKey, privateKey, mnemonic, label, createdAt: Date.now() };
 }
 
-function importFromMnemonic(mnemonic: string, label: string = 'Imported'): LocalWallet {
+/**
+ * Import wallet from existing mnemonic (ed25519)
+ */
+async function importFromMnemonicAsync(mnemonic: string, label: string = 'Imported'): Promise<LocalWallet> {
     const trimmed = mnemonic.trim().toLowerCase();
     if (!bip39.validateMnemonic(trimmed)) {
         throw new Error('Invalid mnemonic phrase');
     }
     const privateKey = mnemonicToPrivateKey(trimmed);
-    const keyPair = elliptic.keyFromPrivate(privateKey, 'hex');
-    const publicKey = keyPair.getPublic('hex');
+
+    // Get ed25519 public key from private key
+    const privateKeyBytes = hexToBytes(privateKey);
+    const publicKeyBytes = await ed.getPublicKeyAsync(privateKeyBytes);
+    const publicKey = bytesToHex(publicKeyBytes);
+
     const hash = sha256(publicKey);
     const address = addressPrefix + hash.substring(0, 40);
+
     return { address, publicKey, privateKey, mnemonic: trimmed, label, createdAt: Date.now() };
+}
+
+// Helper functions for hex/bytes conversion
+function hexToBytes(hex: string): Uint8Array {
+    const bytes = new Uint8Array(hex.length / 2);
+    for (let i = 0; i < bytes.length; i++) {
+        bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
+    }
+    return bytes;
+}
+
+function bytesToHex(bytes: Uint8Array): string {
+    return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 export interface WalletWithBalance extends LocalWallet {
@@ -118,7 +152,7 @@ export function useWallets() {
 
     const createWallet = useCallback(async (label?: string, wordCount: 12 | 24 = 24) => {
         await loadNetworkPrefix();
-        const newWallet = generateWallet(label, wordCount);
+        const newWallet = await generateWalletAsync(label, wordCount);
         const stored = loadWallets();
         stored.push(newWallet);
         saveWallets(stored);
@@ -128,7 +162,7 @@ export function useWallets() {
 
     const importWallet = useCallback(async (mnemonic: string, label?: string) => {
         await loadNetworkPrefix();
-        const imported = importFromMnemonic(mnemonic, label);
+        const imported = await importFromMnemonicAsync(mnemonic, label);
         const stored = loadWallets();
         if (stored.find(w => w.address === imported.address)) {
             throw new Error('Wallet already exists');
@@ -146,15 +180,25 @@ export function useWallets() {
         setWallets(prev => prev.filter(w => w.address !== address));
     }, [loadWallets, saveWallets]);
 
-    const signTransaction = useCallback((from: string, to: string, amount: number, fee: number, timestamp: number) => {
+    /**
+     * @deprecated Legacy transaction signing - uses old timestamp-based hash format
+     * Use signStakingTransaction for new transactions with nonce/chainId
+     */
+    const signTransaction = useCallback(async (from: string, to: string, amount: number, fee: number, timestamp: number) => {
         const stored = loadWallets();
         const w = stored.find(w => w.address === from);
         if (!w) throw new Error('Wallet not found');
-        // Hash format must match backend Transaction.calculateHash(): from + to + amount + fee + timestamp
+
+        // Legacy hash format (DEPRECATED: does not include nonce/chainId)
         const txData = from + to + amount.toString() + fee.toString() + timestamp.toString();
         const hash = sha256(txData);
-        const keyPair = elliptic.keyFromPrivate(w.privateKey, 'hex');
-        const signature = keyPair.sign(hash).toDER('hex');
+
+        // Sign with ed25519
+        const privateKeyBytes = hexToBytes(w.privateKey);
+        const hashBytes = hexToBytes(hash);
+        const signatureBytes = await ed.signAsync(hashBytes, privateKeyBytes);
+        const signature = bytesToHex(signatureBytes);
+
         return { hash, signature, publicKey: w.publicKey, timestamp };
     }, [loadWallets]);
 
@@ -168,8 +212,95 @@ export function useWallets() {
     ): Promise<{ hash: string; signature: string; publicKey: string; timestamp: number } | null> => {
         const confirmed = await confirmPin('Подтвердите транзакцию', `Отправить ${amount} LVE?`);
         if (!confirmed) return null;
-        return signTransaction(from, to, amount, fee, timestamp);
+        return await signTransaction(from, to, amount, fee, timestamp);
     }, [confirmPin, signTransaction]);
+
+    /**
+     * Sign a staking transaction (STAKE, UNSTAKE, DELEGATE, UNDELEGATE)
+     * Uses ed25519 signature (the ONLY accepted scheme)
+     * 
+     * CANONICAL HASH FORMAT (must match backend Transaction.calculateHash()):
+     * hash = sha256(chainId + txType + from + to + amount + fee + nonce)
+     * 
+     * EXCLUDED: timestamp (non-deterministic), signature, id
+     * 
+     * @param nonce - Per-account sequence number (get from API before signing)
+     * @param chainId - Network identifier (get from API)
+     * @param txType - Transaction type for domain separation
+     */
+    const signStakingTransaction = useCallback(async (
+        from: string,
+        to: string,
+        amount: number,
+        fee: number,
+        nonce: number,
+        chainId: string,
+        txType: 'STAKE' | 'UNSTAKE' | 'DELEGATE' | 'UNDELEGATE' | 'TRANSFER'
+    ): Promise<{ signature: string; publicKey: string; nonce: number; chainId: string; signatureScheme: 'ed25519' }> => {
+        const stored = loadWallets();
+        const w = stored.find(w => w.address === from);
+        if (!w) throw new Error('Wallet not found');
+
+        // Canonical tx hash: MUST match backend Transaction.calculateHash() EXACTLY
+        // Format: sha256(chainId + txType + from + to + amount + fee + nonce)
+        // NO timestamp in hash!
+        const canonicalPayload =
+            chainId +
+            txType +
+            from +
+            to +
+            amount.toString() +
+            fee.toString() +
+            nonce.toString();
+        const txHash = sha256(canonicalPayload);  // Returns hex string
+
+        // Sign with ed25519 (the ONLY accepted scheme)
+        const privateKeyBytes = hexToBytes(w.privateKey);
+        const hashBytes = hexToBytes(txHash);
+        const signatureBytes = await ed.signAsync(hashBytes, privateKeyBytes);
+        const signature = bytesToHex(signatureBytes);  // 64 bytes = 128 hex chars
+
+        return {
+            signature,
+            publicKey: w.publicKey,  // 32 bytes = 64 hex chars
+            nonce,
+            chainId,
+            signatureScheme: 'ed25519'
+        };
+    }, [loadWallets]);
+
+    /**
+     * Sign staking transaction with PIN confirmation
+     * Fetches nonce and chainId from API, then signs with ed25519
+     * Returns null if user cancels PIN
+     */
+    const signStakingTransactionWithPin = useCallback(async (
+        from: string,
+        to: string,
+        amount: number,
+        fee: number = 0,
+        txType: 'STAKE' | 'UNSTAKE' | 'DELEGATE' | 'UNDELEGATE' | 'TRANSFER',
+        actionDescription?: string
+    ): Promise<{ signature: string; publicKey: string; nonce: number; chainId: string; signatureScheme: 'ed25519' } | null> => {
+        const description = actionDescription || `Подтвердите операцию: ${amount} LVE`;
+        const confirmed = await confirmPin('Подтвердите транзакцию', description);
+        if (!confirmed) return null;
+
+        // Fetch nonce and chainId from API
+        const [nonceRes, networkRes] = await Promise.all([
+            networkApi.getNonce(from),
+            networkApi.getInfo()
+        ]);
+
+        if (!nonceRes.success || !networkRes.success) {
+            throw new Error('Failed to fetch nonce or network info');
+        }
+
+        const nonce = nonceRes.data!.nextNonce;
+        const chainId = networkRes.data!.chainId;
+
+        return await signStakingTransaction(from, to, amount, fee, nonce, chainId, txType);
+    }, [confirmPin, signStakingTransaction]);
 
     useEffect(() => {
         fetchBalances();
@@ -186,6 +317,8 @@ export function useWallets() {
         deleteWallet,
         signTransaction,
         signTransactionWithPin,
+        signStakingTransaction,
+        signStakingTransactionWithPin,
         refresh: fetchBalances
     };
 }

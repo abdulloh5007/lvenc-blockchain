@@ -3,6 +3,7 @@ import { Blockchain, Transaction } from '../../../protocol/blockchain/index.js';
 import { stakingPool } from '../../../runtime/staking/index.js';
 import { storage } from '../../../protocol/storage/index.js';
 import { logger } from '../../../protocol/utils/logger.js';
+import { validateStakingTx } from '../middleware/tx-validation.js';
 
 export function createStakingRoutes(blockchain: Blockchain): Router {
     const router = Router();
@@ -32,13 +33,19 @@ export function createStakingRoutes(blockchain: Blockchain): Router {
 
     // ========== STAKING ==========
 
-    router.post('/stake', (req: Request, res: Response) => {
-        const { address, amount, signature, publicKey } = req.body;
-        if (!address || !amount || amount <= 0) {
-            res.status(400).json({ success: false, error: 'Address and positive amount required' });
-            return;
-        }
+    /**
+     * POST /stake - Relay a signed STAKE transaction to the mempool
+     * 
+     * Architecture note:
+     * - Client signs the transaction with their private key (for blockchain validation)
+     * - API/RPC node only RELAYS the signed tx to pending pool
+     * - Pre-validation: structure, ed25519, nonce, chainId, duplicate, rate limit
+     * - Signature and staking conditions are validated by blockchain runtime during block execution
+     */
+    router.post('/stake', validateStakingTx('STAKE'), (req: Request, res: Response) => {
+        const { address, amount, signature, publicKey, nonce, chainId } = req.body;
 
+        // Pre-check balance (optional optimization, final check is in runtime)
         const availableBalance = blockchain.getAvailableBalance(address);
         if (availableBalance < amount) {
             res.status(400).json({ success: false, error: `Insufficient available balance: ${availableBalance} < ${amount}` });
@@ -46,30 +53,31 @@ export function createStakingRoutes(blockchain: Blockchain): Router {
         }
 
         try {
-            // Create STAKE transaction (on-chain staking)
+            // Create STAKE transaction for relay
+            // Canonical hash: sha256(chainId + txType + from + to + amount + fee + nonce)
             const tx = new Transaction(
-                address,           // fromAddress
+                address,           // fromAddress (signer)
                 'STAKE_POOL',      // toAddress (system address)
-                amount,            // amount
+                amount,            // amount to stake
                 0,                 // fee
-                Date.now(),        // timestamp
+                Date.now(),        // timestamp (metadata only)
                 undefined,         // id (auto-generated)
-                undefined,         // nonce
-                undefined,         // chainId
-                'STAKE'            // type
+                nonce,             // nonce (pre-validated by middleware)
+                chainId,           // chainId (pre-validated by middleware)
+                'STAKE',           // type
+                undefined,         // data
+                'ed25519',         // signatureScheme
+                publicKey          // publicKey (pre-validated by middleware)
             );
 
-            // Set signature if provided
-            if (signature) {
-                tx.signature = signature;
-            }
+            // Attach client signature (pre-verified by middleware)
+            tx.signature = signature;
 
-            // Add to pending transactions (will be included in next block)
-            // NOTE: Stake is applied ONLY during block execution, NOT here
+            // Relay to pending pool
             blockchain.addTransaction(tx);
 
             const epochInfo = stakingPool.getEpochInfo();
-            log.info(`📊 STAKE tx submitted: ${address.slice(0, 10)}... ${amount} LVE (pending block)`);
+            log.info(`📊 STAKE tx submitted: ${address.slice(0, 10)}... ${amount} LVE (nonce: ${nonce})`);
 
             res.json({
                 success: true,

@@ -15,7 +15,7 @@ interface UserStakeInfo {
 }
 
 export const StakingPage: React.FC = () => {
-    const { wallets, refresh } = useWallets();
+    const { wallets, refresh, signStakingTransactionWithPin } = useWallets();
     const { t } = useI18n();
     const [selectedWallet, setSelectedWallet] = useState('');
     const [stakeAmount, setStakeAmount] = useState('100');
@@ -73,14 +73,43 @@ export const StakingPage: React.FC = () => {
         if (!selectedWallet || !stakeAmount) return;
         setLoading(true);
         setMessage(null);
-        const res = await staking.stake(selectedWallet, Number(stakeAmount));
-        if (res.success && res.data) {
-            setMessage({ type: 'success', text: `✅ Staked ${stakeAmount} LVE (активно с эпохи ${res.data.effectiveEpoch})` });
-            refresh();
-            loadData();
-            loadUserStake();
-        } else {
-            setMessage({ type: 'error', text: res.error || 'Staking failed' });
+
+        try {
+            // Sign transaction with PIN confirmation (client-side signing)
+            // New canonical format: sha256(chainId + txType + from + to + amount + fee + nonce)
+            const signed = await signStakingTransactionWithPin(
+                selectedWallet,
+                'STAKE_POOL',
+                Number(stakeAmount),
+                0,
+                'STAKE',  // txType for domain separation
+                `Застейкать ${stakeAmount} LVE?`
+            );
+            if (!signed) {
+                setLoading(false);
+                return; // User cancelled PIN
+            }
+
+            // Send signed tx to API (API only relays to mempool)
+            const res = await staking.stake(
+                selectedWallet,
+                Number(stakeAmount),
+                signed.signature,
+                signed.publicKey,
+                signed.nonce,
+                signed.chainId,
+                signed.signatureScheme
+            );
+            if (res.success && res.data) {
+                setMessage({ type: 'success', text: `✅ Staked ${stakeAmount} LVE (активно с эпохи ${res.data.effectiveEpoch})` });
+                refresh();
+                loadData();
+                loadUserStake();
+            } else {
+                setMessage({ type: 'error', text: res.error || 'Staking failed' });
+            }
+        } catch (err) {
+            setMessage({ type: 'error', text: err instanceof Error ? err.message : 'Staking failed' });
         }
         setLoading(false);
     };
@@ -116,14 +145,44 @@ export const StakingPage: React.FC = () => {
         if (!selectedWallet || !selectedValidator || !delegateAmount) return;
         setLoading(true);
         setMessage(null);
-        const res = await staking.delegate(selectedWallet, selectedValidator, Number(delegateAmount));
-        if (res.success && res.data) {
-            setMessage({ type: 'success', text: `✅ Делегировано ${delegateAmount} LVE (активно с эпохи ${res.data.effectiveEpoch})` });
-            refresh();
-            loadData();
-            loadUserStake();
-        } else {
-            setMessage({ type: 'error', text: res.error || 'Delegation failed' });
+
+        try {
+            // Sign transaction with PIN confirmation (client-side signing)
+            // For DELEGATE tx, toAddress = validator address
+            const signed = await signStakingTransactionWithPin(
+                selectedWallet,
+                selectedValidator,
+                Number(delegateAmount),
+                0,
+                'DELEGATE',  // txType for domain separation
+                `Делегировать ${delegateAmount} LVE валидатору?`
+            );
+            if (!signed) {
+                setLoading(false);
+                return; // User cancelled PIN
+            }
+
+            // Send signed tx to API (API only relays to mempool)
+            const res = await staking.delegate(
+                selectedWallet,
+                selectedValidator,
+                Number(delegateAmount),
+                signed.signature,
+                signed.publicKey,
+                signed.nonce,
+                signed.chainId,
+                signed.signatureScheme
+            );
+            if (res.success && res.data) {
+                setMessage({ type: 'success', text: `✅ Делегировано ${delegateAmount} LVE (активно с эпохи ${res.data.effectiveEpoch})` });
+                refresh();
+                loadData();
+                loadUserStake();
+            } else {
+                setMessage({ type: 'error', text: res.error || 'Delegation failed' });
+            }
+        } catch (err) {
+            setMessage({ type: 'error', text: err instanceof Error ? err.message : 'Delegation failed' });
         }
         setLoading(false);
     };
