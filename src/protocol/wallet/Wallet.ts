@@ -1,11 +1,16 @@
 import elliptic from 'elliptic';
 import * as bip39 from 'bip39';
+import HDKey from 'hdkey';
 import { sha256, publicKeyToAddress } from '../utils/crypto.js';
 import { Transaction } from '../blockchain/Transaction.js';
 import { logger } from '../utils/logger.js';
 import { secureRandom } from '../security/index.js';
 
 const ec = new elliptic.ec('secp256k1');
+
+// BIP-44 derivation path for Ethereum-compatible wallets
+// m/44'/60'/0'/0/0 - standard for ETH, allows import to MetaMask, Trust Wallet, etc.
+const BIP44_PATH = "m/44'/60'/0'/0/0";
 
 export interface WalletData {
     privateKey: string;
@@ -44,16 +49,17 @@ export class Wallet {
 
         if (privateKeyOrMnemonic) {
             if (privateKeyOrMnemonic.includes(' ')) {
+                // Mnemonic phrase - use BIP-44 derivation
                 const mnemonic = privateKeyOrMnemonic.trim();
                 if (!bip39.validateMnemonic(mnemonic)) {
                     throw new Error('Invalid mnemonic phrase');
                 }
                 this.mnemonic = mnemonic;
-                const seed = bip39.mnemonicToSeedSync(mnemonic);
-                const privateKeyHex = sha256(seed.toString('hex')).substring(0, 64);
+                const privateKeyHex = this.derivePrivateKey(mnemonic);
                 this.keyPair = ec.keyFromPrivate(privateKeyHex, 'hex');
                 this.privateKey = privateKeyHex;
             } else {
+                // Direct private key
                 this.keyPair = ec.keyFromPrivate(privateKeyOrMnemonic, 'hex');
                 this.privateKey = privateKeyOrMnemonic;
             }
@@ -63,8 +69,7 @@ export class Wallet {
             const entropyBytes = wordCount === 12 ? 16 : 32;
             const entropy = secureRandom(entropyBytes);
             this.mnemonic = bip39.entropyToMnemonic(entropy.toString('hex'));
-            const seed = bip39.mnemonicToSeedSync(this.mnemonic);
-            const privateKeyHex = sha256(seed.toString('hex')).substring(0, 64);
+            const privateKeyHex = this.derivePrivateKey(this.mnemonic);
             this.keyPair = ec.keyFromPrivate(privateKeyHex, 'hex');
             this.privateKey = privateKeyHex;
             logger.info(`🔑 New wallet created with ${wordCount}-word mnemonic`);
@@ -74,6 +79,20 @@ export class Wallet {
         this.address = publicKeyToAddress(this.publicKey);
         this.label = label;
         this.createdAt = Date.now();
+    }
+
+    /**
+     * Derive private key from mnemonic using BIP-44 standard path
+     * This ensures compatibility with external wallets (MetaMask, Trust Wallet, etc.)
+     */
+    private derivePrivateKey(mnemonic: string): string {
+        const seed = bip39.mnemonicToSeedSync(mnemonic);
+        const hdkey = HDKey.fromMasterSeed(seed);
+        const child = hdkey.derive(BIP44_PATH);
+        if (!child.privateKey) {
+            throw new Error('Failed to derive private key from mnemonic');
+        }
+        return child.privateKey.toString('hex');
     }
 
     getShortAddress(): string {

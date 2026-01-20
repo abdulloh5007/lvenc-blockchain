@@ -12,3 +12,5 @@ pumpkin script vicious sea leader swear spirit swing source perfect black food
 
 #rewardAddress
 ozone quit fold syrup play loan firm deputy any gentle upgrade usual orbit danger mesh camera isolate couch broccoli whisper ankle escape chief chunk
+
+теперь вопрос вместо двух data нужно сделать один который будет находиться у себя внутри ноды ? или общедоступная data лучше ? просто тут путаница бывает если запустить ноду с заданной data внутри ноды то identity 
