@@ -58,6 +58,10 @@ export class Blockchain {
         this.difficulty = data.difficulty;
         this.validatorReward = data.validatorReward;
         this.updateBalanceCache();
+
+        // Rebuild staking state from chain transactions (on-chain staking)
+        stakingPool.rebuildFromChain(this.chain);
+
         logger.info(`📦 Loaded ${this.chain.length} blocks from storage`);
     }
 
