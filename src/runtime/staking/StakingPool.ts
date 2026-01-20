@@ -1,5 +1,6 @@
 import { logger } from '../../protocol/utils/logger.js';
 import { sha256 } from '../../protocol/utils/crypto.js';
+import { chainParams } from '../../protocol/params/index.js';
 
 // Interfaces
 export interface StakeInfo {
@@ -56,12 +57,12 @@ export interface EpochInfo {
     startTime: number;
 }
 
-// Constants
-const MIN_STAKE = 100;
-const MIN_DELEGATION = 10;
-const EPOCH_DURATION = 100; // blocks per epoch
-const DEFAULT_COMMISSION = 10; // 10%
-const SLASH_PERCENT = 50;
+// Constants from chain params
+const MIN_STAKE = chainParams.staking.minValidatorSelfStake;
+const MIN_DELEGATION = chainParams.staking.minDelegation;
+const EPOCH_DURATION = chainParams.staking.epochDuration;
+const DEFAULT_COMMISSION = chainParams.staking.defaultCommission;
+const SLASH_PERCENT = chainParams.staking.slashPercent;
 
 export class StakingPool {
     private stakes: Map<string, StakeInfo> = new Map();

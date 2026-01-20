@@ -37,6 +37,15 @@ export const chainParams = {
     slotDuration: 30000, // 30 seconds
     epochBlocks: 2880,   // ~24 hours at 30s blocks
 
+    // Staking parameters
+    staking: {
+        minValidatorSelfStake: 100,  // Minimum self-stake to become validator
+        minDelegation: 10,            // Minimum delegation amount
+        slashPercent: 50,             // Slash percentage for violations
+        defaultCommission: 10,        // Default validator commission %
+        epochDuration: 100,           // Blocks per epoch
+    },
+
     // Version protocol (for upgrade coordination)
     version: {
         protocolVersion: 1,
