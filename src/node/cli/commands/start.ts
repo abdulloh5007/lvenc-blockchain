@@ -114,12 +114,12 @@ export async function startNode(options: NodeOptions): Promise<void> {
     console.log('');
     console.log('╔═══════════════════════════════════════════════════════════╗');
     console.log(boxEmpty());
-    console.log(boxCenter('██╗    ██╗   ██╗███████╗███╗   ██╗ ██████╗'));
-    console.log(boxCenter('██║    ██║   ██║██╔════╝████╗  ██║██╔════╝'));
-    console.log(boxCenter('██║    ██║   ██║█████╗  ██╔██╗ ██║██║'));
-    console.log(boxCenter('██║    ╚██╗ ██╔╝██╔══╝  ██║╚██╗██║██║'));
-    console.log(boxCenter('███████╗╚████╔╝ ███████╗██║ ╚████║╚██████╗'));
-    console.log(boxCenter('╚══════╝ ╚═══╝  ╚══════╝╚═╝  ╚═══╝ ╚═════╝'));
+    console.log(boxCenter('██╗     ██╗   ██╗███████╗███╗   ██╗ ██████╗'));
+    console.log(boxCenter('██║     ██║   ██║██╔════╝████╗  ██║██╔════╝'));
+    console.log(boxCenter('██║     ██║   ██║█████╗  ██╔██╗ ██║██║     '));
+    console.log(boxCenter('██║     ╚██╗ ██╔╝██╔══╝  ██║╚██╗██║██║     '));
+    console.log(boxCenter('███████╗ ╚████╔╝ ███████╗██║ ╚████║╚██████╗'));
+    console.log(boxCenter('╚══════╝  ╚═══╝  ╚══════╝╚═╝  ╚═══╝ ╚═════╝'));
     console.log(boxEmpty());
     console.log(boxCenter(versionLine));
     console.log('╚═══════════════════════════════════════════════════════════╝');
@@ -176,7 +176,7 @@ export async function startNode(options: NodeOptions): Promise<void> {
 
     // Initialize node identity (Ed25519 keypair)
     // Identity is stored in network-specific directory
-    const identityDir = `${options.dataDir}/${options.network}`;
+    const identityDir = `${options.dataDir}/${network}`;
     const { initNodeIdentity } = await import('../../identity/index.js');
     const nodeIdentity = await initNodeIdentity(identityDir);
     logger.info(`🔑 Node ID: ${nodeIdentity.getShortId()}`);
