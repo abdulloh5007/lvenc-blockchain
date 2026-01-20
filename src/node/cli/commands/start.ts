@@ -362,9 +362,66 @@ export async function startNode(options: NodeOptions): Promise<void> {
     // Initialize block producer (PoS) - skip in bootstrap mode or if role disables it
     const blockProductionEnabled = roleConfig ? roleConfig.services.blockProduction : true;
     if (!options.bootstrapMode && blockProductionEnabled) {
-        const blockProducer = initBlockProducer(blockchain);
-        blockProducer.start();
-        logger.info(`🏭 Block producer started`);
+        // Validator onboarding check
+        const rewardAddress = nodeIdentity.getRewardAddress();
+        const { chainParams } = await import('../../../protocol/params/index.js');
+        const minStake = chainParams.staking.minValidatorSelfStake;
+
+        if (!rewardAddress) {
+            console.log('');
+            console.log('╔═══════════════════════════════════════════════════════════╗');
+            console.log('║            ⚠️  Validator Setup Required                   ║');
+            console.log('╠═══════════════════════════════════════════════════════════╣');
+            console.log('║  No reward address configured!                            ║');
+            console.log('║                                                           ║');
+            console.log('║  To receive validator rewards, run:                       ║');
+            console.log('║                                                           ║');
+            console.log('║  1. Generate wallet:                                      ║');
+            console.log('║     lve-chain reward generate                             ║');
+            console.log('║                                                           ║');
+            console.log('║  2. Or bind existing:                                     ║');
+            console.log('║     lve-chain reward bind <address>                       ║');
+            console.log('║                                                           ║');
+            console.log('║  Then restart the validator node.                         ║');
+            console.log('╚═══════════════════════════════════════════════════════════╝');
+            console.log('');
+            logger.warn('⚠️ Validator running without reward address - no block production');
+        } else {
+            // Check current stake
+            const stakeAmount = stakingPool.getStake(rewardAddress);
+
+            if (stakeAmount < minStake) {
+                console.log('');
+                console.log('╔═══════════════════════════════════════════════════════════╗');
+                console.log('║            ⚠️  Insufficient Stake                         ║');
+                console.log('╠═══════════════════════════════════════════════════════════╣');
+                console.log(`║  Reward Address: ${rewardAddress.slice(0, 12)}...${rewardAddress.slice(-8)}              ║`);
+                console.log(`║  Current Stake:  ${stakeAmount} LVE                                    ║`);
+                console.log(`║  Required:       ${minStake} LVE                                   ║`);
+                console.log('║                                                           ║');
+                console.log('║  To become an active validator:                           ║');
+                console.log('║                                                           ║');
+                console.log('║  1. Get LVE tokens:                                       ║');
+                console.log('║     - Faucet: lve-chain faucet request <address>          ║');
+                console.log('║     - Transfer from another wallet                        ║');
+                console.log('║                                                           ║');
+                console.log('║  2. Stake LVE:                                            ║');
+                console.log(`║     POST /api/staking/stake                               ║`);
+                console.log(`║     {"address": "${rewardAddress.slice(0, 16)}...", "amount": ${minStake}}   ║`);
+                console.log('║                                                           ║');
+                console.log('║  Status: INACTIVE (not producing blocks)                  ║');
+                console.log('╚═══════════════════════════════════════════════════════════╝');
+                console.log('');
+                logger.warn(`⚠️ Stake ${stakeAmount}/${minStake} LVE - validator inactive`);
+            } else {
+                logger.info(`✅ Validator stake: ${stakeAmount} LVE (min: ${minStake})`);
+            }
+
+            // Start block producer regardless (it will check stake internally)
+            const blockProducer = initBlockProducer(blockchain);
+            blockProducer.start();
+            logger.info(`🏭 Block producer started`);
+        }
     } else if (roleConfig && !blockProductionEnabled) {
         logger.info(`🔇 Block production disabled for role: ${roleConfig.name}`);
     } else {
