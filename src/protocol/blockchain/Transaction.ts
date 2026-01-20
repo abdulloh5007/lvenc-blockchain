@@ -99,7 +99,11 @@ export class Transaction implements TransactionData {
         if (this.fromAddress === null ||
             this.fromAddress === '' ||
             this.fromAddress === 'GENESIS' ||
-            this.fromAddress === 'COINBASE') {
+            this.fromAddress === 'COINBASE' ||
+            this.fromAddress === 'FAUCET' ||
+            // Genesis faucet address (system-generated transactions)
+            this.fromAddress?.startsWith('tLVE000000000000000000') ||
+            this.fromAddress?.startsWith('LVE000000000000000000')) {
             return true;
         }
 
