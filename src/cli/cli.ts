@@ -59,6 +59,10 @@ program.addCommand(identityCommand);
 program.addCommand(rewardCommand);
 program.addCommand(poolCommand);
 
+// Import and add faucet command
+import { faucetCommand } from './commands/faucet.js';
+program.addCommand(faucetCommand);
+
 // Parse AFTER all commands are registered
 program.parse();
 

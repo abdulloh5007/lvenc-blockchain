@@ -210,6 +210,11 @@ app.use('/api/nft', createNFTRoutes(nftManager));
 app.use('/api/ipfs', createIPFSRoutes());
 app.use('/api/staking', createStakingRoutes(blockchain));
 app.use('/api/pool', createPoolRoutes());
+
+// Faucet routes (testnet only)
+import { createFaucetRoutes } from './routes/faucet.js';
+app.use('/api/faucet', createFaucetRoutes());
+
 app.get('/api/network-info', (_req: Request, res: Response) => {
     res.json({
         success: true,

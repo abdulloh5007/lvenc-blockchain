@@ -38,3 +38,6 @@ export {
 
 // Price Display (UZS conversion for display only)
 export { PriceDisplayService, priceDisplayService, USDT_TO_UZS_RATE } from './PriceDisplayService.js';
+
+// USDT Balance Manager (Testnet Faucet)
+export { USDTBalanceManager, usdtBalanceManager, FAUCET_AMOUNT, FAUCET_COOLDOWN_MS, MAX_BALANCE } from './USDTBalanceManager.js';
