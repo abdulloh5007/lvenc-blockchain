@@ -4,8 +4,12 @@ import elliptic from 'elliptic';
 
 const ec = new elliptic.ec('secp256k1');
 
+// Transaction types for on-chain staking
+export type TransactionType = 'TRANSFER' | 'STAKE' | 'UNSTAKE' | 'DELEGATE' | 'UNDELEGATE';
+
 export interface TransactionData {
     id: string;
+    type?: TransactionType;      // Transaction type (default: TRANSFER)
     fromAddress: string | null;  // null for mining rewards
     toAddress: string;
     amount: number;
@@ -14,10 +18,12 @@ export interface TransactionData {
     nonce?: number;              // Per-address sequential counter for replay protection
     chainId?: string;            // Chain identifier for cross-chain replay protection
     signature?: string;
+    data?: string;               // Optional data field (e.g., validator address for delegation)
 }
 
 export class Transaction implements TransactionData {
     public id: string;
+    public type: TransactionType;
     public fromAddress: string | null;
     public toAddress: string;
     public amount: number;
@@ -26,6 +32,7 @@ export class Transaction implements TransactionData {
     public nonce?: number;
     public chainId?: string;
     public signature?: string;
+    public data?: string;
 
     constructor(
         fromAddress: string | null,
@@ -35,9 +42,12 @@ export class Transaction implements TransactionData {
         timestamp?: number,
         id?: string,
         nonce?: number,
-        chainId?: string
+        chainId?: string,
+        type: TransactionType = 'TRANSFER',
+        data?: string
     ) {
         this.id = id || uuidv4();
+        this.type = type;
         this.fromAddress = fromAddress;
         this.toAddress = toAddress;
         this.amount = amount;
@@ -45,6 +55,14 @@ export class Transaction implements TransactionData {
         this.timestamp = timestamp || Date.now();
         this.nonce = nonce;
         this.chainId = chainId;
+        this.data = data;
+    }
+
+    /**
+     * Check if this is a staking-related transaction
+     */
+    isStakingTx(): boolean {
+        return ['STAKE', 'UNSTAKE', 'DELEGATE', 'UNDELEGATE'].includes(this.type);
     }
 
     /**
@@ -153,6 +171,7 @@ export class Transaction implements TransactionData {
     toJSON(): TransactionData {
         return {
             id: this.id,
+            type: this.type,
             fromAddress: this.fromAddress,
             toAddress: this.toAddress,
             amount: this.amount,
@@ -161,6 +180,7 @@ export class Transaction implements TransactionData {
             nonce: this.nonce,
             chainId: this.chainId,
             signature: this.signature,
+            data: this.data,
         };
     }
 
@@ -176,7 +196,9 @@ export class Transaction implements TransactionData {
             data.timestamp,
             data.id,
             data.nonce,
-            data.chainId
+            data.chainId,
+            data.type || 'TRANSFER',
+            data.data
         );
         tx.signature = data.signature;
         return tx;

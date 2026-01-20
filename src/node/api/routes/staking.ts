@@ -33,35 +33,57 @@ export function createStakingRoutes(blockchain: Blockchain): Router {
     // ========== STAKING ==========
 
     router.post('/stake', (req: Request, res: Response) => {
-        const { address, amount } = req.body;
+        const { address, amount, signature, publicKey } = req.body;
         if (!address || !amount || amount <= 0) {
             res.status(400).json({ success: false, error: 'Address and positive amount required' });
             return;
         }
+
         const availableBalance = blockchain.getAvailableBalance(address);
         if (availableBalance < amount) {
             res.status(400).json({ success: false, error: `Insufficient available balance: ${availableBalance} < ${amount}` });
             return;
         }
+
         try {
-            const success = stakingPool.stake(address, amount);
-            if (success) {
-                storage.saveStaking(stakingPool.toJSON());
-                const epochInfo = stakingPool.getEpochInfo();
-                log.info(`📊 ${address.slice(0, 10)}... staked ${amount} LVE (effective epoch ${epochInfo.epoch + 1})`);
-                res.json({
-                    success: true,
-                    data: {
-                        message: `Staked ${amount} LVE (effective next epoch)`,
-                        currentStake: stakingPool.getStake(address),
-                        pendingStake: stakingPool.getPendingStake(address),
-                        effectiveEpoch: epochInfo.epoch + 1,
-                        validators: stakingPool.getValidators().length,
-                    },
-                });
-            } else {
-                res.status(400).json({ success: false, error: 'Staking failed. Minimum stake is 100 LVE.' });
+            // Create STAKE transaction (on-chain staking)
+            const tx = new Transaction(
+                address,           // fromAddress
+                'STAKE_POOL',      // toAddress (system address)
+                amount,            // amount
+                0,                 // fee
+                Date.now(),        // timestamp
+                undefined,         // id (auto-generated)
+                undefined,         // nonce
+                undefined,         // chainId
+                'STAKE'            // type
+            );
+
+            // Set signature if provided
+            if (signature) {
+                tx.signature = signature;
             }
+
+            // Add to pending transactions (will be included in next block)
+            blockchain.addTransaction(tx);
+
+            // Also apply immediately for local state (will be rebuilt from chain on sync)
+            stakingPool.stake(address, amount);
+            storage.saveStaking(stakingPool.toJSON());
+
+            const epochInfo = stakingPool.getEpochInfo();
+            log.info(`📊 STAKE tx: ${address.slice(0, 10)}... staked ${amount} LVE`);
+
+            res.json({
+                success: true,
+                data: {
+                    message: `Staked ${amount} LVE via on-chain transaction`,
+                    txId: tx.id,
+                    currentStake: stakingPool.getStake(address),
+                    pendingStake: stakingPool.getPendingStake(address),
+                    effectiveEpoch: epochInfo.epoch + 1,
+                },
+            });
         } catch (error) {
             res.status(400).json({ success: false, error: error instanceof Error ? error.message : 'Staking failed' });
         }

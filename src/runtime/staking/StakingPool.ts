@@ -555,6 +555,140 @@ export class StakingPool {
             );
         }
     }
+
+    /**
+     * Clear all staking state (for rebuild from chain)
+     */
+    clearAll(): void {
+        this.stakes.clear();
+        this.validators.clear();
+        this.delegations.clear();
+        this.validatorDelegations.clear();
+        this.pendingStakes.clear();
+        this.pendingDelegations = [];
+        this.pendingUnstakes.clear();
+        this.currentEpoch = 0;
+        this.epochStartBlock = 0;
+        this.epochStartTime = Date.now();
+        logger.debug('Cleared all staking state for rebuild');
+    }
+
+    /**
+     * Rebuild staking state from blockchain transactions
+     * This is the ONLY source of truth for staking state
+     */
+    rebuildFromChain(chain: { transactions: { type?: string; fromAddress: string | null; toAddress: string; amount: number; data?: string }[] }[]): void {
+        this.clearAll();
+
+        let stakeTxCount = 0;
+        let delegateTxCount = 0;
+
+        for (const block of chain) {
+            for (const tx of block.transactions) {
+                if (!tx.type) continue;  // Skip legacy transactions
+
+                if (tx.type === 'STAKE' && tx.fromAddress) {
+                    // Apply stake: fromAddress stakes amount
+                    this.applyStakeFromTx(tx.fromAddress, tx.amount);
+                    stakeTxCount++;
+                } else if (tx.type === 'UNSTAKE' && tx.fromAddress) {
+                    // Apply unstake: fromAddress unstakes amount
+                    this.applyUnstakeFromTx(tx.fromAddress, tx.amount);
+                } else if (tx.type === 'DELEGATE' && tx.fromAddress && tx.data) {
+                    // Apply delegation: fromAddress delegates amount to validator (in data)
+                    this.applyDelegateFromTx(tx.fromAddress, tx.data, tx.amount);
+                    delegateTxCount++;
+                } else if (tx.type === 'UNDELEGATE' && tx.fromAddress && tx.data) {
+                    // Apply undelegation: fromAddress undelegates amount from validator
+                    this.applyUndelegateFromTx(tx.fromAddress, tx.data, tx.amount);
+                }
+            }
+        }
+
+        logger.info(`Rebuilt staking state: ${stakeTxCount} stakes, ${delegateTxCount} delegations`);
+    }
+
+    /**
+     * Apply stake from transaction (internal, no validation)
+     */
+    private applyStakeFromTx(address: string, amount: number): void {
+        const existing = this.stakes.get(address);
+        if (existing) {
+            existing.amount += amount;
+        } else {
+            this.stakes.set(address, {
+                address,
+                amount,
+                stakedAt: Date.now(),
+                lastReward: Date.now(),
+                epochStaked: this.currentEpoch
+            });
+        }
+        this.updateValidator(address);
+    }
+
+    /**
+     * Apply unstake from transaction (internal)
+     */
+    private applyUnstakeFromTx(address: string, amount: number): void {
+        const existing = this.stakes.get(address);
+        if (existing) {
+            existing.amount = Math.max(0, existing.amount - amount);
+            if (existing.amount === 0) {
+                this.stakes.delete(address);
+                this.validators.delete(address);
+            } else {
+                this.updateValidator(address);
+            }
+        }
+    }
+
+    /**
+     * Apply delegation from transaction (internal)
+     */
+    private applyDelegateFromTx(delegator: string, validator: string, amount: number): void {
+        const delegation: Delegation = {
+            delegator,
+            validator,
+            amount,
+            delegatedAt: Date.now(),
+            epochDelegated: this.currentEpoch
+        };
+
+        const existing = this.delegations.get(delegator) || [];
+        const existingDel = existing.find(d => d.validator === validator);
+        if (existingDel) {
+            existingDel.amount += amount;
+        } else {
+            existing.push(delegation);
+        }
+        this.delegations.set(delegator, existing);
+
+        // Update validator delegated stake
+        const currentDel = this.validatorDelegations.get(validator) || 0;
+        this.validatorDelegations.set(validator, currentDel + amount);
+        this.updateValidator(validator);
+    }
+
+    /**
+     * Apply undelegation from transaction (internal)
+     */
+    private applyUndelegateFromTx(delegator: string, validator: string, amount: number): void {
+        const delegations = this.delegations.get(delegator);
+        if (delegations) {
+            const del = delegations.find(d => d.validator === validator);
+            if (del) {
+                del.amount = Math.max(0, del.amount - amount);
+                if (del.amount === 0) {
+                    this.delegations.set(delegator, delegations.filter(d => d.validator !== validator));
+                }
+            }
+        }
+
+        const currentDel = this.validatorDelegations.get(validator) || 0;
+        this.validatorDelegations.set(validator, Math.max(0, currentDel - amount));
+        this.updateValidator(validator);
+    }
 }
 
 export const stakingPool = new StakingPool();

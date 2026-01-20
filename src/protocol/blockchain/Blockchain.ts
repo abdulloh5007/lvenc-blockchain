@@ -437,6 +437,10 @@ export class Blockchain {
 
         this.chain = newChain;
         this.updateBalanceCache();
+
+        // Rebuild staking state from chain transactions (on-chain staking)
+        stakingPool.rebuildFromChain(newChain);
+
         logger.info(`🔄 Chain replaced with ${newChain.length} blocks`);
         return true;
     }
