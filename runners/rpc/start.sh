@@ -5,7 +5,7 @@
 cd "$(dirname "$0")/../.."
 
 echo "🌐 Starting RPC Node..."
-node dist/cli/cli.js start \
+node dist/node/cli/cli.js start \
   --role rpc \
   --network testnet \
   --p2p 6003 \
