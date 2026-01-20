@@ -70,7 +70,7 @@ export const WalletPage: React.FC = () => {
         try {
             const fee = feeInfo?.recommended || 0.1;
             const timestamp = Date.now();
-            const { signature, publicKey } = signTransaction(selectedWallet, sendTo, parseFloat(sendAmount), fee, timestamp);
+            const { signature, publicKey } = await signTransaction(selectedWallet, sendTo, parseFloat(sendAmount), fee, timestamp);
             const res = await transaction.send(selectedWallet, sendTo, parseFloat(sendAmount), fee, signature, publicKey, timestamp);
             if (res.success) {
                 setMessage({ type: 'success', text: t('wallet.txSent') });
