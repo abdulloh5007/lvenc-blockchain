@@ -94,8 +94,12 @@ export class Transaction implements TransactionData {
      * This is called during addTransaction and block validation
      */
     isValid(): boolean {
-        // Mining rewards (fromAddress === null) don't need signature
-        if (this.fromAddress === null) {
+        // Mining rewards and coinbase transactions don't need signature
+        // Check for null, empty string, or special system addresses
+        if (this.fromAddress === null ||
+            this.fromAddress === '' ||
+            this.fromAddress === 'GENESIS' ||
+            this.fromAddress === 'COINBASE') {
             return true;
         }
 
