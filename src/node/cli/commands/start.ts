@@ -199,12 +199,8 @@ export async function startNode(options: NodeOptions): Promise<void> {
         logger.info(`💧 Genesis faucet address: ${appConfig.genesis.faucetAddress}`);
     }
 
-    // Load staking data
-    const savedStaking = storage.loadStaking();
-    if (savedStaking) {
-        stakingPool.loadFromData(savedStaking);
-        logger.info(`📊 Loaded staking data: ${Object.keys(savedStaking.stakes || {}).length} stakers`);
-    }
+    // NOTE: Staking state is derived from blockchain transactions (on-chain staking)
+    // No staking.json loading - chain is the only source of truth
 
     // Initialize NFT Manager
     const nftManager = new NFTManager();
@@ -428,10 +424,7 @@ export async function startNode(options: NodeOptions): Promise<void> {
         logger.info(`📡 Bootstrap mode: Block production disabled`);
     }
 
-    // Auto-save staking data periodically
-    setInterval(() => {
-        storage.saveStaking(stakingPool.toJSON());
-    }, 60000); // Every minute
+    // NOTE: No staking.json auto-save - state is derived from blockchain only
 
     logger.info(`\n✅ Node is running!`);
     console.log(`\n📋 Available commands: status, peers, info, help, exit\n`);
@@ -519,8 +512,7 @@ export async function startNode(options: NodeOptions): Promise<void> {
                 console.log('\n👋 Shutting down node...');
                 if (p2pServer) p2pServer.close();
                 storage.saveBlockchain(blockchain.toJSON());
-                storage.saveStaking(stakingPool.toJSON());
-                console.log('💾 Data saved. Goodbye!\n');
+                console.log('💾 Blockchain saved. Goodbye!\n');
                 rl.close();
                 process.exit(0);
                 break;
@@ -540,8 +532,7 @@ export async function startNode(options: NodeOptions): Promise<void> {
         console.log('\n👋 Shutting down node...');
         if (p2pServer) p2pServer.close();
         storage.saveBlockchain(blockchain.toJSON());
-        storage.saveStaking(stakingPool.toJSON());
-        console.log('💾 Data saved. Goodbye!');
+        console.log('💾 Blockchain saved. Goodbye!');
         rl.close();
         process.exit(0);
     });

@@ -69,7 +69,7 @@ export function createStakingRoutes(blockchain: Blockchain): Router {
 
             // Also apply immediately for local state (will be rebuilt from chain on sync)
             stakingPool.stake(address, amount);
-            storage.saveStaking(stakingPool.toJSON());
+            
 
             const epochInfo = stakingPool.getEpochInfo();
             log.info(`📊 STAKE tx: ${address.slice(0, 10)}... staked ${amount} LVE`);
@@ -97,7 +97,7 @@ export function createStakingRoutes(blockchain: Blockchain): Router {
         }
         const request = stakingPool.requestUnstake(address, amount);
         if (request) {
-            storage.saveStaking(stakingPool.toJSON());
+            
             res.json({
                 success: true,
                 data: {
@@ -122,7 +122,7 @@ export function createStakingRoutes(blockchain: Blockchain): Router {
             const tx = new Transaction(null, address, released, 0);
             blockchain.addTransaction(tx);
             storage.saveBlockchain(blockchain.toJSON());
-            storage.saveStaking(stakingPool.toJSON());
+            
             log.info(`💰 ${address.slice(0, 10)}... claimed ${released} LVE from unstake`);
             res.json({
                 success: true,
@@ -152,7 +152,7 @@ export function createStakingRoutes(blockchain: Blockchain): Router {
         try {
             const success = stakingPool.delegate(delegator, validator, amount);
             if (success) {
-                storage.saveStaking(stakingPool.toJSON());
+                
                 const epochInfo = stakingPool.getEpochInfo();
                 log.info(`📊 ${delegator.slice(0, 10)}... delegated ${amount} LVE to ${validator.slice(0, 10)}...`);
                 res.json({
@@ -184,7 +184,7 @@ export function createStakingRoutes(blockchain: Blockchain): Router {
                 const tx = new Transaction(null, delegator, amount, 0);
                 blockchain.addTransaction(tx);
                 storage.saveBlockchain(blockchain.toJSON());
-                storage.saveStaking(stakingPool.toJSON());
+                
                 log.info(`🔓 ${delegator.slice(0, 10)}... undelegated ${amount} LVE from ${validator.slice(0, 10)}...`);
                 res.json({
                     success: true,
@@ -262,7 +262,7 @@ export function createStakingRoutes(blockchain: Blockchain): Router {
         }
         const success = stakingPool.setCommission(address, commission);
         if (success) {
-            storage.saveStaking(stakingPool.toJSON());
+            
             res.json({
                 success: true,
                 data: { message: `Commission set to ${commission}%` },

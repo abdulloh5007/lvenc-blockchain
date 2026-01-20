@@ -69,7 +69,7 @@ export class BlockProducer {
         // Check for epoch transition
         if (stakingPool.shouldTransitionEpoch(currentBlockIndex)) {
             stakingPool.transitionEpoch(currentBlockIndex);
-            storage.saveStaking(stakingPool.toJSON());
+            
             this.log.info(`🔄 Epoch transition completed at block ${currentBlockIndex}`);
         }
 
@@ -150,7 +150,7 @@ export class BlockProducer {
 
             // Save both blockchain and staking
             storage.saveBlockchain(this.blockchain.toJSON());
-            storage.saveStaking(stakingPool.toJSON());
+            
 
             const epochInfo = stakingPool.getEpochInfo();
             this.log.info(`📦 Slot ${currentSlot} | Block #${block.index} | Epoch ${epochInfo.epoch} | Validator: ${validatorAddress.slice(0, 12)}... | Delegator rewards: ${delegators.size}`);
