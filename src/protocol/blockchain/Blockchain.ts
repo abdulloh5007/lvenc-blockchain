@@ -95,7 +95,9 @@ export class Blockchain {
         }
         const genesisAddress = this.chain[0]?.transactions[0]?.toAddress;
         const isFaucetTx = transaction.fromAddress === genesisAddress;
-        if (transaction.fromAddress !== null && transaction.fee < config.blockchain.minFee && !isFaucetTx) {
+        const isStakingTx = transaction.isStakingTx();  // Staking tx = no fee
+
+        if (transaction.fromAddress !== null && transaction.fee < config.blockchain.minFee && !isFaucetTx && !isStakingTx) {
             throw new Error(`Minimum fee is ${config.blockchain.minFee} ${config.blockchain.coinSymbol}`);
         }
         if (!transaction.fromAddress && !transaction.toAddress) {
