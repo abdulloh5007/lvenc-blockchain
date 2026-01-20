@@ -10,4 +10,4 @@ node dist/node/cli/cli.js start \
   --network testnet \
   --p2p 6003 \
   --port 3001 \
-  --data ./runners/rpc/data
+  --data ./data

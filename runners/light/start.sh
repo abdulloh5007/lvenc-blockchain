@@ -9,4 +9,4 @@ node dist/node/cli/cli.js start \
   --role light \
   --network testnet \
   --p2p 6004 \
-  --data ./runners/light/data
+  --data ./data

@@ -9,4 +9,4 @@ node dist/node/cli/cli.js start \
   --role validator \
   --network testnet \
   --p2p 6002 \
-  --data ./runners/validator/data
+  --data ./data
