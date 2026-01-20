@@ -48,12 +48,9 @@ if (savedData) {
     storage.saveBlockchain(blockchain.toJSON());
     logger.info(`💧 Genesis faucet address: ${config.genesis.faucetAddress}`);
 }
-// Load staking data
-const savedStaking = storage.loadStaking();
-if (savedStaking) {
-    stakingPool.loadFromData(savedStaking);
-    logger.info(`📊 Loaded staking data: ${savedStaking.stakes?.length || 0} stakers`);
-}
+
+// NOTE: Staking state is derived from blockchain transactions (on-chain staking)
+// No staking.json loading - chain is the only source of truth
 
 // Initialize NFT Manager
 const nftManager = new NFTManager();
