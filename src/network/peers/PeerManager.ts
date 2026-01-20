@@ -12,7 +12,7 @@ import {
     INITIAL_PEER_SCORE,
     PRIVATE_IP_RANGES
 } from '../constants.js';
-import { logger } from '../../utils/logger.js';
+import { logger } from '../../protocol/utils/logger.js';
 
 export class PeerManager {
     private peers: Map<WebSocket, PeerInfo> = new Map();

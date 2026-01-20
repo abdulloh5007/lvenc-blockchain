@@ -1,0 +1,52 @@
+/**
+ * Chain Parameters (Protocol Level)
+ * 
+ * Deterministic chain-wide constants accessible to runtime modules.
+ * These parameters are network-wide and do NOT depend on node-local configuration.
+ * 
+ * ALLOWED:
+ * - Chain constants (IDs, prefixes)
+ * - Consensus parameters (slot duration, epoch length)
+ * - Economic parameters (fees, burn rates)
+ * - Network-wide flags (isTestnet)
+ * 
+ * NOT ALLOWED:
+ * - Ports, API settings (node-local)
+ * - Logging, metrics (node-local)
+ * - File paths (node-local)
+ */
+
+// Network mode - determined at startup, immutable during runtime
+const isTestnet = process.env.NETWORK_MODE !== 'mainnet';
+
+// Chain identification
+export const chainParams = {
+    // Network mode
+    isTestnet,
+    networkMode: isTestnet ? 'testnet' : 'mainnet',
+
+    // Chain ID for transaction replay protection
+    chainId: isTestnet ? 'lvenc-testnet-1' : 'lvenc-mainnet-1',
+
+    // Address prefixes
+    addressPrefix: isTestnet ? 'tLVE' : 'LVE',
+    coinName: isTestnet ? 'tLVE' : 'LVE',
+    coinSymbol: isTestnet ? 'tLVE' : 'LVE',
+
+    // Consensus parameters
+    slotDuration: 30000, // 30 seconds
+    epochBlocks: 2880,   // ~24 hours at 30s blocks
+
+    // Version protocol (for upgrade coordination)
+    version: {
+        protocolVersion: 1,
+        minProtocolVersion: 1,
+        graceUntilBlock: null as number | null,
+        gracePeriodBlocks: 20160, // ~7 days
+    },
+} as const;
+
+// Re-export individual commonly used values
+export const isTestnetNetwork = chainParams.isTestnet;
+export const chainId = chainParams.chainId;
+export const addressPrefix = chainParams.addressPrefix;

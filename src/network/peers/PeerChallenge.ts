@@ -4,8 +4,8 @@
  * Requires peers to solve a computational puzzle before being accepted
  */
 
-import { sha256 } from '../../utils/crypto.js';
-import { logger } from '../../utils/logger.js';
+import { sha256 } from '../../protocol/utils/crypto.js';
+import { logger } from '../../protocol/utils/logger.js';
 
 // Challenge difficulty: hash must start with this many zero bits
 const CHALLENGE_DIFFICULTY = 16; // ~65k iterations average

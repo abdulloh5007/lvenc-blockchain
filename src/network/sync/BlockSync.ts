@@ -5,11 +5,11 @@
 
 import WebSocket from 'ws';
 import { ChunkSyncRequest, ChunkSyncResponse, MessageType, P2PMessage } from '../types.js';
-import { Blockchain, Block } from '../../blockchain/index.js';
-import { config } from '../../config.js';
-import { logger } from '../../utils/logger.js';
-import { processBlockPoolOperations, poolStateManager } from '../../pool/index.js';
-import { storage } from '../../storage/index.js';
+import { Blockchain, Block } from '../../protocol/blockchain/index.js';
+import { config } from '../../node/config.js';
+import { logger } from '../../protocol/utils/logger.js';
+import { processBlockPoolOperations, poolStateManager } from '../../runtime/pool/index.js';
+import { storage } from '../../protocol/storage/index.js';
 
 export class BlockSync {
     private blockchain: Blockchain;

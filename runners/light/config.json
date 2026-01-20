@@ -1,0 +1,15 @@
+{
+    "role": "light",
+    "network": "testnet",
+    "p2p": {
+        "port": 6004,
+        "enabled": true,
+        "mode": "headers_only"
+    },
+    "api": {
+        "port": 3004,
+        "enabled": false
+    },
+    "dataDir": "./data/light",
+    "logLevel": "info"
+}

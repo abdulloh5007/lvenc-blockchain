@@ -4,9 +4,9 @@
  */
 
 import { HandshakeData, VersionRejectData, VersionErrorCode, NodeVersionStatus } from '../types.js';
-import { config } from '../../config.js';
-import { logger } from '../../utils/logger.js';
-import { getNodeIdentity } from '../../identity/index.js';
+import { config } from '../../node/config.js';
+import { logger } from '../../protocol/utils/logger.js';
+import { getNodeIdentity } from '../../node/identity/index.js';
 
 export interface HandshakeResult {
     verified: boolean;

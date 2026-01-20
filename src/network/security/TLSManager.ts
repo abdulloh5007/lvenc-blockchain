@@ -6,7 +6,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
-import { logger } from '../../utils/logger.js';
+import { logger } from '../../protocol/utils/logger.js';
 
 const CERT_DIR = './data/certs';
 const CERT_FILE = 'node.crt';

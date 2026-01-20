@@ -14,7 +14,7 @@ import {
     PRIVATE_IP_RANGES
 } from '../constants.js';
 import { PeerManager } from './PeerManager.js';
-import { logger } from '../../utils/logger.js';
+import { logger } from '../../protocol/utils/logger.js';
 
 export class PeerDiscovery {
     private knownPeers: Set<string> = new Set();

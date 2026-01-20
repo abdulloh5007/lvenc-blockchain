@@ -1,0 +1,19 @@
+{
+    "role": "rpc",
+    "network": "testnet",
+    "p2p": {
+        "port": 6003,
+        "enabled": true
+    },
+    "api": {
+        "port": 3001,
+        "enabled": true,
+        "cors": "*",
+        "rateLimit": {
+            "windowMs": 60000,
+            "maxRequests": 100
+        }
+    },
+    "dataDir": "./data/rpc",
+    "logLevel": "info"
+}

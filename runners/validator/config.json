@@ -1,0 +1,18 @@
+{
+    "role": "validator",
+    "network": "testnet",
+    "p2p": {
+        "port": 6002,
+        "enabled": true
+    },
+    "api": {
+        "port": 3002,
+        "enabled": false
+    },
+    "dataDir": "./data/validator",
+    "logLevel": "info",
+    "staking": {
+        "enabled": true,
+        "autoStake": false
+    }
+}

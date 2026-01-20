@@ -4,9 +4,9 @@
  */
 
 import WebSocket, { WebSocketServer, RawData } from 'ws';
-import { Blockchain, Block, Transaction } from '../blockchain/index.js';
-import { logger } from '../utils/logger.js';
-import { config } from '../config.js';
+import { Blockchain, Block, Transaction } from '../protocol/blockchain/index.js';
+import { logger } from '../protocol/utils/logger.js';
+import { config } from '../node/config.js';
 
 // Modules
 import { MessageType, P2PMessage, HandshakeData, ChunkSyncRequest, ChunkSyncResponse, VersionRejectData } from './types.js';
