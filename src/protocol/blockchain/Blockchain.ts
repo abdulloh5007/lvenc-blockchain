@@ -4,6 +4,7 @@ import { config } from '../../node/config.js';
 import { logger } from '../utils/logger.js';
 import { SafeMath, acquireTxLock, releaseTxLock, validateTransaction, addCheckpoint, validateAgainstCheckpoint, validateBlockTimestamp } from '../security/index.js';
 import { stakingPool } from '../../runtime/staking/index.js';
+import { verifyBlockSignature } from './BlockSignature.js';
 
 export interface BlockchainData {
     chain: BlockData[];
@@ -400,6 +401,17 @@ export class Blockchain {
             if (!currentBlock.hasValidTransactions()) {
                 logger.error(`Invalid transactions at block ${i}`);
                 return false;
+            }
+
+            // Check PoS block signature (Ed25519)
+            if (currentBlock.consensusType === 'pos' && currentBlock.signature && currentBlock.validator) {
+                // Note: For full verification, we need validator's nodeId (public key)
+                // This requires a validator registry mapping address -> nodeId
+                // For now, we verify signature format is valid (non-empty hex)
+                if (!/^[0-9a-fA-F]+$/.test(currentBlock.signature)) {
+                    logger.error(`Invalid signature format at block ${i}`);
+                    return false;
+                }
             }
         }
 
