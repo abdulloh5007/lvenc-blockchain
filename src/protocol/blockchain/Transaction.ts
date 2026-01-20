@@ -125,6 +125,34 @@ export class Transaction implements TransactionData {
             return true;
         }
 
+        // Staking transaction validation
+        if (this.isStakingTx()) {
+            // STAKE transactions require signature
+            if (!this.signature || this.signature.length === 0) {
+                throw new Error(`${this.type} transaction requires signature`);
+            }
+
+            // Minimum stake amount check
+            if (this.type === 'STAKE' && this.amount < 100) {
+                throw new Error('Minimum stake is 100 LVE');
+            }
+
+            // Minimum delegation amount check
+            if (this.type === 'DELEGATE' && this.amount < 10) {
+                throw new Error('Minimum delegation is 10 LVE');
+            }
+
+            // STAKE must go to STAKE_POOL
+            if (this.type === 'STAKE' && this.toAddress !== 'STAKE_POOL') {
+                throw new Error('STAKE transactions must be sent to STAKE_POOL');
+            }
+
+            // DELEGATE must have validator address in data
+            if (this.type === 'DELEGATE' && !this.data) {
+                throw new Error('DELEGATE transaction requires validator address in data');
+            }
+        }
+
         // All user transactions MUST have a signature
         if (!this.signature || this.signature.length === 0) {
             throw new Error('No signature in this transaction');

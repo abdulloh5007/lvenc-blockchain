@@ -100,6 +100,17 @@ export class Blockchain {
         if (!transaction.isValid()) {
             throw new Error('Cannot add invalid transaction');
         }
+
+        // Anti-double-stake: Prevent multiple STAKE transactions from same address in pending pool
+        if (transaction.type === 'STAKE' && transaction.fromAddress) {
+            const existingStake = this.pendingTransactions.find(
+                tx => tx.type === 'STAKE' && tx.fromAddress === transaction.fromAddress
+            );
+            if (existingStake) {
+                throw new Error('STAKE transaction already pending for this address. Wait for block confirmation.');
+            }
+        }
+
         if (transaction.fromAddress) {
             if (!acquireTxLock(transaction.fromAddress)) {
                 throw new Error('Transaction in progress for this address');
