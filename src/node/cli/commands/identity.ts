@@ -55,13 +55,17 @@ export const identityCommand = new Command('identity')
 
             const createdDate = new Date(identity.createdAt).toISOString().split('T')[0];
             const shortId = `${identity.nodeId.slice(0, 16)}...${identity.nodeId.slice(-16)}`;
+            // Shorten reward address for display
+            const shortReward = identity.rewardAddress
+                ? `${identity.rewardAddress.slice(0, 12)}...${identity.rewardAddress.slice(-8)}`
+                : 'Not set';
 
             console.log('');
             console.log(boxTop());
-            console.log(boxCenter('🔑 Node Identity'));
+            console.log(boxCenter('Node Identity'));
             console.log(boxSeparator());
             console.log(boxCenter(`Node ID:        ${shortId}`));
-            console.log(boxCenter(`Reward Address: ${identity.rewardAddress || 'Not set'}`));
+            console.log(boxCenter(`Reward Address: ${shortReward}`));
             console.log(boxCenter(`Created:        ${createdDate}`));
             console.log(boxCenter(`Network:        ${options.network}`));
             console.log(boxBottom());
