@@ -14,7 +14,7 @@ import { logger } from '../../../protocol/utils/logger.js';
 import { NFTManager } from '../../../runtime/nft/index.js';
 import { initBlockProducer, stakingPool } from '../../../runtime/staking/index.js';
 import { config } from '../../config.js';
-import { boxCenter, boxEmpty } from '../../../protocol/utils/box.js';
+import { boxBottom, boxCenter, boxEmpty, boxSeparator, boxTop } from '../../../protocol/utils/box.js';
 import { getRole, RoleConfig, RoleName } from '../../roles/index.js';
 
 import { createBlockchainRoutes } from '../../api/routes/blockchain.js';
@@ -369,48 +369,48 @@ export async function startNode(options: NodeOptions): Promise<void> {
 
         if (!rewardAddress) {
             console.log('');
-            console.log('╔═══════════════════════════════════════════════════════════╗');
-            console.log('║            ⚠️  Validator Setup Required                   ║');
-            console.log('╠═══════════════════════════════════════════════════════════╣');
-            console.log('║  No reward address configured!                            ║');
-            console.log('║                                                           ║');
-            console.log('║  To receive validator rewards, run:                       ║');
-            console.log('║                                                           ║');
-            console.log('║  1. Generate wallet:                                      ║');
-            console.log('║     lve-chain reward generate                             ║');
-            console.log('║                                                           ║');
-            console.log('║  2. Or bind existing:                                     ║');
-            console.log('║     lve-chain reward bind <address>                       ║');
-            console.log('║                                                           ║');
-            console.log('║  Then restart the validator node.                         ║');
-            console.log('╚═══════════════════════════════════════════════════════════╝');
+            console.log(boxTop());
+            console.log(boxCenter('Validator Setup Required'));
+            console.log(boxSeparator());
+            console.log(boxCenter('No reward address configured!'));
+            console.log(boxEmpty());
+            console.log(boxCenter('To receive validator rewards, run:'));
+            console.log(boxEmpty());
+            console.log(boxCenter('1. Generate wallet:'));
+            console.log(boxCenter('   lve-chain reward generate'));
+            console.log(boxEmpty());
+            console.log(boxCenter('2. Or bind existing:'));
+            console.log(boxCenter('   lve-chain reward bind <address>'));
+            console.log(boxEmpty());
+            console.log(boxCenter('Then restart the validator node.'));
+            console.log(boxBottom());
             console.log('');
             logger.warn('⚠️ Validator running without reward address - no block production');
         } else {
             // Check current stake
             const stakeAmount = stakingPool.getStake(rewardAddress);
+            const shortAddr = `${rewardAddress.slice(0, 12)}...${rewardAddress.slice(-8)}`;
 
             if (stakeAmount < minStake) {
                 console.log('');
-                console.log('╔═══════════════════════════════════════════════════════════╗');
-                console.log('║            ⚠️  Insufficient Stake                         ║');
-                console.log('╠═══════════════════════════════════════════════════════════╣');
-                console.log(`║  Reward Address: ${rewardAddress.slice(0, 12)}...${rewardAddress.slice(-8)}              ║`);
-                console.log(`║  Current Stake:  ${stakeAmount} LVE                                    ║`);
-                console.log(`║  Required:       ${minStake} LVE                                   ║`);
-                console.log('║                                                           ║');
-                console.log('║  To become an active validator:                           ║');
-                console.log('║                                                           ║');
-                console.log('║  1. Get LVE tokens:                                       ║');
-                console.log('║     - Faucet: lve-chain faucet request <address>          ║');
-                console.log('║     - Transfer from another wallet                        ║');
-                console.log('║                                                           ║');
-                console.log('║  2. Stake LVE:                                            ║');
-                console.log(`║     POST /api/staking/stake                               ║`);
-                console.log(`║     {"address": "${rewardAddress.slice(0, 16)}...", "amount": ${minStake}}   ║`);
-                console.log('║                                                           ║');
-                console.log('║  Status: INACTIVE (not producing blocks)                  ║');
-                console.log('╚═══════════════════════════════════════════════════════════╝');
+                console.log(boxTop());
+                console.log(boxCenter('Insufficient Stake'));
+                console.log(boxSeparator());
+                console.log(boxCenter(`Reward Address: ${shortAddr}`));
+                console.log(boxCenter(`Current Stake:  ${stakeAmount} LVE`));
+                console.log(boxCenter(`Required:       ${minStake} LVE`));
+                console.log(boxEmpty());
+                console.log(boxCenter('To become an active validator:'));
+                console.log(boxEmpty());
+                console.log(boxCenter('1. Get LVE tokens:'));
+                console.log(boxCenter('   lve-chain faucet request <address>'));
+                console.log(boxEmpty());
+                console.log(boxCenter('2. Stake LVE:'));
+                console.log(boxCenter('   POST /api/staking/stake'));
+                console.log(boxCenter(`   {"address": "...", "amount": ${minStake}}`));
+                console.log(boxEmpty());
+                console.log(boxCenter('Status: INACTIVE (not producing blocks)'));
+                console.log(boxBottom());
                 console.log('');
                 logger.warn(`⚠️ Stake ${stakeAmount}/${minStake} LVE - validator inactive`);
             } else {
