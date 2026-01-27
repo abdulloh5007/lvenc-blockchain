@@ -78,11 +78,12 @@ export class Wallet {
      * Import wallet from mnemonic
      */
     static async fromMnemonic(mnemonic: string, label?: string): Promise<Wallet> {
-        if (!bip39.validateMnemonic(mnemonic.trim())) {
+        const normalized = mnemonic.trim().toLowerCase();
+        if (!bip39.validateMnemonic(normalized)) {
             throw new Error('Invalid mnemonic phrase');
         }
 
-        const { privateKey, publicKey, address } = await Wallet.deriveKeysFromMnemonic(mnemonic.trim());
+        const { privateKey, publicKey, address } = await Wallet.deriveKeysFromMnemonic(normalized);
         return new Wallet(privateKey, publicKey, address, mnemonic.trim(), label);
     }
 
