@@ -92,8 +92,8 @@ rewardCommand
         }
 
         try {
-            // Generate new wallet (constructor without args creates new wallet with mnemonic)
-            const wallet = new Wallet();
+            // Generate new wallet using async factory (ed25519)
+            const wallet = await Wallet.create();
             const mnemonic = wallet.mnemonic!;
             const address = wallet.address;
 

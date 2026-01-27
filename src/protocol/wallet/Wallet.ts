@@ -1,15 +1,14 @@
-import elliptic from 'elliptic';
+import * as ed from '@noble/ed25519';
 import * as bip39 from 'bip39';
 import HDKey from 'hdkey';
-import { sha256, publicKeyToAddress } from '../utils/crypto.js';
+import { sha256 } from '../utils/crypto.js';
 import { Transaction } from '../blockchain/Transaction.js';
 import { logger } from '../utils/logger.js';
 import { secureRandom } from '../security/index.js';
+import { chainParams } from '../params/index.js';
 
-const ec = new elliptic.ec('secp256k1');
-
-// BIP-44 derivation path for Ethereum-compatible wallets
-// m/44'/60'/0'/0/0 - standard for ETH, allows import to MetaMask, Trust Wallet, etc.
+// BIP-44 derivation path
+// NOTE: We use the 32-byte seed from HD derivation as ed25519 private key
 const BIP44_PATH = "m/44'/60'/0'/0/0";
 
 export interface WalletData {
@@ -29,15 +28,29 @@ export class Wallet {
     public label?: string;
     public createdAt: number;
 
-    private keyPair: elliptic.ec.KeyPair;
+    /**
+     * Create a wallet (async factory required for ed25519)
+     * For sync construction, use static methods
+     */
+    private constructor(
+        privateKey: string,
+        publicKey: string,
+        address: string,
+        mnemonic?: string,
+        label?: string
+    ) {
+        this.privateKey = privateKey;
+        this.publicKey = publicKey;
+        this.address = address;
+        this.mnemonic = mnemonic;
+        this.label = label;
+        this.createdAt = Date.now();
+    }
 
     /**
-     * Create a wallet
-     * @param privateKeyOrMnemonic - Private key hex, mnemonic phrase, or undefined to generate new
-     * @param labelOrWordCount - Wallet label (string) or word count for new wallet (12 or 24)
+     * Create a new wallet with generated mnemonic
      */
-    constructor(privateKeyOrMnemonic?: string, labelOrWordCount?: string | 12 | 24) {
-        // Determine if second param is label or word count
+    static async create(labelOrWordCount?: string | 12 | 24): Promise<Wallet> {
         let label: string | undefined;
         let wordCount: 12 | 24 = 24;
 
@@ -47,76 +60,127 @@ export class Wallet {
             label = labelOrWordCount;
         }
 
-        if (privateKeyOrMnemonic) {
-            if (privateKeyOrMnemonic.includes(' ')) {
-                // Mnemonic phrase - use BIP-44 derivation
-                const mnemonic = privateKeyOrMnemonic.trim();
-                if (!bip39.validateMnemonic(mnemonic)) {
-                    throw new Error('Invalid mnemonic phrase');
-                }
-                this.mnemonic = mnemonic;
-                const privateKeyHex = this.derivePrivateKey(mnemonic);
-                this.keyPair = ec.keyFromPrivate(privateKeyHex, 'hex');
-                this.privateKey = privateKeyHex;
-            } else {
-                // Direct private key
-                this.keyPair = ec.keyFromPrivate(privateKeyOrMnemonic, 'hex');
-                this.privateKey = privateKeyOrMnemonic;
-            }
-        } else {
-            // Generate new wallet with specified word count
-            // 12 words = 16 bytes (128 bits), 24 words = 32 bytes (256 bits)
-            const entropyBytes = wordCount === 12 ? 16 : 32;
-            const entropy = secureRandom(entropyBytes);
-            this.mnemonic = bip39.entropyToMnemonic(entropy.toString('hex'));
-            const privateKeyHex = this.derivePrivateKey(this.mnemonic);
-            this.keyPair = ec.keyFromPrivate(privateKeyHex, 'hex');
-            this.privateKey = privateKeyHex;
-            logger.info(`🔑 New wallet created with ${wordCount}-word mnemonic`);
-        }
+        // Generate mnemonic
+        const entropyBytes = wordCount === 12 ? 16 : 32;
+        const entropy = secureRandom(entropyBytes);
+        const mnemonic = bip39.entropyToMnemonic(entropy.toString('hex'));
 
-        this.publicKey = this.keyPair.getPublic('hex');
-        this.address = publicKeyToAddress(this.publicKey);
-        this.label = label;
-        this.createdAt = Date.now();
+        // Derive keys
+        const { privateKey, publicKey, address } = await Wallet.deriveKeysFromMnemonic(mnemonic);
+
+        logger.info(`🔑 New ed25519 wallet created with ${wordCount}-word mnemonic`);
+
+        const wallet = new Wallet(privateKey, publicKey, address, mnemonic, label);
+        return wallet;
     }
 
     /**
-     * Derive private key from mnemonic using BIP-44 standard path
-     * This ensures compatibility with external wallets (MetaMask, Trust Wallet, etc.)
+     * Import wallet from mnemonic
      */
-    private derivePrivateKey(mnemonic: string): string {
+    static async fromMnemonic(mnemonic: string, label?: string): Promise<Wallet> {
+        if (!bip39.validateMnemonic(mnemonic.trim())) {
+            throw new Error('Invalid mnemonic phrase');
+        }
+
+        const { privateKey, publicKey, address } = await Wallet.deriveKeysFromMnemonic(mnemonic.trim());
+        return new Wallet(privateKey, publicKey, address, mnemonic.trim(), label);
+    }
+
+    /**
+     * Import wallet from private key
+     */
+    static async fromPrivateKey(privateKeyHex: string, label?: string): Promise<Wallet> {
+        const publicKeyBytes = await ed.getPublicKeyAsync(Wallet.hexToBytes(privateKeyHex));
+        const publicKey = Wallet.bytesToHex(publicKeyBytes);
+        const address = Wallet.deriveAddress(publicKey);
+        return new Wallet(privateKeyHex, publicKey, address, undefined, label);
+    }
+
+    /**
+     * Derive keys from mnemonic using BIP-44 path
+     */
+    private static async deriveKeysFromMnemonic(mnemonic: string): Promise<{
+        privateKey: string;
+        publicKey: string;
+        address: string;
+    }> {
         const seed = bip39.mnemonicToSeedSync(mnemonic);
         const hdkey = HDKey.fromMasterSeed(seed);
         const child = hdkey.derive(BIP44_PATH);
+
         if (!child.privateKey) {
             throw new Error('Failed to derive private key from mnemonic');
         }
-        return child.privateKey.toString('hex');
+
+        // Use first 32 bytes of derived key as ed25519 seed
+        const privateKey = child.privateKey.toString('hex').substring(0, 64);
+
+        // Derive ed25519 public key
+        const privateKeyBytes = Wallet.hexToBytes(privateKey);
+        const publicKeyBytes = await ed.getPublicKeyAsync(privateKeyBytes);
+        const publicKey = Wallet.bytesToHex(publicKeyBytes);
+
+        // Derive address: prefix + sha256(publicKey).substring(0, 40)
+        const address = Wallet.deriveAddress(publicKey);
+
+        return { privateKey, publicKey, address };
+    }
+
+    /**
+     * Derive address from ed25519 public key
+     * Format: {prefix} + sha256(publicKey)[0:40]
+     */
+    private static deriveAddress(publicKey: string): string {
+        const prefix = chainParams.addressPrefix;
+        return prefix + sha256(publicKey).substring(0, 40);
+    }
+
+    // Helper: hex to bytes
+    private static hexToBytes(hex: string): Uint8Array {
+        const bytes = new Uint8Array(hex.length / 2);
+        for (let i = 0; i < bytes.length; i++) {
+            bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
+        }
+        return bytes;
+    }
+
+    // Helper: bytes to hex
+    private static bytesToHex(bytes: Uint8Array): string {
+        return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
     }
 
     getShortAddress(): string {
         return `${this.address.substring(0, 10)}...${this.address.substring(this.address.length - 6)}`;
     }
 
-    signTransaction(transaction: Transaction): void {
+    /**
+     * Sign transaction with ed25519
+     */
+    async signTransaction(transaction: Transaction): Promise<void> {
         if (transaction.fromAddress !== this.address) {
             throw new Error('Cannot sign transactions for other wallets');
         }
-        const hash = transaction.calculateHash();
-        const signature = this.keyPair.sign(hash, 'base64');
-        transaction.signature = signature.toDER('hex');
+        await transaction.signEd25519(this.privateKey);
     }
 
-    createTransaction(toAddress: string, amount: number, fee: number = 0): Transaction {
+    /**
+     * Create and sign transaction
+     */
+    async createTransaction(toAddress: string, amount: number, fee: number = 0): Promise<Transaction> {
         const transaction = new Transaction(this.address, toAddress, amount, fee);
-        this.signTransaction(transaction);
+        await this.signTransaction(transaction);
         return transaction;
     }
 
-    verify(message: string, signature: string): boolean {
+    /**
+     * Verify message with ed25519
+     */
+    async verify(message: string, signature: string): Promise<boolean> {
         try {
-            return this.keyPair.verify(message, signature);
+            const messageBytes = new TextEncoder().encode(message);
+            const signatureBytes = Wallet.hexToBytes(signature);
+            const publicKeyBytes = Wallet.hexToBytes(this.publicKey);
+            return await ed.verifyAsync(signatureBytes, messageBytes, publicKeyBytes);
         } catch {
             return false;
         }
@@ -142,17 +206,22 @@ export class Wallet {
         };
     }
 
-    static import(data: WalletData): Wallet {
-        const wallet = new Wallet(data.mnemonic || data.privateKey, data.label);
+    /**
+     * Import wallet from data (async)
+     */
+    static async import(data: WalletData): Promise<Wallet> {
+        let wallet: Wallet;
+        if (data.mnemonic) {
+            wallet = await Wallet.fromMnemonic(data.mnemonic, data.label);
+        } else {
+            wallet = await Wallet.fromPrivateKey(data.privateKey, data.label);
+        }
         wallet.createdAt = data.createdAt;
         return wallet;
-    }
-
-    static fromMnemonic(mnemonic: string, label?: string): Wallet {
-        return new Wallet(mnemonic, label);
     }
 
     static validateMnemonic(mnemonic: string): boolean {
         return bip39.validateMnemonic(mnemonic.trim());
     }
 }
+

@@ -48,7 +48,7 @@ export function createNFTRoutes(nftManager: NFTManager): Router {
     });
 
     // Mint NFT
-    router.post('/mint', (req: Request, res: Response) => {
+    router.post('/mint', async (req: Request, res: Response) => {
         const { creator, metadata, collectionId, royalty, privateKey } = req.body;
 
         if (!creator || !metadata?.name || !metadata?.image) {
@@ -58,7 +58,7 @@ export function createNFTRoutes(nftManager: NFTManager): Router {
 
         // Verify ownership
         try {
-            const wallet = new Wallet(privateKey);
+            const wallet = await Wallet.fromPrivateKey(privateKey);
             if (wallet.address !== creator) {
                 res.status(403).json({ success: false, error: 'Private key does not match creator address' });
                 return;
@@ -113,7 +113,7 @@ export function createNFTRoutes(nftManager: NFTManager): Router {
     });
 
     // Transfer NFT
-    router.post('/transfer', (req: Request, res: Response) => {
+    router.post('/transfer', async (req: Request, res: Response) => {
         const { nftId, to, privateKey } = req.body;
 
         if (!nftId || !to || !privateKey) {
@@ -129,7 +129,7 @@ export function createNFTRoutes(nftManager: NFTManager): Router {
 
         // Verify ownership
         try {
-            const wallet = new Wallet(privateKey);
+            const wallet = await Wallet.fromPrivateKey(privateKey);
             if (wallet.address !== nft.owner) {
                 res.status(403).json({ success: false, error: 'You do not own this NFT' });
                 return;
