@@ -182,15 +182,25 @@ export function useWallets() {
 
     /**
      * @deprecated Legacy transaction signing - uses old timestamp-based hash format
-     * Use signStakingTransaction for new transactions with nonce/chainId
+     * Sign transaction with ed25519 using canonical hash format
+     * Canonical format: sha256(chainId + txType + from + to + amount + fee + nonce)
      */
-    const signTransaction = useCallback(async (from: string, to: string, amount: number, fee: number, timestamp: number) => {
+    const signTransaction = useCallback(async (
+        from: string,
+        to: string,
+        amount: number,
+        fee: number,
+        timestamp: number,
+        nonce: number,
+        chainId: string
+    ) => {
         const stored = loadWallets();
         const w = stored.find(w => w.address === from);
         if (!w) throw new Error('Wallet not found');
 
-        // Legacy hash format (DEPRECATED: does not include nonce/chainId)
-        const txData = from + to + amount.toString() + fee.toString() + timestamp.toString();
+        // Canonical hash format for replay protection
+        const txType = 'TRANSFER';
+        const txData = chainId + txType + from + to + amount.toString() + fee.toString() + nonce.toString();
         const hash = sha256(txData);
 
         // Sign with ed25519
@@ -208,11 +218,13 @@ export function useWallets() {
         to: string,
         amount: number,
         fee: number,
-        timestamp: number
+        timestamp: number,
+        nonce: number,
+        chainId: string
     ): Promise<{ hash: string; signature: string; publicKey: string; timestamp: number } | null> => {
         const confirmed = await confirmPin('Подтвердите транзакцию', `Отправить ${amount} LVE?`);
         if (!confirmed) return null;
-        return await signTransaction(from, to, amount, fee, timestamp);
+        return await signTransaction(from, to, amount, fee, timestamp, nonce, chainId);
     }, [confirmPin, signTransaction]);
 
     /**

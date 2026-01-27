@@ -124,10 +124,21 @@ export interface Transaction {
 }
 
 export const transaction = {
-    send: (from: string, to: string, amount: number, fee: number, signature: string, publicKey: string, timestamp: number) =>
+    send: (
+        from: string,
+        to: string,
+        amount: number,
+        fee: number,
+        signature: string,
+        publicKey: string,
+        timestamp: number,
+        nonce: number,
+        chainId: string,
+        signatureScheme: 'ed25519' = 'ed25519'
+    ) =>
         fetchApi<{ transactionId: string; from: string; to: string; amount: number; fee: number; status: string }>('/transaction/send', {
             method: 'POST',
-            body: JSON.stringify({ from, to, amount, fee, signature, publicKey, timestamp }),
+            body: JSON.stringify({ from, to, amount, fee, signature, publicKey, timestamp, nonce, chainId, signatureScheme }),
         }),
     get: (id: string) => fetchApi<{ transaction: Transaction; blockIndex: number | null; confirmed: boolean }>(`/transaction/${id}`),
     getPending: () => fetchApi<{ transactions: Transaction[]; count: number }>('/transaction/pool/pending'),

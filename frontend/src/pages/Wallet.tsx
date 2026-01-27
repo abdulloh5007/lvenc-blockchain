@@ -3,7 +3,7 @@ import { Wallet, Plus, Send, Copy, AlertTriangle, Download, Trash2, Droplets } f
 import { Card, Button, Input, SeedImportModal } from '../components';
 import { useWallets } from '../hooks';
 import { useI18n } from '../contexts';
-import { transaction, blockchain, faucet } from '../api/client';
+import { transaction, blockchain, faucet, networkApi } from '../api/client';
 import type { FeeInfo } from '../api/client';
 import './Wallet.css';
 const formatAddress = (addr: string) => `${addr.substring(0, 12)}...${addr.substring(addr.length - 8)}`;
@@ -70,8 +70,17 @@ export const WalletPage: React.FC = () => {
         try {
             const fee = feeInfo?.recommended || 0.1;
             const timestamp = Date.now();
-            const { signature, publicKey } = await signTransaction(selectedWallet, sendTo, parseFloat(sendAmount), fee, timestamp);
-            const res = await transaction.send(selectedWallet, sendTo, parseFloat(sendAmount), fee, signature, publicKey, timestamp);
+
+            // Get nonce for replay protection
+            const nonceRes = await networkApi.getNonce(selectedWallet);
+            if (!nonceRes.success || nonceRes.data === undefined) {
+                throw new Error('Failed to get nonce');
+            }
+            const nonce = nonceRes.data.nextNonce;
+            const chainId = 'lvenc-testnet'; // TODO: get from API
+
+            const { signature, publicKey } = await signTransaction(selectedWallet, sendTo, parseFloat(sendAmount), fee, timestamp, nonce, chainId);
+            const res = await transaction.send(selectedWallet, sendTo, parseFloat(sendAmount), fee, signature, publicKey, timestamp, nonce, chainId);
             if (res.success) {
                 setMessage({ type: 'success', text: t('wallet.txSent') });
                 setSendTo(''); setSendAmount('');
