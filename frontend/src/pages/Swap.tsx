@@ -100,9 +100,10 @@ const Swap: React.FC = () => {
         setSuccess(null);
 
         try {
-            // For now, show instructions since swap requires signed transaction
+            // TODO: Implement signed swap transaction (Phase 3)
+            // For now, show coming soon message
             setSuccess(
-                `To swap, use CLI: lve-chain pool swap --from ${tokenIn} --amount ${amountIn} --min-out ${(quote.amountOut * 0.99).toFixed(4)}`
+                `🚧 Swap coming soon! Expected: ${quote.amountOut.toFixed(4)} ${tokenIn === 'LVE' ? 'UZS' : 'LVE'}`
             );
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Swap failed');

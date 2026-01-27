@@ -2,14 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Sparkles, Image, Plus, X, Upload, Globe, Loader } from 'lucide-react';
 import { Card, Button, Input, CustomSelect } from '../components';
 import { useWallets } from '../hooks';
-import { usePinContext } from '../contexts';
 import { nft, ipfs } from '../api/client';
 import type { NFTMetadata, NFTAttribute, IPFSStatus } from '../api/client';
 import './NFT.css';
 
 export const NFTMint: React.FC = () => {
-    const { wallets } = useWallets();
-    const { confirmPin } = usePinContext();
+    const { wallets, signNFTTransactionWithPin } = useWallets();
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
     const [ipfsStatus, setIpfsStatus] = useState<IPFSStatus | null>(null);
@@ -79,13 +77,6 @@ export const NFTMint: React.FC = () => {
             return;
         }
 
-        // Confirm with PIN instead of asking for mnemonic
-        const confirmed = await confirmPin('Подтвердите создание NFT', `Создать "${name}" с вашего кошелька?`);
-        if (!confirmed) {
-            setMessage({ type: 'error', text: 'Отменено пользователем' });
-            return;
-        }
-
         setLoading(true);
         let imageUrl = imageData;
 
@@ -103,7 +94,7 @@ export const NFTMint: React.FC = () => {
             }
         }
 
-        // Step 2: Mint NFT
+        // Step 2: Sign NFT mint transaction client-side (SECURE - no privateKey sent to server)
         setMintStep('minting');
 
         const metadata: NFTMetadata = {
@@ -113,16 +104,33 @@ export const NFTMint: React.FC = () => {
             attributes,
         };
 
-        // Get the wallet's privateKey from the stored wallets
-        const wallet = wallets.find(w => w.address === selectedWallet);
-        if (!wallet) {
-            setMessage({ type: 'error', text: 'Кошелёк не найден' });
+        // Sign with ed25519 client-side and get signature
+        const signed = await signNFTTransactionWithPin(
+            selectedWallet,
+            'NFT_MINT',
+            metadata,
+            `Создать NFT "${name}"?`
+        );
+
+        if (!signed) {
+            setMessage({ type: 'error', text: 'Отменено пользователем' });
             setLoading(false);
             setMintStep('idle');
             return;
         }
 
-        const res = await nft.mint(selectedWallet, metadata, wallet.privateKey, undefined, royalty);
+        // Step 3: Send signed transaction to API (API verifies signature, never sees privateKey)
+        const res = await nft.mint(
+            selectedWallet,
+            metadata,
+            signed.signature,
+            signed.publicKey,
+            signed.nonce,
+            signed.chainId,
+            signed.signatureScheme,
+            undefined,
+            royalty
+        );
 
         if (res.success && res.data) {
             setMessage({ type: 'success', text: `NFT #${res.data.tokenId} создан!` });

@@ -181,9 +181,9 @@ export function useWallets() {
     }, [loadWallets, saveWallets]);
 
     /**
-     * @deprecated Legacy transaction signing - uses old timestamp-based hash format
      * Sign transaction with ed25519 using canonical hash format
      * Canonical format: sha256(chainId + txType + from + to + amount + fee + nonce)
+     * Note: timestamp is kept for legacy API compatibility but not used in signature
      */
     const signTransaction = useCallback(async (
         from: string,
@@ -314,6 +314,85 @@ export function useWallets() {
         return await signStakingTransaction(from, to, amount, fee, nonce, chainId, txType);
     }, [confirmPin, signStakingTransaction]);
 
+    /**
+     * Sign an NFT transaction (MINT, TRANSFER)
+     * Uses canonical hash format: sha256(chainId + txType + creator + tokenId + metadata)
+     */
+    const signNFTTransaction = useCallback(async (
+        creator: string,
+        txType: 'NFT_MINT' | 'NFT_TRANSFER',
+        metadata: { name: string; description?: string; image: string },
+        tokenId?: string,
+        recipient?: string
+    ): Promise<{
+        signature: string;
+        publicKey: string;
+        nonce: number;
+        chainId: string;
+        signatureScheme: 'ed25519';
+    }> => {
+        const stored = loadWallets();
+        const w = stored.find(w => w.address === creator);
+        if (!w) throw new Error('Wallet not found');
+
+        // Fetch nonce and chainId from API
+        const nonceRes = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/nonce/${creator}`);
+        const nonceData = await nonceRes.json();
+        if (!nonceData.success) throw new Error('Failed to get nonce');
+        const nonce = nonceData.data.nextNonce;
+
+        const networkRes = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/network-info`);
+        const networkData = await networkRes.json();
+        if (!networkData.success) throw new Error('Failed to get network info');
+        const chainId = networkData.data.chainId;
+
+        // Canonical hash format for NFT transactions
+        const canonicalPayload =
+            chainId +
+            txType +
+            creator +
+            (tokenId || 'NEW') +
+            metadata.name +
+            (recipient || '');
+        const txHash = sha256(canonicalPayload);
+
+        // Sign with ed25519
+        const privateKeyBytes = hexToBytes(w.privateKey);
+        const hashBytes = hexToBytes(txHash);
+        const signatureBytes = await ed.signAsync(hashBytes, privateKeyBytes);
+        const signature = bytesToHex(signatureBytes);
+
+        return {
+            signature,
+            publicKey: w.publicKey,
+            nonce,
+            chainId,
+            signatureScheme: 'ed25519'
+        };
+    }, [loadWallets]);
+
+    /**
+     * Sign NFT transaction with PIN confirmation
+     */
+    const signNFTTransactionWithPin = useCallback(async (
+        creator: string,
+        txType: 'NFT_MINT' | 'NFT_TRANSFER',
+        metadata: { name: string; description?: string; image: string },
+        confirmText: string,
+        tokenId?: string,
+        recipient?: string
+    ): Promise<{
+        signature: string;
+        publicKey: string;
+        nonce: number;
+        chainId: string;
+        signatureScheme: 'ed25519';
+    } | null> => {
+        const confirmed = await confirmPin('Подтвердите действие', confirmText);
+        if (!confirmed) return null;
+        return await signNFTTransaction(creator, txType, metadata, tokenId, recipient);
+    }, [confirmPin, signNFTTransaction]);
+
     useEffect(() => {
         fetchBalances();
         const interval = setInterval(fetchBalances, 10000);
@@ -331,6 +410,8 @@ export function useWallets() {
         signTransactionWithPin,
         signStakingTransaction,
         signStakingTransactionWithPin,
+        signNFTTransaction,
+        signNFTTransactionWithPin,
         refresh: fetchBalances
     };
 }

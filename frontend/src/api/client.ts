@@ -328,15 +328,35 @@ export const nft = {
     get: (id: string) => fetchApi<NFTData>(`/nft/${id}`),
     getByOwner: (address: string) => fetchApi<NFTData[]>(`/nft/owner/${address}`),
     getHistory: (id: string) => fetchApi<{ from: string; to: string; timestamp: number; transactionId: string }[]>(`/nft/${id}/history`),
-    mint: (creator: string, metadata: NFTMetadata, privateKey: string, collectionId?: string, royalty?: number) =>
+    // Secure mint: uses signature instead of privateKey
+    mint: (
+        creator: string,
+        metadata: NFTMetadata,
+        signature: string,
+        publicKey: string,
+        nonce: number,
+        chainId: string,
+        signatureScheme: 'ed25519' = 'ed25519',
+        collectionId?: string,
+        royalty?: number
+    ) =>
         fetchApi<NFTData>('/nft/mint', {
             method: 'POST',
-            body: JSON.stringify({ creator, metadata, privateKey, collectionId, royalty }),
+            body: JSON.stringify({ creator, metadata, signature, publicKey, nonce, chainId, signatureScheme, collectionId, royalty }),
         }),
-    transfer: (nftId: string, to: string, privateKey: string) =>
+    // Secure transfer: uses signature instead of privateKey
+    transfer: (
+        nftId: string,
+        to: string,
+        signature: string,
+        publicKey: string,
+        nonce: number,
+        chainId: string,
+        signatureScheme: 'ed25519' = 'ed25519'
+    ) =>
         fetchApi<{ nftId: string; from: string; to: string; transactionId: string }>('/nft/transfer', {
             method: 'POST',
-            body: JSON.stringify({ nftId, to, privateKey }),
+            body: JSON.stringify({ nftId, to, signature, publicKey, nonce, chainId, signatureScheme }),
         }),
     // Collections
     getCollections: () => fetchApi<NFTCollectionData[]>('/nft/collections'),

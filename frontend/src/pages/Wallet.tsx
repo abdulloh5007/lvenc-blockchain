@@ -77,7 +77,13 @@ export const WalletPage: React.FC = () => {
                 throw new Error('Failed to get nonce');
             }
             const nonce = nonceRes.data.nextNonce;
-            const chainId = 'lvenc-testnet'; // TODO: get from API
+
+            // Get chainId from network API (dynamic, not hardcoded)
+            const networkInfo = await networkApi.getInfo();
+            if (!networkInfo.success || !networkInfo.data) {
+                throw new Error('Failed to get network info');
+            }
+            const chainId = networkInfo.data.chainId;
 
             const { signature, publicKey } = await signTransaction(selectedWallet, sendTo, parseFloat(sendAmount), fee, timestamp, nonce, chainId);
             const res = await transaction.send(selectedWallet, sendTo, parseFloat(sendAmount), fee, signature, publicKey, timestamp, nonce, chainId);
