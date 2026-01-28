@@ -5,8 +5,8 @@
 
 import { Command } from 'commander';
 import { usdtBalanceManager } from '../../../runtime/pool/index.js';
-import { boxCenter, boxSeparator, boxTop, boxBottom, boxEmpty } from '../../../protocol/utils/box.js';
 import { config } from '../../config.js';
+import cli, { sym, c } from '../../../protocol/utils/cli.js';
 
 export const faucetCommand = new Command('faucet')
     .description('Request test tokens (testnet only)');
@@ -19,37 +19,30 @@ faucetCommand
     .action(async (options) => {
         if (!config.isTestnet) {
             console.log('');
-            console.log(boxTop());
-            console.log(boxCenter('✗ Faucet Unavailable'));
-            console.log(boxSeparator());
-            console.log(boxCenter('USDT faucet is only available on testnet'));
-            console.log(boxBottom());
+            console.log(cli.warningBox(
+                'USDT faucet is only available on testnet',
+                `${sym.x} Faucet Unavailable`
+            ));
             console.log('');
-            return;
+            process.exit(0);
         }
 
         const result = usdtBalanceManager.requestFromFaucet(options.address);
 
         console.log('');
-        console.log(boxTop());
-
         if (result.success) {
-            console.log(boxCenter('● USDT Faucet'));
-            console.log(boxSeparator());
-            console.log(boxCenter(`Received: +${result.amount} USDT`));
-            console.log(boxCenter(`Balance:  ${result.balance} USDT`));
-            console.log(boxEmpty());
-            console.log(boxCenter('Use: lve-chain pool swap --from USDT'));
+            console.log(cli.successBox([
+                `${c.label('Received:')} ${c.success(`+${result.amount} USDT`)}`,
+                `${c.label('Balance:')}  ${c.value(`${result.balance} USDT`)}`,
+            ].join('\n'), `${sym.money} USDT Faucet`));
+            console.log('');
+            console.log(`${sym.bulb} Use: ${c.primary('lve-chain pool swap --from USDT')}`);
         } else {
-            console.log(boxCenter('⚠ Faucet Request Failed'));
-            console.log(boxSeparator());
-            console.log(boxCenter(result.error || 'Unknown error'));
-            if (result.balance > 0) {
-                console.log(boxCenter(`Current balance: ${result.balance} USDT`));
-            }
+            console.log(cli.warningBox([
+                result.error || 'Unknown error',
+                result.balance > 0 ? `Current balance: ${result.balance} USDT` : '',
+            ].filter(Boolean).join('\n'), `${sym.warning_emoji} Request Failed`));
         }
-
-        console.log(boxBottom());
         console.log('');
         process.exit(0);
     });
@@ -64,15 +57,12 @@ faucetCommand
         const info = usdtBalanceManager.getFaucetInfo();
 
         console.log('');
-        console.log(boxTop());
-        console.log(boxCenter('● USDT Balance'));
-        console.log(boxSeparator());
-        console.log(boxCenter(`Address: ${options.address.slice(0, 20)}...`));
-        console.log(boxCenter(`Balance: ${balance} USDT`));
-        console.log(boxEmpty());
-        console.log(boxCenter(`Max: ${info.maxBalance} USDT`));
-        console.log(boxCenter(`Faucet: ${info.amount} USDT/request`));
-        console.log(boxBottom());
+        console.log(cli.infoBox([
+            `${c.label('Address:')} ${c.value(options.address.slice(0, 24))}...`,
+            `${c.label('Balance:')} ${c.value(`${balance} USDT`)}`,
+            '',
+            `${c.dim(`Max: ${info.maxBalance} USDT | Faucet: ${info.amount} USDT/request`)}`,
+        ].join('\n'), `${sym.money} USDT Balance`));
         console.log('');
         process.exit(0);
     });
@@ -85,15 +75,13 @@ faucetCommand
         const info = usdtBalanceManager.getFaucetInfo();
 
         console.log('');
-        console.log(boxTop());
-        console.log(boxCenter('● Faucet Info'));
-        console.log(boxSeparator());
-        console.log(boxCenter(`Status:   ${info.enabled ? '✓ Enabled' : '✗ Disabled'}`));
-        console.log(boxCenter(`Network:  ${config.network_mode}`));
-        console.log(boxCenter(`Amount:   ${info.amount} USDT/request`));
-        console.log(boxCenter(`Cooldown: ${info.cooldownMs / 1000}s`));
-        console.log(boxCenter(`Max:      ${info.maxBalance} USDT`));
-        console.log(boxBottom());
+        console.log(cli.infoBox([
+            `${c.label('Status:')}   ${info.enabled ? c.success('✓ Enabled') : c.error('✗ Disabled')}`,
+            `${c.label('Network:')}  ${c.value(config.network_mode)}`,
+            `${c.label('Amount:')}   ${c.value(`${info.amount} USDT/request`)}`,
+            `${c.label('Cooldown:')} ${c.value(`${info.cooldownMs / 1000}s`)}`,
+            `${c.label('Max:')}      ${c.value(`${info.maxBalance} USDT`)}`,
+        ].join('\n'), `${sym.gear} Faucet Config`));
         console.log('');
         process.exit(0);
     });

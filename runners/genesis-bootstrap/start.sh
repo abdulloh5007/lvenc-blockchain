@@ -5,16 +5,13 @@
 
 set -e
 
-# Get script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-# Source box utilities
 source "$SCRIPT_DIR/../lib/box.sh"
 
 cd "$PROJECT_DIR"
 
-# Configuration
 NETWORK="${NETWORK:-testnet}"
 DATA_DIR="./data/${NETWORK}"
 API_PORT="${API_PORT:-3000}"
@@ -27,13 +24,13 @@ lve_header "Genesis Validator (PM2)"
 # Check prerequisites
 if [ ! -f "$DATA_DIR/genesis.json" ]; then
     msg_err "Genesis not found!"
-    echo "   Run: ./runners/genesis-bootstrap/init.sh"
+    echo "   ➜ Run: ./runners/genesis-bootstrap/init.sh"
     exit 1
 fi
 
 if [ ! -f "$DATA_DIR/priv_validator_key.json" ]; then
     msg_err "Validator key not found!"
-    echo "   Run: ./runners/genesis-bootstrap/init.sh"
+    echo "   ➜ Run: ./runners/genesis-bootstrap/init.sh"
     exit 1
 fi
 
@@ -43,14 +40,14 @@ if ! command -v pm2 &> /dev/null; then
     npm install -g pm2
 fi
 
-# Stop existing process if running
+# Stop existing process
 if pm2 list 2>/dev/null | grep -q "$PM2_NAME"; then
     msg_info "Stopping existing $PM2_NAME..."
     pm2 delete "$PM2_NAME" 2>/dev/null || true
 fi
 
 # Start with PM2
-msg_info "Starting node..."
+msg_info "🚀 Starting node..."
 pm2 start node \
     --name "$PM2_NAME" \
     --cwd "$PROJECT_DIR" \
@@ -61,17 +58,16 @@ pm2 start node \
     --network "$NETWORK" \
     --data-dir "$DATA_DIR"
 
-# Save PM2 config
 pm2 save
 
 echo ""
-quick_box "[+] Genesis Validator Running!" \
+quick_box "✅ Genesis Validator Running!" \
     "Name: $PM2_NAME" \
     "API: http://localhost:$API_PORT" \
     "P2P: $P2P_PORT"
 echo ""
-echo "Commands:"
-echo "  pm2 logs $PM2_NAME    # View logs"
-echo "  pm2 stop $PM2_NAME    # Stop"
-echo "  pm2 restart $PM2_NAME # Restart"
+echo "  📋 Commands:"
+echo "     pm2 logs $PM2_NAME    # View logs"
+echo "     pm2 stop $PM2_NAME    # Stop"
+echo "     pm2 restart $PM2_NAME # Restart"
 echo ""
