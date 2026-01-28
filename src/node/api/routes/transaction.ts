@@ -60,7 +60,11 @@ export function createTransactionRoutes(blockchain: Blockchain): Router {
                 from, to, Number(amount), txFee, txTimestamp,
                 undefined,  // id - auto-generated
                 Number(nonce),
-                chainId || 'lvenc-testnet-1'
+                chainId || 'lvenc-testnet-1',
+                'TRANSFER', // type
+                undefined,  // data
+                'ed25519',  // signatureScheme
+                publicKey   // publicKey
             );
 
             // Calculate canonical hash and verify ed25519 signature
