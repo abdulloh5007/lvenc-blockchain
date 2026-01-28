@@ -41,7 +41,8 @@ export class Blockchain {
                 config.blockchain.genesisAmount,
                 faucetAddress,
                 this.difficulty,
-                config.genesis?.timestamp || 0
+                config.genesis?.timestamp || 0,
+                config.genesis?.faucetPublicKey
             );
             this.chain.push(genesis);
             this.updateBalanceCache();

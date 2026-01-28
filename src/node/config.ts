@@ -3,9 +3,12 @@ const isTestnet = process.env.NETWORK_MODE !== 'mainnet';
 // Fixed genesis configuration for network consistency
 // ALL nodes must use these values to have same genesis hash
 const GENESIS_CONFIG = {
-    // Fixed testnet faucet address (do not change!)
-    testnetFaucetAddress: 'tLVE0000000000000000000000000000000000000001',
-    mainnetFaucetAddress: 'LVE0000000000000000000000000000000000000001',
+    // Fixed testnet faucet address (can be overridden for private testnets)
+    testnetFaucetAddress: process.env.GENESIS_ADDRESS || 'tLVE0000000000000000000000000000000000000001',
+    mainnetFaucetAddress: process.env.GENESIS_ADDRESS || 'LVE0000000000000000000000000000000000000001',
+    // Genesis Public Key (required for bootstrapping PoS)
+    testnetFaucetPublicKey: process.env.GENESIS_PUBLIC_KEY || '',
+    mainnetFaucetPublicKey: process.env.GENESIS_PUBLIC_KEY || '',
     // Fixed timestamp (January 1, 2026 00:00:00 UTC)
     timestamp: 1767225600000,
 };
@@ -89,6 +92,7 @@ export const config = {
     // Genesis block configuration (fixed for network consistency)
     genesis: {
         faucetAddress: isTestnet ? GENESIS_CONFIG.testnetFaucetAddress : GENESIS_CONFIG.mainnetFaucetAddress,
+        faucetPublicKey: isTestnet ? GENESIS_CONFIG.testnetFaucetPublicKey : GENESIS_CONFIG.mainnetFaucetPublicKey,
         timestamp: GENESIS_CONFIG.timestamp,
     },
     // Version control (for mandatory updates)

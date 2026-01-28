@@ -141,23 +141,56 @@ export class Block implements BlockData {
         genesisAmount: number,
         faucetAddress: string,
         difficulty: number,
-        fixedTimestamp?: number
+        fixedTimestamp?: number,
+        genesisPublicKey?: string
     ): Block {
         // Fixed genesis transaction ID for network consistency
         const GENESIS_TX_ID = 'genesis-tx-00000000-0000-0000-0000-000000000001';
+        const GENESIS_STAKE_TX_ID = 'genesis-tx-00000000-0000-0000-0000-000000000002';
 
+        const transactions: Transaction[] = [];
+
+        // 1. Initial supply distribution (transfer to genesis address)
         const genesisTransaction = new Transaction(
             null,
             faucetAddress,
             genesisAmount,
             0,
             fixedTimestamp || 0, // Use fixed timestamp for tx too
-            GENESIS_TX_ID        // Fixed ID
+            GENESIS_TX_ID,       // Fixed ID
+            0,                   // nonce
+            undefined,           // chainId
+            'TRANSFER'           // type
         );
+        transactions.push(genesisTransaction);
+
+        // 2. Initial Validator Bootstrap (STAKE transaction)
+        // If we have a public key for the genesis address, we can bootstrap the first validator
+        if (genesisPublicKey) {
+            const minValidatorStake = 1000; // Hardcoded bootstrap amount (should verify against config)
+            const stakeTransaction = new Transaction(
+                faucetAddress,
+                'STAKE_POOL',
+                minValidatorStake,
+                0,
+                fixedTimestamp || 0,
+                GENESIS_STAKE_TX_ID,
+                1,                   // nonce 1 (after initial transfer)
+                undefined,           // chainId
+                'STAKE',             // type
+                undefined,           // data
+                'ed25519',           // signatureScheme
+                genesisPublicKey     // public key
+            );
+            // Sign with dummy signature (Genesis block is trusted by definition)
+            stakeTransaction.signature = '00'.repeat(64);
+            transactions.push(stakeTransaction);
+        }
+
         const genesis = new Block(
             0,
             fixedTimestamp || 0, // Use fixed timestamp or 0
-            [genesisTransaction],
+            transactions,
             '0'.repeat(64),
             difficulty,
             'GENESIS',
