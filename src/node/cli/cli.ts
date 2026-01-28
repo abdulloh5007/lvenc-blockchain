@@ -74,6 +74,12 @@ program.addCommand(poolCommand);
 import { faucetCommand } from './commands/faucet.js';
 program.addCommand(faucetCommand);
 
+// Import and add validator and genesis commands
+import { validatorCommand } from './commands/validator.js';
+import { genesisCommand } from './commands/genesis.js';
+program.addCommand(validatorCommand);
+program.addCommand(genesisCommand);
+
 // Parse AFTER all commands are registered
 program.parse();
 

@@ -6,7 +6,7 @@ import { storage } from '../../protocol/storage/index.js';
 import { logger } from '../../protocol/utils/logger.js';
 import { sha256 } from '../../protocol/utils/crypto.js';
 import { chainParams } from '../../protocol/params/index.js';
-import { getNodeIdentity } from '../../node/identity/index.js';
+import { getValidatorKey } from '../../protocol/consensus/index.js';
 import { createSigningData } from '../../protocol/blockchain/BlockSignature.js';
 
 const SLOT_DURATION = 30000;
@@ -69,7 +69,7 @@ export class BlockProducer {
         // Check for epoch transition
         if (stakingPool.shouldTransitionEpoch(currentBlockIndex)) {
             stakingPool.transitionEpoch(currentBlockIndex);
-            
+
             this.log.info(`🔄 Epoch transition completed at block ${currentBlockIndex}`);
         }
 
@@ -104,18 +104,18 @@ export class BlockProducer {
         }
 
         try {
-            // Get node identity for Ed25519 signing
-            const nodeIdentity = getNodeIdentity();
+            // Get validator key for Ed25519 signing (consensus key)
+            const validatorKey = getValidatorKey();
 
             const signFn = (hash: string): string => {
-                if (!nodeIdentity) {
-                    // Fallback to sha256 if no identity (should not happen in production)
-                    this.log.warn('⚠️ No node identity for signing, using fallback');
+                if (!validatorKey) {
+                    // Fallback to sha256 if no validator key (should not happen in production)
+                    this.log.warn('⚠️ No validator key for signing, using fallback');
                     return sha256(validatorAddress + hash + currentSlot.toString());
                 }
                 // Create domain-separated signing data: chainId:blockIndex:blockHash
                 const signingData = createSigningData(latestBlock.index + 1, hash);
-                return nodeIdentity.sign(signingData);
+                return validatorKey.sign(signingData);
             };
             const block = this.blockchain.createPoSBlock(validatorAddress, signFn);
             (block as { slotNumber?: number }).slotNumber = currentSlot;
@@ -150,7 +150,7 @@ export class BlockProducer {
 
             // Save both blockchain and staking
             storage.saveBlockchain(this.blockchain.toJSON());
-            
+
 
             const epochInfo = stakingPool.getEpochInfo();
             this.log.info(`📦 Slot ${currentSlot} | Block #${block.index} | Epoch ${epochInfo.epoch} | Validator: ${validatorAddress.slice(0, 12)}... | Delegator rewards: ${delegators.size}`);

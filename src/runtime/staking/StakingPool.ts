@@ -1,6 +1,7 @@
 import { logger } from '../../protocol/utils/logger.js';
 import { sha256 } from '../../protocol/utils/crypto.js';
 import { chainParams } from '../../protocol/params/index.js';
+import type { GenesisValidator } from '../../protocol/consensus/index.js';
 
 // Interfaces
 export interface StakeInfo {
@@ -784,6 +785,50 @@ export class StakingPool {
         const currentDel = this.validatorDelegations.get(validator) || 0;
         this.validatorDelegations.set(validator, Math.max(0, currentDel - amount));
         this.updateValidator(validator);
+    }
+
+    // ========== GENESIS VALIDATORS ==========
+
+    /**
+     * Load genesis validators (bypass pending queue, active from block 0)
+     * Called once during blockchain initialization
+     */
+    loadGenesisValidators(validators: GenesisValidator[]): void {
+        for (const gv of validators) {
+            // Create stake entry
+            this.stakes.set(gv.operatorAddress, {
+                address: gv.operatorAddress,
+                amount: gv.power,
+                stakedAt: 0,  // Genesis time
+                lastReward: 0,
+                epochStaked: 0  // Epoch 0
+            });
+
+            // Create validator entry (immediately active)
+            this.validators.set(gv.operatorAddress, {
+                address: gv.operatorAddress,
+                stake: gv.power,
+                delegatedStake: 0,
+                commission: DEFAULT_COMMISSION,
+                blocksCreated: 0,
+                totalRewards: 0,
+                slashCount: 0,
+                isActive: true,  // Active immediately
+                isJailed: false,
+                jailedUntilEpoch: 0,
+                jailCount: 0
+            });
+
+            this.log.info(`🌱 Genesis validator loaded: ${gv.operatorAddress.slice(0, 12)}... (power: ${gv.power})`);
+        }
+    }
+
+    /**
+     * Get genesis validators count
+     */
+    getGenesisValidatorCount(): number {
+        // Genesis validators have epochStaked = 0
+        return Array.from(this.stakes.values()).filter(s => s.epochStaked === 0).length;
     }
 }
 

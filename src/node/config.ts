@@ -17,7 +17,7 @@ const GENESIS_CONFIG = {
 // Increment PROTOCOL_VERSION on breaking changes, update MIN_PROTOCOL_VERSION to enforce upgrades
 const VERSION_CONFIG = {
     // Software version (semver)
-    nodeVersion: '2.0.0',
+    nodeVersion: '2.1.0',
     // Protocol version (increment on breaking network changes)
     protocolVersion: 1,
     // Minimum protocol version required to connect (used for mandatory updates)

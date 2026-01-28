@@ -1,5 +1,5 @@
 #!/bin/bash
-# LVE Chain - Node Update Script v2.0.0
+# LVE Chain - Node Update Script v2.1.0
 # Run: ./update_node.sh
 
 echo ""
@@ -45,12 +45,23 @@ echo "║         ✅ Update Complete!                       ║"
 echo "╠═══════════════════════════════════════════════════╣"
 echo "║  Restart your node using runners:                 ║"
 echo "║                                                   ║"
+echo "║    ./runners/genesis-bootstrap/start.sh (Genesis) ║"
 echo "║    ./runners/rpc/start.sh       (RPC + API)       ║"
 echo "║    ./runners/full/start.sh      (Full node)       ║"
 echo "║    ./runners/validator/start.sh (Validator)       ║"
 echo "║    ./runners/light/start.sh     (Light node)      ║"
-echo "║                                                   ║"
-echo "║  Or using PM2:                                    ║"
-echo "║    pm2 restart lve-rpc                            ║"
 echo "╚═══════════════════════════════════════════════════╝"
 echo ""
+
+# Auto-restart PM2 if running
+PM2_NAME="${PM2_NAME:-lve-genesis}"
+if command -v pm2 &> /dev/null; then
+    if pm2 list 2>/dev/null | grep -q "$PM2_NAME"; then
+        echo "🔄 Restarting $PM2_NAME via PM2..."
+        pm2 restart "$PM2_NAME"
+        echo "✅ Node restarted!"
+        echo ""
+        pm2 logs "$PM2_NAME" --lines 10 --nostream
+    fi
+fi
+
