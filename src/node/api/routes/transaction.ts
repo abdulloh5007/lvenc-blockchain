@@ -2,13 +2,24 @@ import { Router, Request, Response } from 'express';
 import { Blockchain, Transaction } from '../../../protocol/blockchain/index.js';
 import { storage } from '../../../protocol/storage/index.js';
 import { isBlacklisted, checkTransferRate, validateTransaction } from '../../../protocol/security/index.js';
-import { verifySignature } from '../../../protocol/utils/crypto.js';
+import * as ed from '@noble/ed25519';
+import { logger } from '../../../protocol/utils/logger.js';
+
+const log = logger.child('Transaction');
+
+function hexToBytes(hex: string): Uint8Array {
+    const bytes = new Uint8Array(hex.length / 2);
+    for (let i = 0; i < bytes.length; i++) {
+        bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
+    }
+    return bytes;
+}
 
 export function createTransactionRoutes(blockchain: Blockchain): Router {
     const router = Router();
 
     // POST /send - must come first
-    router.post('/send', (req: Request, res: Response) => {
+    router.post('/send', async (req: Request, res: Response) => {
         const { from, to, amount, fee, signature, publicKey, timestamp, nonce, chainId } = req.body;
         if (!from || !to || !amount || !signature || !publicKey) {
             res.status(400).json({ success: false, error: 'Required: from, to, amount, signature, publicKey' });
@@ -51,11 +62,22 @@ export function createTransactionRoutes(blockchain: Blockchain): Router {
                 Number(nonce),
                 chainId || 'lvenc-testnet-1'
             );
+
+            // Calculate canonical hash and verify ed25519 signature
             const txHash = transaction.calculateHash();
-            if (!verifySignature(txHash, signature, publicKey)) {
+            log.debug(`TX verify: hash=${txHash.slice(0, 16)}... pubKey=${publicKey.slice(0, 16)}...`);
+
+            const signatureBytes = hexToBytes(signature);
+            const publicKeyBytes = hexToBytes(publicKey);
+            const hashBytes = hexToBytes(txHash);
+
+            const isValid = await ed.verifyAsync(signatureBytes, hashBytes, publicKeyBytes);
+            if (!isValid) {
+                log.warn(`Invalid signature for transfer from ${from.slice(0, 12)}...`);
                 res.status(400).json({ success: false, error: 'Invalid signature' });
                 return;
             }
+
             (transaction as { signature?: string }).signature = signature;
             blockchain.addTransaction(transaction);
             storage.saveBlockchain(blockchain.toJSON());
