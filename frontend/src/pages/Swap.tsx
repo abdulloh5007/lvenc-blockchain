@@ -29,7 +29,7 @@ interface QuoteResult {
 }
 
 const Swap: React.FC = () => {
-    const { wallets } = useWallets();
+    const { wallets, signSwapTransactionWithPin } = useWallets();
     const wallet = wallets[0]; // Use first wallet
     const [poolInfo, setPoolInfo] = useState<PoolInfo | null>(null);
     const [tokenIn, setTokenIn] = useState<'LVE' | 'UZS'>('LVE');
@@ -100,11 +100,50 @@ const Swap: React.FC = () => {
         setSuccess(null);
 
         try {
-            // TODO: Implement signed swap transaction (Phase 3)
-            // For now, show coming soon message
-            setSuccess(
-                `🚧 Swap coming soon! Expected: ${quote.amountOut.toFixed(4)} ${tokenIn === 'LVE' ? 'UZS' : 'LVE'}`
+            const amount = parseFloat(amountIn);
+            const minAmountOut = quote.amountOut * 0.99; // 1% slippage
+
+            // Sign transaction client-side
+            const signed = await signSwapTransactionWithPin(
+                wallet.address,
+                tokenIn === 'LVE' ? 'LVE' : 'USDT',
+                amount,
+                minAmountOut
             );
+
+            if (!signed) {
+                setError('Swap cancelled');
+                setLoading(false);
+                return;
+            }
+
+            // Execute swap via API
+            const res = await fetch(`${API_BASE}/pool/swap`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    from: wallet.address,
+                    tokenIn: tokenIn === 'LVE' ? 'LVE' : 'USDT',
+                    amountIn: amount,
+                    minAmountOut,
+                    signature: signed.signature,
+                    publicKey: signed.publicKey,
+                    nonce: signed.nonce,
+                    chainId: signed.chainId,
+                    signatureScheme: signed.signatureScheme,
+                }),
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                const tokenOut = tokenIn === 'LVE' ? 'UZS' : 'LVE';
+                setSuccess(`✅ Swapped ${amount} ${tokenIn} → ${data.data.amountOut.toFixed(4)} ${tokenOut}`);
+                setAmountIn('');
+                setQuote(null);
+                fetchPoolInfo();
+            } else {
+                setError(data.error || 'Swap failed');
+            }
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Swap failed');
         } finally {

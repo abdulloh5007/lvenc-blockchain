@@ -393,6 +393,89 @@ export function useWallets() {
         return await signNFTTransaction(creator, txType, metadata, tokenId, recipient);
     }, [confirmPin, signNFTTransaction]);
 
+    /**
+     * Sign a swap transaction
+     * Canonical format: sha256(chainId + 'SWAP' + from + tokenIn + tokenOut + amountIn + minAmountOut)
+     */
+    const signSwapTransaction = useCallback(async (
+        from: string,
+        tokenIn: 'LVE' | 'USDT',
+        amountIn: number,
+        minAmountOut: number
+    ): Promise<{
+        signature: string;
+        publicKey: string;
+        nonce: number;
+        chainId: string;
+        signatureScheme: 'ed25519';
+    }> => {
+        const stored = loadWallets();
+        const w = stored.find(w => w.address === from);
+        if (!w) throw new Error('Wallet not found');
+
+        // Fetch nonce and chainId from API
+        const [nonceRes, networkRes] = await Promise.all([
+            networkApi.getNonce(from),
+            networkApi.getInfo()
+        ]);
+
+        if (!nonceRes.success || !networkRes.success) {
+            throw new Error('Failed to fetch nonce or network info');
+        }
+
+        const nonce = nonceRes.data!.nextNonce;
+        const chainId = networkRes.data!.chainId;
+        const tokenOut = tokenIn === 'LVE' ? 'USDT' : 'LVE';
+
+        // Canonical hash format for SWAP
+        const canonicalPayload =
+            chainId +
+            'SWAP' +
+            from +
+            tokenIn +
+            tokenOut +
+            amountIn.toString() +
+            minAmountOut.toString();
+        const txHash = sha256(canonicalPayload);
+
+        // Sign with ed25519
+        const privateKeyBytes = hexToBytes(w.privateKey);
+        const hashBytes = hexToBytes(txHash);
+        const signatureBytes = await ed.signAsync(hashBytes, privateKeyBytes);
+        const signature = bytesToHex(signatureBytes);
+
+        return {
+            signature,
+            publicKey: w.publicKey,
+            nonce,
+            chainId,
+            signatureScheme: 'ed25519'
+        };
+    }, [loadWallets]);
+
+    /**
+     * Sign swap transaction with PIN confirmation
+     */
+    const signSwapTransactionWithPin = useCallback(async (
+        from: string,
+        tokenIn: 'LVE' | 'USDT',
+        amountIn: number,
+        minAmountOut: number,
+        confirmText?: string
+    ): Promise<{
+        signature: string;
+        publicKey: string;
+        nonce: number;
+        chainId: string;
+        signatureScheme: 'ed25519';
+    } | null> => {
+        const tokenOut = tokenIn === 'LVE' ? 'USDT' : 'LVE';
+        const description = confirmText || `Swap ${amountIn} ${tokenIn} → ${tokenOut}?`;
+        const confirmed = await confirmPin('Подтвердите Swap', description);
+        if (!confirmed) return null;
+        return await signSwapTransaction(from, tokenIn, amountIn, minAmountOut);
+    }, [confirmPin, signSwapTransaction]);
+
     useEffect(() => {
         fetchBalances();
         const interval = setInterval(fetchBalances, 10000);
@@ -412,6 +495,8 @@ export function useWallets() {
         signStakingTransactionWithPin,
         signNFTTransaction,
         signNFTTransactionWithPin,
+        signSwapTransaction,
+        signSwapTransactionWithPin,
         refresh: fetchBalances
     };
 }
