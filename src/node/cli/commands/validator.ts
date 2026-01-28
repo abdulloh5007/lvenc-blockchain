@@ -8,7 +8,7 @@ import { Command } from 'commander';
 import * as fs from 'fs';
 import * as path from 'path';
 import { initValidatorKey, VALIDATOR_KEY_FILE } from '../../../protocol/consensus/index.js';
-import { boxCenter, boxSeparator, boxTop, boxBottom } from '../../../protocol/utils/box.js';
+import cli, { sym, c } from '../../../protocol/utils/cli.js';
 
 function getDataDir(network: string, dataDir?: string): string {
     if (dataDir) return dataDir;
@@ -30,36 +30,32 @@ validatorCommand
 
         if (fs.existsSync(keyPath)) {
             console.log('');
-            console.log('⚠  Validator key already exists!');
-            console.log(`   Path: ${keyPath}`);
+            cli.warn(`Validator key already exists at ${keyPath}`);
+            console.log(c.dim('  To regenerate, first backup and delete the existing key.'));
             console.log('');
-            console.log('To regenerate, first backup and delete the existing key.');
-            return;
+            process.exit(0);
         }
 
         try {
             const key = await initValidatorKey(dataDir);
 
             console.log('');
-            console.log(boxTop());
-            console.log(boxCenter('✓ Validator Key Created'));
-            console.log(boxSeparator());
-            console.log(boxCenter(`Address:   ${key.getAddress()}`));
-            console.log(boxCenter(`PubKey:    ${key.getPubKey().slice(0, 32)}...`));
-            console.log(boxCenter(`Path:      ${keyPath}`));
-            console.log(boxBottom());
+            console.log(cli.successBox([
+                `${c.label('Address:')}  ${c.value(key.getAddress())}`,
+                `${c.label('PubKey:')}   ${c.value(key.getPubKey().slice(0, 32))}...`,
+                `${c.label('Path:')}     ${c.value(keyPath)}`,
+            ].join('\n'), `${sym.key} Validator Key Created`));
             console.log('');
-            console.log('◆ Keep this key safe! It controls your validator identity.');
+            console.log(`${sym.lock} ${c.warning('Keep this key safe!')} It controls your validator identity.`);
             console.log('');
-            console.log('Next steps:');
-            console.log('  1. Add this validator to genesis:');
-            console.log(`     lve-chain genesis add-validator --pubkey ${key.getPubKey()}`);
-            console.log('  2. Start your validator node:');
-            console.log('     lve-chain start --role validator');
+            console.log(`${sym.bulb} ${c.bold('Next steps:')}`);
+            console.log(`   1. Add to genesis: ${c.primary(`lve-chain genesis add-validator --pubkey ${key.getPubKey()}`)}`);
+            console.log(`   2. Start node: ${c.primary('lve-chain start --role validator')}`);
             console.log('');
             process.exit(0);
         } catch (error) {
-            console.error(`✗ Failed to create validator key: ${error}`);
+            console.log('');
+            cli.error(`Failed to create validator key: ${error}`);
             process.exit(1);
         }
     });
@@ -77,8 +73,8 @@ validatorCommand
 
         if (!fs.existsSync(keyPath)) {
             console.log('');
-            console.log('✗ No validator key found');
-            console.log(`   Run 'lve-chain validator init' to create one`);
+            cli.error('No validator key found');
+            console.log(`   Run ${c.primary('lve-chain validator init')} to create one`);
             console.log('');
             process.exit(1);
         }
@@ -93,17 +89,16 @@ validatorCommand
             }
 
             console.log('');
-            console.log(boxTop());
-            console.log(boxCenter('Validator Key'));
-            console.log(boxSeparator());
-            console.log(boxCenter(`Address: ${key.getAddress()}`));
-            console.log(boxCenter(`PubKey:  ${key.getPubKey().slice(0, 40)}...`));
-            console.log(boxCenter(`Network: ${options.network}`));
-            console.log(boxBottom());
+            console.log(cli.infoBox([
+                `${c.label('Address:')}  ${c.value(key.getAddress())}`,
+                `${c.label('PubKey:')}   ${c.value(key.getPubKey().slice(0, 40))}...`,
+                `${c.label('Network:')}  ${c.value(options.network)}`,
+            ].join('\n'), `${sym.key} Validator Key`));
             console.log('');
             process.exit(0);
         } catch (error) {
-            console.error(`✗ Failed to read validator key: ${error}`);
+            console.log('');
+            cli.error(`Failed to read validator key: ${error}`);
             process.exit(1);
         }
     });

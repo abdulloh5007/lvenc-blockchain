@@ -14,7 +14,7 @@ import {
     GenesisConfig
 } from '../../../protocol/consensus/index.js';
 import { chainParams } from '../../../protocol/params/index.js';
-import { boxCenter, boxSeparator, boxTop, boxBottom } from '../../../protocol/utils/box.js';
+import cli, { sym, c } from '../../../protocol/utils/cli.js';
 
 function getDataDir(network: string, dataDir?: string): string {
     if (dataDir) return dataDir;
@@ -37,11 +37,10 @@ genesisCommand
 
         if (fs.existsSync(genesisPath)) {
             console.log('');
-            console.log('⚠  genesis.json already exists!');
-            console.log(`   Path: ${genesisPath}`);
+            cli.warn(`genesis.json already exists at ${genesisPath}`);
+            console.log(c.dim('  To recreate, first backup and delete the existing file.'));
             console.log('');
-            console.log('To recreate, first backup and delete the existing file.');
-            return;
+            process.exit(0);
         }
 
         // Create empty genesis
@@ -57,18 +56,16 @@ genesisCommand
         saveGenesisConfig(dataDir, genesis);
 
         console.log('');
-        console.log(boxTop());
-        console.log(boxCenter('✓ Genesis Initialized'));
-        console.log(boxSeparator());
-        console.log(boxCenter(`Chain ID:  ${genesis.chainId}`));
-        console.log(boxCenter(`Faucet:    ${faucetAddress.slice(0, 16)}...`));
-        console.log(boxCenter(`Path:      ${genesisPath}`));
-        console.log(boxBottom());
+        console.log(cli.successBox([
+            `${c.label('Chain ID:')}  ${c.value(genesis.chainId)}`,
+            `${c.label('Faucet:')}    ${c.value(faucetAddress.slice(0, 20))}...`,
+            `${c.label('Path:')}      ${c.value(genesisPath)}`,
+        ].join('\n'), `${sym.check} Genesis Initialized`));
         console.log('');
-        console.log('Next steps:');
-        console.log('  1. Create validator key: lve-chain validator init');
-        console.log('  2. Add validator: lve-chain genesis add-validator --pubkey <KEY>');
-        console.log('  3. Start node: lve-chain start --role validator');
+        console.log(`${sym.bulb} ${c.bold('Next steps:')}`);
+        console.log(`   1. Create validator key: ${c.primary('lve-chain validator init')}`);
+        console.log(`   2. Add validator: ${c.primary('lve-chain genesis add-validator --pubkey <KEY>')}`);
+        console.log(`   3. Start node: ${c.primary('lve-chain start --role validator')}`);
         console.log('');
         process.exit(0);
     });
@@ -88,7 +85,9 @@ genesisCommand
         let genesis = loadGenesisConfig(dataDir);
 
         if (!genesis) {
-            console.log('✗ No genesis.json found. Run `lve-chain genesis init` first.');
+            console.log('');
+            cli.error('No genesis.json found. Run `lve-chain genesis init` first.');
+            console.log('');
             process.exit(1);
         }
 
@@ -98,8 +97,10 @@ genesisCommand
 
         // Check for duplicate
         if (genesis.validators.some(v => v.consensusPubKey === options.pubkey)) {
-            console.log('⚠  Validator with this pubkey already exists in genesis');
-            return;
+            console.log('');
+            cli.warn('Validator with this pubkey already exists in genesis');
+            console.log('');
+            process.exit(0);
         }
 
         genesis.validators.push({
@@ -112,15 +113,13 @@ genesisCommand
         saveGenesisConfig(dataDir, genesis);
 
         console.log('');
-        console.log(boxTop());
-        console.log(boxCenter('✓ Genesis Validator Added'));
-        console.log(boxSeparator());
-        console.log(boxCenter(`Address:  ${operatorAddress.slice(0, 20)}...`));
-        console.log(boxCenter(`Power:    ${options.power}`));
-        console.log(boxCenter(`Moniker:  ${options.moniker}`));
-        console.log(boxBottom());
+        console.log(cli.successBox([
+            `${c.label('Address:')}  ${c.value(operatorAddress.slice(0, 24))}...`,
+            `${c.label('Power:')}    ${c.value(options.power)}`,
+            `${c.label('Moniker:')}  ${c.value(options.moniker)}`,
+        ].join('\n'), `${sym.check} Genesis Validator Added`));
         console.log('');
-        console.log(`Total validators in genesis: ${genesis.validators.length}`);
+        console.log(`${sym.info} Total validators in genesis: ${c.bold(genesis.validators.length.toString())}`);
         console.log('');
         process.exit(0);
     });
@@ -136,25 +135,25 @@ genesisCommand
         const genesis = loadGenesisConfig(dataDir);
 
         if (!genesis) {
-            console.log('✗ No genesis.json found');
+            console.log('');
+            cli.error('No genesis.json found');
+            console.log('');
             process.exit(1);
         }
 
         console.log('');
-        console.log(boxTop());
-        console.log(boxCenter('Genesis Configuration'));
-        console.log(boxSeparator());
-        console.log(boxCenter(`Chain ID:     ${genesis.chainId}`));
-        console.log(boxCenter(`Genesis Time: ${new Date(genesis.genesisTime).toISOString()}`));
-        console.log(boxCenter(`Validators:   ${genesis.validators.length}`));
-        console.log(boxCenter(`Accounts:     ${genesis.initialBalances.length}`));
-        console.log(boxBottom());
+        console.log(cli.infoBox([
+            `${c.label('Chain ID:')}      ${c.value(genesis.chainId)}`,
+            `${c.label('Genesis Time:')}  ${c.value(new Date(genesis.genesisTime).toISOString())}`,
+            `${c.label('Validators:')}    ${c.value(genesis.validators.length.toString())}`,
+            `${c.label('Accounts:')}      ${c.value(genesis.initialBalances.length.toString())}`,
+        ].join('\n'), `${sym.file} Genesis Configuration`));
 
         if (genesis.validators.length > 0) {
             console.log('');
-            console.log('Validators:');
+            console.log(`${sym.info} ${c.bold('Validators:')}`);
             for (const v of genesis.validators) {
-                console.log(`  - ${v.moniker || 'unnamed'}: ${v.operatorAddress.slice(0, 16)}... (power: ${v.power})`);
+                console.log(`   ${sym.pointer} ${c.value(v.moniker || 'unnamed')}: ${c.dim(v.operatorAddress.slice(0, 16))}... ${c.dim(`(power: ${v.power})`)}`);
             }
         }
         console.log('');
