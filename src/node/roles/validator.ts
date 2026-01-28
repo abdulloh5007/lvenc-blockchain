@@ -9,7 +9,7 @@ export const validatorRole: RoleConfig = {
     name: 'validator',
     description: 'Validator node: block production, staking, full network participation',
     services: {
-        apiServer: false,
+        apiServer: true,
         p2p: true,
         blockProduction: true,
         staking: true,
