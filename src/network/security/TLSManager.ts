@@ -41,7 +41,7 @@ export class TLSManager {
      * Generate self-signed certificate for P2P communications
      */
     generateSelfSignedCert(): { cert: string; key: string } {
-        this.log.info('🔐 Generating self-signed TLS certificate...');
+        this.log.info('◆ Generating self-signed TLS certificate...');
 
         // Ensure directory exists
         const dir = path.dirname(this.certPath);
@@ -101,7 +101,7 @@ export class TLSManager {
         try {
             const cert = fs.readFileSync(this.certPath, 'utf-8');
             const key = fs.readFileSync(this.keyPath, 'utf-8');
-            this.log.info('🔐 TLS certificates loaded');
+            this.log.info('◆ TLS certificates loaded');
             return { cert, key };
         } catch (error) {
             this.log.error('Failed to load TLS certificates:', error);

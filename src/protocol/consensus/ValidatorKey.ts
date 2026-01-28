@@ -47,11 +47,11 @@ export class ValidatorKey {
     async init(): Promise<void> {
         if (fs.existsSync(this.keyPath)) {
             await this.load();
-            this.log.info(`🔐 Validator key loaded: ${this.getShortAddress()}`);
+            this.log.info(`◆ Validator key loaded: ${this.getShortAddress()}`);
         } else {
             await this.generate();
             await this.save();
-            this.log.info(`🆕 New validator key created: ${this.getShortAddress()}`);
+            this.log.info(`+ New validator key created: ${this.getShortAddress()}`);
         }
     }
 

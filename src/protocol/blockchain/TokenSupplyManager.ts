@@ -64,7 +64,7 @@ export class TokenSupplyManager {
                 burned: 0,
             });
         }
-        this.log.info(`💰 TokenSupply initialized: ${MAX_SUPPLY.toLocaleString()} LVE max supply`);
+        this.log.info(`● TokenSupply initialized: ${MAX_SUPPLY.toLocaleString()} LVE max supply`);
     }
 
     // ========== SUPPLY QUERIES ==========

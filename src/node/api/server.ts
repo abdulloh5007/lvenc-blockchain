@@ -46,7 +46,7 @@ if (savedData) {
     // Use fixed genesis faucet address for network consistency
     blockchain.initialize(config.genesis.faucetAddress);
     storage.saveBlockchain(blockchain.toJSON());
-    logger.info(`💧 Genesis faucet address: ${config.genesis.faucetAddress}`);
+    logger.info(`● Genesis faucet address: ${config.genesis.faucetAddress}`);
 }
 
 // NOTE: Staking state is derived from blockchain transactions (on-chain staking)
@@ -298,7 +298,7 @@ app.post('/api/faucet', (req: Request, res: Response) => {
         (blockchain as any).balanceCache?.clear();
         storage.saveBlockchain(blockchain.toJSON());
         faucetCooldowns.set(address, now);
-        logger.info(`💧 Faucet: ${amount} ${config.blockchain.coinSymbol} → ${address} (instant block #${faucetBlock.index})`);
+        logger.info(`● Faucet: ${amount} ${config.blockchain.coinSymbol} → ${address} (instant block #${faucetBlock.index})`);
         res.json({ success: true, data: { message: `Sent ${amount} ${config.blockchain.coinSymbol}`, transactionId: tx.id, blockIndex: faucetBlock.index } });
     } catch (e) {
         logger.error(`Faucet error: ${e instanceof Error ? e.message : e}`);
@@ -327,7 +327,7 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 // Start server
 const PORT = config.network.apiPort;
 app.listen(PORT, () => {
-    logger.info(`🚀 API Server running on http://localhost:${PORT}`);
+    logger.info(`● API Server running on http://localhost:${PORT}`);
     logger.info(`📊 API v1 available at /api/v1`);
     logger.info(`📊 Blockchain stats:`, blockchain.getStats());
     // Start PoS Block Producer

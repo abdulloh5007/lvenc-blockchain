@@ -51,7 +51,7 @@ export class NodeIdentity {
             await this.generateIdentity();
             this.isNewIdentity = true;
             await this.saveIdentity();
-            logger.info(`🆕 New node identity created: ${this.getShortId()}`);
+            logger.info(`+ New node identity created: ${this.getShortId()}`);
         }
     }
 
@@ -190,7 +190,7 @@ export class NodeIdentity {
     async bindRewardAddress(walletAddress: string): Promise<void> {
         this.rewardAddress = walletAddress;
         await this.saveIdentity();
-        logger.info(`💰 Reward address bound: ${walletAddress.slice(0, 16)}...`);
+        logger.info(`● Reward address bound: ${walletAddress.slice(0, 16)}...`);
     }
 
     /**

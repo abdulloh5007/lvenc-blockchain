@@ -140,12 +140,12 @@ export async function startNode(options: NodeOptions): Promise<void> {
     let apiPort = options.apiPort;
     if (!(await isPortAvailable(apiPort))) {
         const nextPort = await findAvailablePort(apiPort + 1);
-        console.log(`\n⚠️  Port ${apiPort} is already in use.`);
+        console.log(`\n⚠  Port ${apiPort} is already in use.`);
         const useNext = await confirm(`Use port ${nextPort} instead?`, true);
         if (useNext) {
             apiPort = nextPort;
         } else {
-            console.log('\n❌ Aborted. Please stop the existing process or choose a different port.');
+            console.log('\n✗ Aborted. Please stop the existing process or choose a different port.');
             console.log(`   lve-chain start --port <number>\n`);
             process.exit(1);
         }
@@ -155,19 +155,19 @@ export async function startNode(options: NodeOptions): Promise<void> {
     let p2pPort = options.p2pPort;
     if (!(await isPortAvailable(p2pPort))) {
         const nextPort = await findAvailablePort(p2pPort + 1);
-        console.log(`\n⚠️  P2P Port ${p2pPort} is already in use.`);
+        console.log(`\n⚠  P2P Port ${p2pPort} is already in use.`);
         const useNext = await confirm(`Use port ${nextPort} instead?`, true);
         if (useNext) {
             p2pPort = nextPort;
         } else {
-            console.log('\n❌ Aborted. Please stop the existing process or choose a different P2P port.');
+            console.log('\n✗ Aborted. Please stop the existing process or choose a different P2P port.');
             console.log(`   lve-chain start --p2p <number>\n`);
             process.exit(1);
         }
     }
 
     console.log('');
-    logger.info(`🚀 Starting LVE Chain Node...`);
+    logger.info(`● Starting LVE Chain Node...`);
     logger.info(`📁 Data directory: ${options.dataDir}`);
     logger.info(`🌐 Network: ${network}`);
     logger.info(`🔌 P2P Port: ${p2pPort}`);
@@ -197,7 +197,7 @@ export async function startNode(options: NodeOptions): Promise<void> {
         const { config: appConfig } = await import('../../config.js');
         blockchain.initialize(appConfig.genesis.faucetAddress);
         storage.saveBlockchain(blockchain.toJSON());
-        logger.info(`💧 Genesis faucet address: ${appConfig.genesis.faucetAddress}`);
+        logger.info(`● Genesis faucet address: ${appConfig.genesis.faucetAddress}`);
     }
 
     // NOTE: Staking state is derived from blockchain transactions (on-chain staking)
@@ -220,9 +220,9 @@ export async function startNode(options: NodeOptions): Promise<void> {
             logger.info(`🔗 Connecting to seed node: ${options.seedNode}`);
             try {
                 await p2pServer.connectToPeer(options.seedNode);
-                logger.info(`✅ Connected to seed node`);
+                logger.info(`✓ Connected to seed node`);
             } catch (error) {
-                logger.warn(`⚠️ Failed to connect to seed node: ${error}`);
+                logger.warn(`⚠ Failed to connect to seed node: ${error}`);
             }
         }
     } else if (roleConfig && !p2pEnabled) {
@@ -365,7 +365,7 @@ export async function startNode(options: NodeOptions): Promise<void> {
                 (blockchain as any).balanceCache?.clear();
                 storage.saveBlockchain(blockchain.toJSON());
                 faucetCooldowns.set(address, now);
-                logger.info(`💧 Faucet: ${amount} ${config.blockchain.coinSymbol} → ${address}`);
+                logger.info(`● Faucet: ${amount} ${config.blockchain.coinSymbol} → ${address}`);
                 res.json({ success: true, data: { message: `Sent ${amount} ${config.blockchain.coinSymbol}`, transactionId: tx.id, blockIndex: faucetBlock.index } });
             } catch (e) {
                 logger.error(`Faucet error: ${e instanceof Error ? e.message : e}`);
@@ -405,7 +405,7 @@ export async function startNode(options: NodeOptions): Promise<void> {
             console.log(boxCenter('Then restart the validator node.'));
             console.log(boxBottom());
             console.log('');
-            logger.warn('⚠️ Validator running without reward address - no block production');
+            logger.warn('⚠ Validator running without reward address - no block production');
         } else {
             // Check current stake
             const stakeAmount = stakingPool.getStake(rewardAddress);
@@ -432,9 +432,9 @@ export async function startNode(options: NodeOptions): Promise<void> {
                 console.log(boxCenter('Status: INACTIVE (not producing blocks)'));
                 console.log(boxBottom());
                 console.log('');
-                logger.warn(`⚠️ Stake ${stakeAmount}/${minStake} LVE - validator inactive`);
+                logger.warn(`⚠ Stake ${stakeAmount}/${minStake} LVE - validator inactive`);
             } else {
-                logger.info(`✅ Validator stake: ${stakeAmount} LVE (min: ${minStake})`);
+                logger.info(`✓ Validator stake: ${stakeAmount} LVE (min: ${minStake})`);
             }
 
             // Start block producer regardless (it will check stake internally)
@@ -450,7 +450,7 @@ export async function startNode(options: NodeOptions): Promise<void> {
 
     // NOTE: No staking.json auto-save - state is derived from blockchain only
 
-    logger.info(`\n✅ Node is running!`);
+    logger.info(`\n✓ Node is running!`);
     console.log(`\n📋 Available commands: status, peers, info, help, exit\n`);
 
     // Interactive REPL
@@ -467,7 +467,7 @@ export async function startNode(options: NodeOptions): Promise<void> {
 
         switch (cmd) {
             case 'status':
-                console.log(`\n📊 Status:`);
+                console.log(`\n● Status:`);
                 console.log(`   Blocks: ${blockchain.chain.length}`);
                 console.log(`   Peers: ${p2pServer ? p2pServer.getPeerCount() : 'N/A (API-only)'}`);
                 console.log(`   Pending TX: ${blockchain.pendingTransactions.length}`);

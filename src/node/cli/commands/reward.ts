@@ -33,7 +33,7 @@ rewardCommand
 
         if (!fs.existsSync(identityPath)) {
             console.log('');
-            console.log('❌ No identity found');
+            console.log('✗ No identity found');
             console.log(`   Run 'lve-chain start -n ${options.network}' first to generate an identity`);
             console.log('');
             process.exit(1);
@@ -42,7 +42,7 @@ rewardCommand
         // Validate address format
         if (!address.startsWith('tLVE') && !address.startsWith('LVE')) {
             console.log('');
-            console.log('❌ Invalid address format');
+            console.log('✗ Invalid address format');
             console.log('   Address must start with "tLVE" (testnet) or "LVE" (mainnet)');
             console.log('');
             process.exit(1);
@@ -57,18 +57,18 @@ rewardCommand
 
             console.log('');
             console.log('╔═══════════════════════════════════════════════════════════╗');
-            console.log('║              ✅ Reward Address Bound                      ║');
+            console.log('║              ✓ Reward Address Bound                      ║');
             console.log('╠═══════════════════════════════════════════════════════════╣');
             console.log(`║  Address: ${address.slice(0, 20)}...${address.slice(-8)}       ║`);
             console.log(`║  Network: ${options.network.padEnd(46)} ║`);
             console.log('╚═══════════════════════════════════════════════════════════╝');
             console.log('');
-            console.log('💡 Validator rewards will be sent to this address.');
+            console.log('● Validator rewards will be sent to this address.');
             console.log('');
             process.exit(0);
 
         } catch (error) {
-            console.error('❌ Failed to bind reward address:', error);
+            console.error('✗ Failed to bind reward address:', error);
             process.exit(1);
         }
     });
@@ -86,7 +86,7 @@ rewardCommand
 
         if (!fs.existsSync(identityPath)) {
             console.log('');
-            console.log('❌ No identity found');
+            console.log('✗ No identity found');
             console.log(`   Run 'lve-chain start -n ${options.network}' first to generate an identity`);
             console.log('');
             process.exit(1);
@@ -116,17 +116,17 @@ rewardCommand
             console.log(boxCenter(networkLine, w));
             console.log(boxBottom(w));
             console.log('');
-            console.log('🔒 Write down your mnemonic and store it securely!');
+            console.log('◆ Write down your mnemonic and store it securely!');
             console.log('   Here it is:');
             console.log('');
             console.log(`   ${mnemonic}`);
             console.log('');
-            console.log('💡 Validator rewards will be sent to this address.');
+            console.log('● Validator rewards will be sent to this address.');
             console.log('');
             process.exit(0);
 
         } catch (error) {
-            console.error('❌ Failed to generate reward wallet:', error);
+            console.error('✗ Failed to generate reward wallet:', error);
             process.exit(1);
         }
     });
@@ -144,7 +144,7 @@ rewardCommand
 
         if (!fs.existsSync(identityPath)) {
             console.log('');
-            console.log('❌ No identity found');
+            console.log('✗ No identity found');
             console.log(`   Run 'lve-chain start -n ${options.network}' first to generate an identity`);
             console.log('');
             process.exit(1);
@@ -157,15 +157,15 @@ rewardCommand
             console.log('');
             if (identity.rewardAddress) {
                 console.log('╔═══════════════════════════════════════════════════════════╗');
-                console.log('║                    💰 Reward Address                      ║');
+                console.log('║                    ● Reward Address                      ║');
                 console.log('╠═══════════════════════════════════════════════════════════╣');
                 console.log(`║  ${identity.rewardAddress.padEnd(55)}  ║`);
                 console.log(`║  Network: ${options.network.padEnd(46)}  ║`);
                 console.log('╚═══════════════════════════════════════════════════════════╝');
             } else {
-                console.log('❌ No reward address configured');
+                console.log('✗ No reward address configured');
                 console.log('');
-                console.log('💡 To set a reward address:');
+                console.log('● To set a reward address:');
                 console.log(`   lve-chain reward bind <address> -n ${options.network}`);
                 console.log(`   lve-chain reward generate -n ${options.network}`);
             }
@@ -173,7 +173,7 @@ rewardCommand
             process.exit(0);
 
         } catch (error) {
-            console.error('❌ Failed to read identity:', error);
+            console.error('✗ Failed to read identity:', error);
             process.exit(1);
         }
     });

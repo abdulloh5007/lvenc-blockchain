@@ -127,7 +127,7 @@ export class BlockSync {
 
             if (block.previousHash === latestLocal.hash && block.index === latestLocal.index + 1) {
                 this.blockchain.chain.push(block);
-                logger.info(`🆕 Received and added block ${block.index}`);
+                logger.info(`+ Received and added block ${block.index}`);
 
                 // Process pool operations in this block
                 if (block.transactions && block.transactions.length > 0) {

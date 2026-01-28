@@ -24,7 +24,7 @@ poolCommand
         if (poolStateManager.isInitialized() && !options.force) {
             console.log('');
             console.log(boxTop());
-            console.log(boxCenter('⚠️  Pool Already Initialized'));
+            console.log(boxCenter('⚠  Pool Already Initialized'));
             console.log(boxSeparator());
             console.log(boxCenter(`Use 'lve-chain pool info' to view status`));
             console.log(boxBottom());
@@ -40,7 +40,7 @@ poolCommand
 
             console.log('');
             console.log(boxTop());
-            console.log(boxCenter('🚀 Initializing Pool from LIQUIDITY Allocation'));
+            console.log(boxCenter('● Initializing Pool from LIQUIDITY Allocation'));
             console.log(boxSeparator());
             console.log(boxCenter(`Provider: ${provider.slice(0, 20)}...`));
             console.log(boxCenter(`LVE:      ${lveAmount.toLocaleString()}`));
@@ -50,7 +50,7 @@ poolCommand
 
             const result = initializePoolFromAllocation(provider, blockIndex, lveAmount, usdtAmount);
 
-            console.log(boxCenter('✅ Pool Initialized Successfully!'));
+            console.log(boxCenter('✓ Pool Initialized Successfully!'));
             console.log(boxEmpty());
             console.log(boxCenter(`LP Tokens: ${result.lpTokens.toLocaleString()}`));
             console.log(boxCenter(`Start Price: 1 LVE = ${result.startPrice} USDT`));
@@ -61,7 +61,7 @@ poolCommand
             storage.savePool(poolStateManager.getState());
             process.exit(0);
         } catch (error) {
-            console.error(`❌ Init failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            console.error(`✗ Init failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
             process.exit(1);
         }
     });
@@ -76,7 +76,7 @@ poolCommand
 
             console.log('');
             console.log(boxTop());
-            console.log(boxCenter('📊 LIQUIDITY Allocation Status'));
+            console.log(boxCenter('● LIQUIDITY Allocation Status'));
             console.log(boxSeparator());
             console.log(boxCenter(`Total Allocation: ${status.totalAllocation.toLocaleString()} LVE`));
             console.log(boxCenter(`Released:         ${status.released.toLocaleString()} LVE`));
@@ -87,7 +87,7 @@ poolCommand
             console.log('');
             process.exit(0);
         } catch (error) {
-            console.error(`❌ Status failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            console.error(`✗ Status failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
             process.exit(1);
         }
     });
@@ -107,7 +107,7 @@ poolCommand
         if (!info.initialized) {
             console.log('');
             console.log(boxTop());
-            console.log(boxCenter('💧 Liquidity Pool'));
+            console.log(boxCenter('● Liquidity Pool'));
             console.log(boxSeparator());
             console.log(boxCenter('Status: NOT INITIALIZED'));
             console.log(boxEmpty());
@@ -119,7 +119,7 @@ poolCommand
 
         console.log('');
         console.log(boxTop());
-        console.log(boxCenter('💧 Liquidity Pool'));
+        console.log(boxCenter('● Liquidity Pool'));
         console.log(boxSeparator());
         console.log(boxCenter(`Reserve LVE:    ${info.reserveLVE.toFixed(4)}`));
         console.log(boxCenter(`Reserve USDT:    ${info.reserveUSDT.toFixed(4)}`));
@@ -149,7 +149,7 @@ poolCommand
         if (!info.initialized) {
             console.log('');
             console.log(boxTop());
-            console.log(boxCenter('💧 Liquidity Pool'));
+            console.log(boxCenter('● Liquidity Pool'));
             console.log(boxSeparator());
             console.log(boxCenter('Pool not initialized'));
             console.log(boxEmpty());
@@ -165,7 +165,7 @@ poolCommand
 
             console.log('');
             console.log(boxTop());
-            console.log(boxCenter('💱 Swap Quote'));
+            console.log(boxCenter('● Swap Quote'));
             console.log(boxSeparator());
             console.log(boxCenter(`From:          ${options.amount} ${options.from.toUpperCase()}`));
             console.log(boxCenter(`To:            ${quote.amountOut.toFixed(6)} ${tokenOut}`));
@@ -175,7 +175,7 @@ poolCommand
             console.log('');
             process.exit(0);
         } catch (error) {
-            console.error(`❌ Quote failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            console.error(`✗ Quote failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
             process.exit(1);
         }
     });
@@ -205,7 +205,7 @@ poolCommand
 
             console.log('');
             console.log(boxTop());
-            console.log(boxCenter('➕ Liquidity Added'));
+            console.log(boxCenter('✓ Liquidity Added'));
             console.log(boxSeparator());
             console.log(boxCenter(`Added:   ${options.lve} LVE + ${options.usdt} USDT`));
             console.log(boxCenter(`LP:      ${result.lpTokens.toFixed(4)} tokens`));
@@ -213,7 +213,7 @@ poolCommand
             console.log('');
             process.exit(0);
         } catch (error) {
-            console.error(`❌ Add liquidity failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            console.error(`✗ Add liquidity failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
             process.exit(1);
         }
     });
@@ -241,7 +241,7 @@ poolCommand
 
             console.log('');
             console.log(boxTop());
-            console.log(boxCenter('➖ Liquidity Removed'));
+            console.log(boxCenter('− Liquidity Removed'));
             console.log(boxSeparator());
             console.log(boxCenter(`Burned:  ${options.lp} LP tokens`));
             console.log(boxCenter(`Got:     ${result.lveAmount.toFixed(6)} LVE`));
@@ -250,7 +250,7 @@ poolCommand
             console.log('');
             process.exit(0);
         } catch (error) {
-            console.error(`❌ Remove liquidity failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            console.error(`✗ Remove liquidity failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
             process.exit(1);
         }
     });
@@ -282,7 +282,7 @@ poolCommand
 
             console.log('');
             console.log(boxTop());
-            console.log(boxCenter('💱 Swap Successful'));
+            console.log(boxCenter('● Swap Successful'));
             console.log(boxSeparator());
             console.log(boxCenter(`In:   ${options.amount} ${options.from.toUpperCase()}`));
             console.log(boxCenter(`Out:  ${result.amountOut.toFixed(6)} ${tokenOut}`));
@@ -291,7 +291,7 @@ poolCommand
             console.log('');
             process.exit(0);
         } catch (error) {
-            console.error(`❌ ${error instanceof Error ? error.message : 'Unknown error'}`);
+            console.error(`✗ ${error instanceof Error ? error.message : 'Unknown error'}`);
             process.exit(1);
         }
     });

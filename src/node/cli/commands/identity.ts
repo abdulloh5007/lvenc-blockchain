@@ -31,7 +31,7 @@ export const identityCommand = new Command('identity')
 
         if (!fs.existsSync(identityPath)) {
             console.log('');
-            console.log('❌ No identity found');
+            console.log('✗ No identity found');
             console.log(`   Run 'lve-chain start -n ${options.network}' to generate an identity`);
             console.log(`   Expected location: ${identityPath}`);
             console.log('');
@@ -70,16 +70,16 @@ export const identityCommand = new Command('identity')
             console.log(boxCenter(`Network:        ${options.network}`));
             console.log(boxBottom());
             console.log('');
-            console.log('💡 To bind a reward address:');
+            console.log('● To bind a reward address:');
             console.log(`   lve-chain reward bind <address> -n ${options.network}`);
             console.log('');
-            console.log('💡 To export public identity:');
+            console.log('● To export public identity:');
             console.log('   lve-chain identity --export');
             console.log('');
             process.exit(0);
 
         } catch (error) {
-            console.error('❌ Failed to read identity:', error);
+            console.error('✗ Failed to read identity:', error);
             process.exit(1);
         }
     });

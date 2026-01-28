@@ -61,9 +61,9 @@ export function initializePoolFromAllocation(
 
     const startPrice = usdtAmount / lveAmount;
 
-    log.info(`🚀 Pool initialized from LIQUIDITY allocation:`);
+    log.info(`● Pool initialized from LIQUIDITY allocation:`);
     log.info(`   📊 ${lveAmount.toLocaleString()} LVE + ${usdtAmount.toLocaleString()} USDT`);
-    log.info(`   💰 Starting price: 1 LVE = ${startPrice} USDT`);
+    log.info(`   ● Starting price: 1 LVE = ${startPrice} USDT`);
     log.info(`   🎫 LP tokens: ${result.lpTokens.toLocaleString()}`);
 
     return {

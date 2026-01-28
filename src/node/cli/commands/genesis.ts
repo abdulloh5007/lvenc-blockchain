@@ -37,7 +37,7 @@ genesisCommand
 
         if (fs.existsSync(genesisPath)) {
             console.log('');
-            console.log('⚠️  genesis.json already exists!');
+            console.log('⚠  genesis.json already exists!');
             console.log(`   Path: ${genesisPath}`);
             console.log('');
             console.log('To recreate, first backup and delete the existing file.');
@@ -58,7 +58,7 @@ genesisCommand
 
         console.log('');
         console.log(boxTop());
-        console.log(boxCenter('✅ Genesis Initialized'));
+        console.log(boxCenter('✓ Genesis Initialized'));
         console.log(boxSeparator());
         console.log(boxCenter(`Chain ID:  ${genesis.chainId}`));
         console.log(boxCenter(`Faucet:    ${faucetAddress.slice(0, 16)}...`));
@@ -88,7 +88,7 @@ genesisCommand
         let genesis = loadGenesisConfig(dataDir);
 
         if (!genesis) {
-            console.log('❌ No genesis.json found. Run `lve-chain genesis init` first.');
+            console.log('✗ No genesis.json found. Run `lve-chain genesis init` first.');
             process.exit(1);
         }
 
@@ -98,7 +98,7 @@ genesisCommand
 
         // Check for duplicate
         if (genesis.validators.some(v => v.consensusPubKey === options.pubkey)) {
-            console.log('⚠️  Validator with this pubkey already exists in genesis');
+            console.log('⚠  Validator with this pubkey already exists in genesis');
             return;
         }
 
@@ -113,7 +113,7 @@ genesisCommand
 
         console.log('');
         console.log(boxTop());
-        console.log(boxCenter('✅ Genesis Validator Added'));
+        console.log(boxCenter('✓ Genesis Validator Added'));
         console.log(boxSeparator());
         console.log(boxCenter(`Address:  ${operatorAddress.slice(0, 20)}...`));
         console.log(boxCenter(`Power:    ${options.power}`));
@@ -136,7 +136,7 @@ genesisCommand
         const genesis = loadGenesisConfig(dataDir);
 
         if (!genesis) {
-            console.log('❌ No genesis.json found');
+            console.log('✗ No genesis.json found');
             process.exit(1);
         }
 

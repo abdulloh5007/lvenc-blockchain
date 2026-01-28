@@ -8,18 +8,14 @@
 
 set -e
 
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+# Get script directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-echo ""
-echo -e "${BLUE}╔═══════════════════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║        LVE Chain — Genesis Bootstrap Initialization       ║${NC}"
-echo -e "${BLUE}╚═══════════════════════════════════════════════════════════╝${NC}"
-echo ""
+# Source box utilities
+source "$SCRIPT_DIR/../lib/box.sh"
+
+cd "$PROJECT_DIR"
 
 # Configuration
 NETWORK="${NETWORK:-testnet}"
@@ -27,9 +23,11 @@ DATA_DIR="./data/${NETWORK}"
 CHAIN_ID="${CHAIN_ID:-lvenc-${NETWORK}-1}"
 VALIDATOR_POWER="${VALIDATOR_POWER:-1000}"
 VALIDATOR_MONIKER="${VALIDATOR_MONIKER:-genesis-validator}"
-INITIAL_SUPPLY="${INITIAL_SUPPLY:-1000000}"
 
-echo -e "${YELLOW}Configuration:${NC}"
+echo ""
+lve_header "Genesis Bootstrap"
+
+echo "Configuration:"
 echo "  Network:     $NETWORK"
 echo "  Data Dir:    $DATA_DIR"
 echo "  Chain ID:    $CHAIN_ID"
@@ -39,7 +37,7 @@ echo ""
 
 # Check if fully initialized
 if [ -f "$DATA_DIR/genesis.json" ] && [ -f "$DATA_DIR/priv_validator_key.json" ]; then
-    echo -e "${YELLOW}⚠️  Genesis already fully initialized!${NC}"
+    msg_warn "Genesis already fully initialized!"
     echo ""
     node dist/node/cli/cli.js genesis show -d "$DATA_DIR" -n "$NETWORK"
     echo ""
@@ -49,41 +47,36 @@ fi
 
 # Build if needed
 if [ ! -d "dist" ]; then
-    echo -e "${YELLOW}📦 Building project...${NC}"
+    msg_info "Building project..."
     npm run build
 fi
 
 # Step 1: Initialize Genesis (skip if exists)
 if [ ! -f "$DATA_DIR/genesis.json" ]; then
-    echo -e "${GREEN}Step 1/3: Initializing genesis...${NC}"
+    msg_info "Step 1/3: Initializing genesis..."
     node dist/node/cli/cli.js genesis init \
         -d "$DATA_DIR" \
         -n "$NETWORK" \
         --chain-id "$CHAIN_ID"
 else
-    echo -e "${YELLOW}Step 1/3: Genesis already exists, skipping...${NC}"
+    msg_warn "Step 1/3: Genesis already exists, skipping..."
 fi
 
 # Step 2: Create Validator Key (skip if exists)
 if [ ! -f "$DATA_DIR/priv_validator_key.json" ]; then
     echo ""
-    echo -e "${GREEN}Step 2/3: Creating validator key...${NC}"
+    msg_info "Step 2/3: Creating validator key..."
     node dist/node/cli/cli.js validator init \
         -d "$DATA_DIR" \
         -n "$NETWORK"
 else
-    echo -e "${YELLOW}Step 2/3: Validator key already exists, skipping...${NC}"
+    msg_warn "Step 2/3: Validator key already exists, skipping..."
 fi
 
-# Get the public key
+# Step 3: Add validator to genesis
+echo ""
+msg_info "Step 3/3: Adding validator to genesis..."
 PUBKEY=$(node dist/node/cli/cli.js validator show -d "$DATA_DIR" -n "$NETWORK" --pubkey)
-echo ""
-echo -e "  Validator PubKey: ${BLUE}${PUBKEY:0:32}...${NC}"
-
-# Step 3: Add validator to genesis (check if already added)
-VALIDATORS=$(node dist/node/cli/cli.js genesis show -d "$DATA_DIR" -n "$NETWORK" 2>&1 | grep -c "Validators:" || true)
-echo ""
-echo -e "${GREEN}Step 3/3: Adding validator to genesis...${NC}"
 node dist/node/cli/cli.js genesis add-validator \
     -d "$DATA_DIR" \
     -n "$NETWORK" \
@@ -92,16 +85,11 @@ node dist/node/cli/cli.js genesis add-validator \
     --moniker "$VALIDATOR_MONIKER" || true
 
 echo ""
-echo -e "${GREEN}╔═══════════════════════════════════════════════════════════╗${NC}"
-echo -e "${GREEN}║                ✅ Genesis Bootstrap Complete!              ║${NC}"
-echo -e "${GREEN}╚═══════════════════════════════════════════════════════════╝${NC}"
+quick_box "[+] Genesis Bootstrap Complete!" \
+    "genesis.json: $DATA_DIR/genesis.json" \
+    "validator_key: $DATA_DIR/priv_validator_key.json"
 echo ""
-echo -e "${YELLOW}Files created:${NC}"
-echo "  📜 $DATA_DIR/genesis.json"
-echo "  🔐 $DATA_DIR/priv_validator_key.json"
+msg_warn "IMPORTANT: Backup your priv_validator_key.json!"
 echo ""
-echo -e "${YELLOW}Next step:${NC}"
-echo "  Run: ./runners/genesis-bootstrap/start.sh"
-echo ""
-echo -e "${RED}⚠️  IMPORTANT: Backup your priv_validator_key.json!${NC}"
+echo "Next step: ./runners/genesis-bootstrap/start.sh"
 echo ""

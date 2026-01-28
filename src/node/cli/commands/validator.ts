@@ -30,7 +30,7 @@ validatorCommand
 
         if (fs.existsSync(keyPath)) {
             console.log('');
-            console.log('⚠️  Validator key already exists!');
+            console.log('⚠  Validator key already exists!');
             console.log(`   Path: ${keyPath}`);
             console.log('');
             console.log('To regenerate, first backup and delete the existing key.');
@@ -42,14 +42,14 @@ validatorCommand
 
             console.log('');
             console.log(boxTop());
-            console.log(boxCenter('✅ Validator Key Created'));
+            console.log(boxCenter('✓ Validator Key Created'));
             console.log(boxSeparator());
             console.log(boxCenter(`Address:   ${key.getAddress()}`));
             console.log(boxCenter(`PubKey:    ${key.getPubKey().slice(0, 32)}...`));
             console.log(boxCenter(`Path:      ${keyPath}`));
             console.log(boxBottom());
             console.log('');
-            console.log('🔐 Keep this key safe! It controls your validator identity.');
+            console.log('◆ Keep this key safe! It controls your validator identity.');
             console.log('');
             console.log('Next steps:');
             console.log('  1. Add this validator to genesis:');
@@ -59,7 +59,7 @@ validatorCommand
             console.log('');
             process.exit(0);
         } catch (error) {
-            console.error(`❌ Failed to create validator key: ${error}`);
+            console.error(`✗ Failed to create validator key: ${error}`);
             process.exit(1);
         }
     });
@@ -77,7 +77,7 @@ validatorCommand
 
         if (!fs.existsSync(keyPath)) {
             console.log('');
-            console.log('❌ No validator key found');
+            console.log('✗ No validator key found');
             console.log(`   Run 'lve-chain validator init' to create one`);
             console.log('');
             process.exit(1);
@@ -103,7 +103,7 @@ validatorCommand
             console.log('');
             process.exit(0);
         } catch (error) {
-            console.error(`❌ Failed to read validator key: ${error}`);
+            console.error(`✗ Failed to read validator key: ${error}`);
             process.exit(1);
         }
     });

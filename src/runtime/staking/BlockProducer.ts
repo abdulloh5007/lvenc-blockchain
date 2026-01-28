@@ -28,7 +28,7 @@ export class BlockProducer {
             return;
         }
         this.isRunning = true;
-        this.log.info(`🚀 Block producer started (slot duration: ${SLOT_DURATION / 1000}s)`);
+        this.log.info(`● Block producer started (slot duration: ${SLOT_DURATION / 1000}s)`);
         this.scheduleNextSlot();
     }
 

@@ -53,7 +53,7 @@ export function loadGenesisConfig(dataDir: string): GenesisConfig | null {
     try {
         const data = fs.readFileSync(genesisPath, 'utf-8');
         const config: GenesisConfig = JSON.parse(data);
-        log.info(`📜 Genesis loaded: chainId=${config.chainId}, validators=${config.validators.length}`);
+        log.info(`● Genesis loaded: chainId=${config.chainId}, validators=${config.validators.length}`);
         return config;
     } catch (error) {
         log.error(`Failed to load genesis.json: ${error}`);
@@ -73,7 +73,7 @@ export function saveGenesisConfig(dataDir: string, config: GenesisConfig): void 
     }
 
     fs.writeFileSync(genesisPath, JSON.stringify(config, null, 2));
-    log.info(`📜 Genesis saved: ${genesisPath}`);
+    log.info(`● Genesis saved: ${genesisPath}`);
 }
 
 /**

@@ -180,7 +180,7 @@ export class StakingPool {
         // BOOTSTRAP MODE: If no active validators, first stake activates immediately
         const activeValidators = this.getValidators();
         if (activeValidators.length === 0) {
-            this.log.info(`🚀 BOOTSTRAP: No validators, activating stake immediately`);
+            this.log.info(`● BOOTSTRAP: No validators, activating stake immediately`);
             this.stakes.set(address, {
                 address,
                 amount,

@@ -98,7 +98,7 @@ export class USDTBalanceManager {
         record.lastFaucetRequest = Date.now();
         this.balances.set(address, record);
 
-        log.info(`💧 USDT Faucet: ${FAUCET_AMOUNT} USDT → ${address.slice(0, 16)}...`);
+        log.info(`● USDT Faucet: ${FAUCET_AMOUNT} USDT → ${address.slice(0, 16)}...`);
 
         return {
             success: true,

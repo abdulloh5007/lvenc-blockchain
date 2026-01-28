@@ -40,7 +40,7 @@ export function createAdminRoutes(blockchain: Blockchain): Router {
             const tx = new Transaction(genesisAddress, address, amount, 0);
             blockchain.addTransaction(tx);
             storage.saveBlockchain(blockchain.toJSON());
-            logger.info(`💧 Faucet sent ${amount} LVE to ${address}`);
+            logger.info(`● Faucet sent ${amount} LVE to ${address}`);
             res.json({
                 success: true,
                 data: { message: `Sent ${amount} LVE to ${address}`, transactionId: tx.id },

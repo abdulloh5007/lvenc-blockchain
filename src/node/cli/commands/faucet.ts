@@ -20,7 +20,7 @@ faucetCommand
         if (!config.isTestnet) {
             console.log('');
             console.log(boxTop());
-            console.log(boxCenter('❌ Faucet Unavailable'));
+            console.log(boxCenter('✗ Faucet Unavailable'));
             console.log(boxSeparator());
             console.log(boxCenter('USDT faucet is only available on testnet'));
             console.log(boxBottom());
@@ -34,14 +34,14 @@ faucetCommand
         console.log(boxTop());
 
         if (result.success) {
-            console.log(boxCenter('💧 USDT Faucet'));
+            console.log(boxCenter('● USDT Faucet'));
             console.log(boxSeparator());
             console.log(boxCenter(`Received: +${result.amount} USDT`));
             console.log(boxCenter(`Balance:  ${result.balance} USDT`));
             console.log(boxEmpty());
             console.log(boxCenter('Use: lve-chain pool swap --from USDT'));
         } else {
-            console.log(boxCenter('⚠️ Faucet Request Failed'));
+            console.log(boxCenter('⚠ Faucet Request Failed'));
             console.log(boxSeparator());
             console.log(boxCenter(result.error || 'Unknown error'));
             if (result.balance > 0) {
@@ -65,7 +65,7 @@ faucetCommand
 
         console.log('');
         console.log(boxTop());
-        console.log(boxCenter('💰 USDT Balance'));
+        console.log(boxCenter('● USDT Balance'));
         console.log(boxSeparator());
         console.log(boxCenter(`Address: ${options.address.slice(0, 20)}...`));
         console.log(boxCenter(`Balance: ${balance} USDT`));
@@ -86,9 +86,9 @@ faucetCommand
 
         console.log('');
         console.log(boxTop());
-        console.log(boxCenter('ℹ️ Faucet Info'));
+        console.log(boxCenter('● Faucet Info'));
         console.log(boxSeparator());
-        console.log(boxCenter(`Status:   ${info.enabled ? '✅ Enabled' : '❌ Disabled'}`));
+        console.log(boxCenter(`Status:   ${info.enabled ? '✓ Enabled' : '✗ Disabled'}`));
         console.log(boxCenter(`Network:  ${config.network_mode}`));
         console.log(boxCenter(`Amount:   ${info.amount} USDT/request`));
         console.log(boxCenter(`Cooldown: ${info.cooldownMs / 1000}s`));

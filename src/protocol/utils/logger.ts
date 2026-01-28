@@ -20,10 +20,10 @@ const levelColors: Record<LogLevel, string> = {
 };
 
 const levelIcons: Record<LogLevel, string> = {
-    debug: '🔍',
-    info: '✅',
-    warn: '⚠️',
-    error: '❌',
+    debug: '○',  // Empty circle
+    info: '✓',   // Checkmark
+    warn: '⚠',   // Warning
+    error: '✗',  // X mark
 };
 
 class Logger {
