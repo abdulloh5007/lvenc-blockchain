@@ -9,9 +9,14 @@ export function createTransactionRoutes(blockchain: Blockchain): Router {
 
     // POST /send - must come first
     router.post('/send', (req: Request, res: Response) => {
-        const { from, to, amount, fee, signature, publicKey, timestamp } = req.body;
-        if (!from || !to || !amount || !signature || !publicKey || !timestamp) {
-            res.status(400).json({ success: false, error: 'Required: from, to, amount, signature, publicKey, timestamp' });
+        const { from, to, amount, fee, signature, publicKey, timestamp, nonce, chainId } = req.body;
+        if (!from || !to || !amount || !signature || !publicKey) {
+            res.status(400).json({ success: false, error: 'Required: from, to, amount, signature, publicKey' });
+            return;
+        }
+        // Nonce is required for replay protection (timestamp is legacy, kept for compatibility)
+        if (nonce === undefined || nonce === null) {
+            res.status(400).json({ success: false, error: 'Nonce is required for replay protection' });
             return;
         }
         if (isBlacklisted(from) || isBlacklisted(to)) {
@@ -38,7 +43,14 @@ export function createTransactionRoutes(blockchain: Blockchain): Router {
                 });
                 return;
             }
-            const transaction = new Transaction(from, to, Number(amount), txFee, Number(timestamp));
+            // Create transaction with nonce and chainId (timestamp kept for legacy compatibility)
+            const txTimestamp = timestamp ? Number(timestamp) : Date.now();
+            const transaction = new Transaction(
+                from, to, Number(amount), txFee, txTimestamp,
+                undefined,  // id - auto-generated
+                Number(nonce),
+                chainId || 'lvenc-testnet-1'
+            );
             const txHash = transaction.calculateHash();
             if (!verifySignature(txHash, signature, publicKey)) {
                 res.status(400).json({ success: false, error: 'Invalid signature' });
