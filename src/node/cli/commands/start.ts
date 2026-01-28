@@ -37,6 +37,7 @@ export interface NodeOptions {
     bootstrapMode?: boolean;
     apiOnlyMode?: boolean; // API server only, no P2P participation
     role?: RoleName; // Node role (full, validator, rpc, light)
+    selfUrl?: string; // This node's external URL (to prevent self-connection)
 }
 
 // Create readline interface for prompts
@@ -209,7 +210,9 @@ export async function startNode(options: NodeOptions): Promise<void> {
     const p2pEnabled = roleConfig ? roleConfig.services.p2p !== false : true;
     let p2pServer: P2PServer | null = null;
     if (!options.apiOnlyMode && p2pEnabled) {
-        p2pServer = new P2PServer(blockchain, p2pPort, options.bootstrapMode);
+        // Pass selfUrl to prevent connecting to ourselves in bootstrap list
+        const selfUrls = options.selfUrl ? [options.selfUrl] : [];
+        p2pServer = new P2PServer(blockchain, p2pPort, options.bootstrapMode, selfUrls);
         p2pServer.start();
 
         // Connect to seed node if provided

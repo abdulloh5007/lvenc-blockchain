@@ -26,6 +26,7 @@ program
     .option('--no-api', 'Run without API server (P2P only)')
     .option('-b, --bootstrap', 'Run as bootstrap node (peer discovery only)')
     .option('--api-only', 'Run API server only (no P2P participation)')
+    .option('--self-url <url>', 'This node external URL (to skip self-connection in bootstrap)')
     .action(async (options) => {
         await startNode({
             apiPort: parseInt(options.port),
@@ -37,6 +38,7 @@ program
             bootstrapMode: options.bootstrap === true,
             apiOnlyMode: options.apiOnly === true,
             role: options.role,
+            selfUrl: options.selfUrl,
         });
     });
 

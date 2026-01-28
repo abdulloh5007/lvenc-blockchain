@@ -33,7 +33,7 @@ export class P2PServer {
     private chainId: string;
     private genesisHash: string;
 
-    constructor(blockchain: Blockchain, port: number = 6001, bootstrapMode: boolean = false) {
+    constructor(blockchain: Blockchain, port: number = 6001, bootstrapMode: boolean = false, selfUrls: string[] = []) {
         this.blockchain = blockchain;
         this.port = port;
         this.bootstrapMode = bootstrapMode;
@@ -44,7 +44,8 @@ export class P2PServer {
 
         // Init modules
         this.peerManager = new PeerManager();
-        this.discovery = new PeerDiscovery(this.peerManager, this.connectToPeer.bind(this));
+        // Pass selfUrls to prevent connecting to ourselves in bootstrap
+        this.discovery = new PeerDiscovery(this.peerManager, this.connectToPeer.bind(this), selfUrls);
         this.handshake = new HandshakeHandler(this.chainId, this.genesisHash);
         this.blockSync = new BlockSync(blockchain, this.broadcast.bind(this));
     }

@@ -20,19 +20,36 @@ export class PeerDiscovery {
     private knownPeers: Set<string> = new Set();
     private peerManager: PeerManager;
     private connectCallback: (url: string) => Promise<void>;
+    private selfUrls: Set<string> = new Set(); // URLs that point to this node
 
     constructor(
         peerManager: PeerManager,
-        connectCallback: (url: string) => Promise<void>
+        connectCallback: (url: string) => Promise<void>,
+        selfUrls: string[] = []
     ) {
         this.peerManager = peerManager;
         this.connectCallback = connectCallback;
+        // Add self URLs to skip when connecting to bootstrap
+        selfUrls.forEach(url => this.selfUrls.add(url));
+    }
+
+    /**
+     * Add URL pattern that identifies this node (to prevent self-connection)
+     */
+    addSelfUrl(url: string): void {
+        this.selfUrls.add(url);
     }
 
     // ==================== BOOTSTRAP ====================
 
     async connectToBootstrap(): Promise<void> {
         for (const seed of BOOTSTRAP_NODES) {
+            // Skip if this is our own URL (prevents self-connection loop)
+            if (this.selfUrls.has(seed)) {
+                logger.info(`🪞 Skipping self-connection to: ${seed}`);
+                continue;
+            }
+
             try {
                 await this.connectCallback(seed);
                 logger.info(`🌱 Connected to bootstrap: ${seed}`);
