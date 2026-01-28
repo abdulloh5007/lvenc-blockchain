@@ -54,9 +54,9 @@ pm2 start node \
     -- dist/node/cli/cli.js start \
     --role validator \
     --port "$API_PORT" \
-    --p2p-port "$P2P_PORT" \
+    --p2p "$P2P_PORT" \
     --network "$NETWORK" \
-    --data-dir "$DATA_DIR"
+    -d "$DATA_DIR"
 
 pm2 save
 
