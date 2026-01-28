@@ -16,6 +16,7 @@ import { initBlockProducer, stakingPool } from '../../../runtime/staking/index.j
 import { config } from '../../config.js';
 import { boxBottom, boxCenter, boxEmpty, boxSeparator, boxTop } from '../../../protocol/utils/box.js';
 import { getRole, RoleConfig, RoleName } from '../../roles/index.js';
+import { loadGenesisConfig } from '../../../protocol/consensus/index.js';
 
 import { createBlockchainRoutes } from '../../api/routes/blockchain.js';
 import { createWalletRoutes } from '../../api/routes/wallet.js';
@@ -200,8 +201,12 @@ export async function startNode(options: NodeOptions): Promise<void> {
         logger.info(`● Genesis faucet address: ${appConfig.genesis.faucetAddress}`);
     }
 
-    // NOTE: Staking state is derived from blockchain transactions (on-chain staking)
-    // No staking.json loading - chain is the only source of truth
+    // Load genesis validators into StakingPool (critical for block production)
+    const genesisConfig = loadGenesisConfig(options.dataDir);
+    if (genesisConfig && genesisConfig.validators.length > 0) {
+        stakingPool.loadGenesisValidators(genesisConfig.validators);
+        logger.info(`🌱 Loaded ${genesisConfig.validators.length} genesis validator(s)`);
+    }
 
     // Initialize NFT Manager
     const nftManager = new NFTManager();
