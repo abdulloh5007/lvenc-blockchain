@@ -14,7 +14,7 @@ cd "$PROJECT_DIR"
 
 NETWORK="${NETWORK:-testnet}"
 DATA_DIR="./data/${NETWORK}"
-API_PORT="${API_PORT:-3000}"
+API_PORT="${API_PORT:-3001}"
 P2P_PORT="${P2P_PORT:-6001}"
 PM2_NAME="${PM2_NAME:-lve-genesis}"
 
