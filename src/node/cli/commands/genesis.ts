@@ -70,6 +70,7 @@ genesisCommand
         console.log('  2. Add validator: lve-chain genesis add-validator --pubkey <KEY>');
         console.log('  3. Start node: lve-chain start --role validator');
         console.log('');
+        process.exit(0);
     });
 
 // genesis add-validator
@@ -121,6 +122,7 @@ genesisCommand
         console.log('');
         console.log(`Total validators in genesis: ${genesis.validators.length}`);
         console.log('');
+        process.exit(0);
     });
 
 // genesis show
@@ -156,4 +158,5 @@ genesisCommand
             }
         }
         console.log('');
+        process.exit(0);
     });

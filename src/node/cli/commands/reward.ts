@@ -65,6 +65,7 @@ rewardCommand
             console.log('');
             console.log('💡 Validator rewards will be sent to this address.');
             console.log('');
+            process.exit(0);
 
         } catch (error) {
             console.error('❌ Failed to bind reward address:', error);
@@ -122,6 +123,7 @@ rewardCommand
             console.log('');
             console.log('💡 Validator rewards will be sent to this address.');
             console.log('');
+            process.exit(0);
 
         } catch (error) {
             console.error('❌ Failed to generate reward wallet:', error);
@@ -168,6 +170,7 @@ rewardCommand
                 console.log(`   lve-chain reward generate -n ${options.network}`);
             }
             console.log('');
+            process.exit(0);
 
         } catch (error) {
             console.error('❌ Failed to read identity:', error);

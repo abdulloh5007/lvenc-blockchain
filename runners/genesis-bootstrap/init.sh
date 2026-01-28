@@ -37,13 +37,13 @@ echo "  Power:       $VALIDATOR_POWER"
 echo "  Moniker:     $VALIDATOR_MONIKER"
 echo ""
 
-# Check if already initialized
+# Check if fully initialized
 if [ -f "$DATA_DIR/genesis.json" ] && [ -f "$DATA_DIR/priv_validator_key.json" ]; then
-    echo -e "${YELLOW}⚠️  Genesis already initialized!${NC}"
-    echo "   To reinitialize, first delete: $DATA_DIR/genesis.json and $DATA_DIR/priv_validator_key.json"
+    echo -e "${YELLOW}⚠️  Genesis already fully initialized!${NC}"
     echo ""
-    echo "Existing configuration:"
     node dist/node/cli/cli.js genesis show -d "$DATA_DIR" -n "$NETWORK"
+    echo ""
+    echo "To reinitialize, delete: $DATA_DIR/genesis.json and $DATA_DIR/priv_validator_key.json"
     exit 0
 fi
 
@@ -53,26 +53,35 @@ if [ ! -d "dist" ]; then
     npm run build
 fi
 
-# Step 1: Initialize Genesis
-echo -e "${GREEN}Step 1/3: Initializing genesis...${NC}"
-node dist/node/cli/cli.js genesis init \
-    -d "$DATA_DIR" \
-    -n "$NETWORK" \
-    --chain-id "$CHAIN_ID"
+# Step 1: Initialize Genesis (skip if exists)
+if [ ! -f "$DATA_DIR/genesis.json" ]; then
+    echo -e "${GREEN}Step 1/3: Initializing genesis...${NC}"
+    node dist/node/cli/cli.js genesis init \
+        -d "$DATA_DIR" \
+        -n "$NETWORK" \
+        --chain-id "$CHAIN_ID"
+else
+    echo -e "${YELLOW}Step 1/3: Genesis already exists, skipping...${NC}"
+fi
 
-# Step 2: Create Validator Key
-echo ""
-echo -e "${GREEN}Step 2/3: Creating validator key...${NC}"
-node dist/node/cli/cli.js validator init \
-    -d "$DATA_DIR" \
-    -n "$NETWORK"
+# Step 2: Create Validator Key (skip if exists)
+if [ ! -f "$DATA_DIR/priv_validator_key.json" ]; then
+    echo ""
+    echo -e "${GREEN}Step 2/3: Creating validator key...${NC}"
+    node dist/node/cli/cli.js validator init \
+        -d "$DATA_DIR" \
+        -n "$NETWORK"
+else
+    echo -e "${YELLOW}Step 2/3: Validator key already exists, skipping...${NC}"
+fi
 
 # Get the public key
 PUBKEY=$(node dist/node/cli/cli.js validator show -d "$DATA_DIR" -n "$NETWORK" --pubkey)
 echo ""
 echo -e "  Validator PubKey: ${BLUE}${PUBKEY:0:32}...${NC}"
 
-# Step 3: Add validator to genesis
+# Step 3: Add validator to genesis (check if already added)
+VALIDATORS=$(node dist/node/cli/cli.js genesis show -d "$DATA_DIR" -n "$NETWORK" 2>&1 | grep -c "Validators:" || true)
 echo ""
 echo -e "${GREEN}Step 3/3: Adding validator to genesis...${NC}"
 node dist/node/cli/cli.js genesis add-validator \
@@ -80,7 +89,7 @@ node dist/node/cli/cli.js genesis add-validator \
     -n "$NETWORK" \
     --pubkey "$PUBKEY" \
     --power "$VALIDATOR_POWER" \
-    --moniker "$VALIDATOR_MONIKER"
+    --moniker "$VALIDATOR_MONIKER" || true
 
 echo ""
 echo -e "${GREEN}╔═══════════════════════════════════════════════════════════╗${NC}"

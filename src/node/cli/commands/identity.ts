@@ -50,7 +50,7 @@ export const identityCommand = new Command('identity')
                     createdAt: identity.createdAt,
                 };
                 console.log(JSON.stringify(publicIdentity, null, 2));
-                return;
+                process.exit(0);
             }
 
             const createdDate = new Date(identity.createdAt).toISOString().split('T')[0];
@@ -76,6 +76,7 @@ export const identityCommand = new Command('identity')
             console.log('💡 To export public identity:');
             console.log('   lve-chain identity --export');
             console.log('');
+            process.exit(0);
 
         } catch (error) {
             console.error('❌ Failed to read identity:', error);

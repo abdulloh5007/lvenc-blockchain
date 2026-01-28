@@ -59,8 +59,10 @@ poolCommand
 
             // Save pool state
             storage.savePool(poolStateManager.getState());
+            process.exit(0);
         } catch (error) {
             console.error(`❌ Init failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            process.exit(1);
         }
     });
 
@@ -83,8 +85,10 @@ poolCommand
             console.log(boxCenter(`Burned:           ${status.burned.toLocaleString()} LVE`));
             console.log(boxBottom());
             console.log('');
+            process.exit(0);
         } catch (error) {
             console.error(`❌ Status failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            process.exit(1);
         }
     });
 
@@ -125,6 +129,7 @@ poolCommand
         console.log(boxCenter(`LP Providers:   ${info.lpProviders}`));
         console.log(boxBottom());
         console.log('');
+        process.exit(0);
     });
 
 // QUOTE command
@@ -168,8 +173,10 @@ poolCommand
             console.log(boxCenter(`Price Impact:  ${quote.priceImpact.toFixed(2)}%`));
             console.log(boxBottom());
             console.log('');
+            process.exit(0);
         } catch (error) {
             console.error(`❌ Quote failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            process.exit(1);
         }
     });
 
@@ -204,8 +211,10 @@ poolCommand
             console.log(boxCenter(`LP:      ${result.lpTokens.toFixed(4)} tokens`));
             console.log(boxBottom());
             console.log('');
+            process.exit(0);
         } catch (error) {
             console.error(`❌ Add liquidity failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            process.exit(1);
         }
     });
 
@@ -239,8 +248,10 @@ poolCommand
             console.log(boxCenter(`Got:     ${result.usdtAmount.toFixed(6)} USDT`));
             console.log(boxBottom());
             console.log('');
+            process.exit(0);
         } catch (error) {
             console.error(`❌ Remove liquidity failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            process.exit(1);
         }
     });
 
@@ -278,7 +289,9 @@ poolCommand
             console.log(boxCenter(`Fee:  ${result.fee.toFixed(6)} ${options.from.toUpperCase()}`));
             console.log(boxBottom());
             console.log('');
+            process.exit(0);
         } catch (error) {
             console.error(`❌ ${error instanceof Error ? error.message : 'Unknown error'}`);
+            process.exit(1);
         }
     });

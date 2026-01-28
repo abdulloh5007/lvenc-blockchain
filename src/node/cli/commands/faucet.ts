@@ -51,6 +51,7 @@ faucetCommand
 
         console.log(boxBottom());
         console.log('');
+        process.exit(0);
     });
 
 // Balance check
@@ -73,6 +74,7 @@ faucetCommand
         console.log(boxCenter(`Faucet: ${info.amount} USDT/request`));
         console.log(boxBottom());
         console.log('');
+        process.exit(0);
     });
 
 // Faucet info
@@ -93,4 +95,5 @@ faucetCommand
         console.log(boxCenter(`Max:      ${info.maxBalance} USDT`));
         console.log(boxBottom());
         console.log('');
+        process.exit(0);
     });

@@ -57,6 +57,7 @@ validatorCommand
             console.log('  2. Start your validator node:');
             console.log('     lve-chain start --role validator');
             console.log('');
+            process.exit(0);
         } catch (error) {
             console.error(`❌ Failed to create validator key: ${error}`);
             process.exit(1);
@@ -88,7 +89,7 @@ validatorCommand
             if (options.pubkey) {
                 // Output only pubkey (for scripting)
                 console.log(key.getPubKey());
-                return;
+                process.exit(0);
             }
 
             console.log('');
@@ -100,6 +101,7 @@ validatorCommand
             console.log(boxCenter(`Network: ${options.network}`));
             console.log(boxBottom());
             console.log('');
+            process.exit(0);
         } catch (error) {
             console.error(`❌ Failed to read validator key: ${error}`);
             process.exit(1);
