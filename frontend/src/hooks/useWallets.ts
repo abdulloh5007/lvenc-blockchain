@@ -265,6 +265,8 @@ export function useWallets() {
             fee.toString() +
             nonce.toString();
         const txHash = sha256(canonicalPayload);  // Returns hex string
+        console.log(`[SIGN] type=${txType} from=${from.slice(0, 12)}... to=${to.slice(0, 12)}... amount=${amount} fee=${fee} nonce=${nonce}`);
+        console.log(`[SIGN] Hash: ${txHash}`);
 
         // Sign with ed25519 (the ONLY accepted scheme)
         const privateKeyBytes = hexToBytes(w.privateKey);

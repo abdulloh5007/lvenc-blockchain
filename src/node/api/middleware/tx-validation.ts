@@ -117,8 +117,8 @@ export function validateTxStructure(body: Record<string, unknown>): ValidationRe
     if (!address || typeof address !== 'string') {
         return { valid: false, error: 'address is required', code: 'MISSING_ADDRESS' };
     }
-    if (amount === undefined || typeof amount !== 'number' || amount <= 0) {
-        return { valid: false, error: 'amount must be positive number', code: 'INVALID_AMOUNT' };
+    if (amount === undefined || typeof amount !== 'number' || amount < 0) {
+        return { valid: false, error: 'amount must be non-negative number', code: 'INVALID_AMOUNT' };
     }
     if (!signature || typeof signature !== 'string') {
         return { valid: false, error: 'signature is required', code: 'MISSING_SIGNATURE' };
@@ -215,6 +215,7 @@ export async function verifyEd25519Signature(
         const isValid = await ed.verifyAsync(signatureBytes, hashBytes, publicKeyBytes);
 
         if (!isValid) {
+            log.warn(`Signature mismatch! Hash: ${canonicalHash.slice(0, 16)}... PubKey: ${publicKey.slice(0, 16)}...`);
             return { valid: false, error: 'Invalid ed25519 signature', code: 'INVALID_SIGNATURE' };
         }
 
@@ -285,6 +286,8 @@ export function validateStakingTx(txType: string) {
 
         // Compute canonical hash
         const canonicalHash = computeCanonicalHash(chainId, txType, from, to, amount, fee, nonce);
+        log.debug(`TX validation: type=${txType} from=${from.slice(0, 12)}... to=${to.slice(0, 12)}... amount=${amount} fee=${fee} nonce=${nonce}`);
+        log.debug(`Canonical hash: ${canonicalHash}`);
 
         // Duplicate check
         const dupResult = checkDuplicate(canonicalHash);
