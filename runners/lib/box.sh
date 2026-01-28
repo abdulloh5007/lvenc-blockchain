@@ -2,11 +2,11 @@
 # =========================================================
 # LVE Chain — Box Formatting Utility for Bash
 # =========================================================
-# Mirrors the TypeScript box.ts utility for consistent output
+# Uses ROUNDED corners to match TypeScript boxen output
 # Usage: source this file in other scripts
 # =========================================================
 
-BOX_WIDTH=${BOX_WIDTH:-59}
+BOX_WIDTH=${BOX_WIDTH:-55}
 
 # Colors (optional, can be disabled with NO_COLOR=1)
 if [ -z "$NO_COLOR" ]; then
@@ -29,89 +29,78 @@ else
     NC=''
 fi
 
-# ==================== UNICODE SYMBOLS ====================
-# These work in any UTF-8 terminal without special fonts
+# ==================== EMOJIS & SYMBOLS ====================
 
-SYM_OK="✓"        # Checkmark (success)
-SYM_ERR="✗"       # X mark (error)
-SYM_WARN="⚠"      # Warning triangle
-SYM_INFO="●"      # Bullet (info)
-SYM_ARROW="➜"     # Arrow
-SYM_KEY="◆"       # Diamond (key/secure)
-SYM_STAR="★"      # Star
-SYM_DOT="·"       # Middle dot
+SYM_OK="✅"
+SYM_ERR="❌"
+SYM_WARN="⚠️"
+SYM_INFO="●"
+SYM_ARROW="➜"
+SYM_KEY="🔐"
+SYM_LOCK="🔒"
+SYM_BULB="💡"
+SYM_ROCKET="🚀"
+SYM_FILE="📄"
+SYM_CHAIN="🔗"
+SYM_GEAR="⚙️"
+SYM_MONEY="💰"
 
-# ==================== BOX FUNCTIONS ====================
+# ==================== BOX FUNCTIONS (ROUNDED) ====================
 
-# Top border: ╔═══════════════╗
+# Top border: ╭───────────────╮
 box_top() {
     local width=${1:-$BOX_WIDTH}
-    printf "╔"
-    printf '═%.0s' $(seq 1 $width)
-    printf "╗\n"
+    printf "${CYAN}╭"
+    printf '─%.0s' $(seq 1 $width)
+    printf "╮${NC}\n"
 }
 
-# Bottom border: ╚═══════════════╝
+# Bottom border: ╰───────────────╯
 box_bottom() {
     local width=${1:-$BOX_WIDTH}
-    printf "╚"
-    printf '═%.0s' $(seq 1 $width)
-    printf "╝\n"
+    printf "${CYAN}╰"
+    printf '─%.0s' $(seq 1 $width)
+    printf "╯${NC}\n"
 }
 
-# Separator: ╠═══════════════╣
+# Separator: ├───────────────┤
 box_sep() {
     local width=${1:-$BOX_WIDTH}
-    printf "╠"
-    printf '═%.0s' $(seq 1 $width)
-    printf "╣\n"
+    printf "${CYAN}├"
+    printf '─%.0s' $(seq 1 $width)
+    printf "┤${NC}\n"
 }
 
-# Empty line: ║               ║
+# Empty line: │               │
 box_empty() {
     local width=${1:-$BOX_WIDTH}
-    printf "║"
+    printf "${CYAN}│${NC}"
     printf ' %.0s' $(seq 1 $width)
-    printf "║\n"
+    printf "${CYAN}│${NC}\n"
 }
 
-# Centered text: ║    text    ║
+# Centered text: │    text    │
 box_center() {
     local text="$1"
     local width=${2:-$BOX_WIDTH}
-    local text_len=${#text}
+    # Strip ANSI codes for length calculation
+    local clean_text=$(echo -e "$text" | sed 's/\x1b\[[0-9;]*m//g')
+    local text_len=${#clean_text}
     local total_pad=$((width - text_len))
     
     if [ $total_pad -lt 0 ]; then
-        printf "║%s║\n" "${text:0:$width}"
+        printf "${CYAN}│${NC}%s${CYAN}│${NC}\n" "${text:0:$width}"
         return
     fi
     
     local left_pad=$((total_pad / 2))
     local right_pad=$((total_pad - left_pad))
     
-    printf "║"
+    printf "${CYAN}│${NC}"
     printf ' %.0s' $(seq 1 $left_pad)
-    printf "%s" "$text"
+    printf "%b" "$text"
     printf ' %.0s' $(seq 1 $right_pad)
-    printf "║\n"
-}
-
-# Left-aligned text: ║ text          ║
-box_left() {
-    local text="$1"
-    local width=${2:-$BOX_WIDTH}
-    local text_len=${#text}
-    local padding=$((width - text_len))
-    
-    if [ $padding -lt 0 ]; then
-        printf "║%s║\n" "${text:0:$width}"
-        return
-    fi
-    
-    printf "║%s" "$text"
-    printf ' %.0s' $(seq 1 $padding)
-    printf "║\n"
+    printf "${CYAN}│${NC}\n"
 }
 
 # ==================== QUICK BOX ====================
@@ -137,39 +126,33 @@ quick_box() {
 
 # ==================== STATUS MESSAGES ====================
 
-# Success message: ✓ text
 msg_ok() {
     echo -e "${GREEN}${SYM_OK}${NC} $1"
 }
 
-# Error message: ✗ text
 msg_err() {
     echo -e "${RED}${SYM_ERR}${NC} $1"
 }
 
-# Warning message: ⚠ text
 msg_warn() {
     echo -e "${YELLOW}${SYM_WARN}${NC} $1"
 }
 
-# Info message: ● text
 msg_info() {
     echo -e "${BLUE}${SYM_INFO}${NC} $1"
 }
 
-# Key/secure message: ◆ text
 msg_key() {
     echo -e "${CYAN}${SYM_KEY}${NC} $1"
 }
 
 # ==================== HEADER ====================
 
-# Print a standard LVE header
 lve_header() {
     local title="$1"
     echo ""
     box_top
-    box_center "LVE Chain ${SYM_DOT} $title"
+    box_center "${SYM_CHAIN} LVE Chain · $title"
     box_bottom
     echo ""
 }
