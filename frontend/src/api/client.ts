@@ -202,17 +202,24 @@ export const staking = {
         method: 'POST',
         body: JSON.stringify({ address, amount, signature, publicKey, nonce, chainId, signatureScheme }),
     }),
-    unstake: (address: string, amount: number) => fetchApi<{
+    unstake: (address: string, amount: number, signature: string, publicKey: string, nonce: number, chainId: string, signatureScheme: 'ed25519' = 'ed25519') => fetchApi<{
         message: string;
+        txId: string;
+        status: string;
         effectiveEpoch: number;
         remainingStake: number
     }>('/staking/unstake', {
         method: 'POST',
-        body: JSON.stringify({ address, amount }),
+        body: JSON.stringify({ address, amount, signature, publicKey, nonce, chainId, signatureScheme }),
     }),
-    claim: (address: string) => fetchApi<{ message: string; amount: number }>('/staking/claim', {
+    claim: (address: string, signature: string, publicKey: string, nonce: number, chainId: string, signatureScheme: 'ed25519' = 'ed25519') => fetchApi<{
+        message: string;
+        txId: string;
+        status: string;
+        pendingRequests: any[];
+    }>('/staking/claim', {
         method: 'POST',
-        body: JSON.stringify({ address }),
+        body: JSON.stringify({ address, signature, publicKey, nonce, chainId, signatureScheme }),
     }),
 
     // Delegation - Client signs tx locally with ed25519, API only relays
@@ -225,13 +232,14 @@ export const staking = {
         method: 'POST',
         body: JSON.stringify({ delegator, validator, amount, signature, publicKey, nonce, chainId, signatureScheme }),
     }),
-    undelegate: (delegator: string, validator: string, amount: number) => fetchApi<{
+    undelegate: (delegator: string, validator: string, amount: number, signature: string, publicKey: string, nonce: number, chainId: string, signatureScheme: 'ed25519' = 'ed25519') => fetchApi<{
         message: string;
-        transactionId: string;
+        txId: string;
+        status: string;
         remainingDelegations: Delegation[];
     }>('/staking/undelegate', {
         method: 'POST',
-        body: JSON.stringify({ delegator, validator, amount }),
+        body: JSON.stringify({ delegator, validator, amount, signature, publicKey, nonce, chainId, signatureScheme }),
     }),
     getDelegations: (address: string) => fetchApi<{
         address: string;
@@ -250,9 +258,13 @@ export const staking = {
         validator: ValidatorInfo & { totalWeight: number };
         delegators: { delegator: string; amount: number }[];
     }>(`/staking/validator/${address}`),
-    setCommission: (address: string, commission: number) => fetchApi<{ message: string }>('/staking/commission', {
+    setCommission: (address: string, commission: number, signature: string, publicKey: string, nonce: number, chainId: string, signatureScheme: 'ed25519' = 'ed25519') => fetchApi<{
+        message: string;
+        txId: string;
+        status: string;
+    }>('/staking/commission', {
         method: 'POST',
-        body: JSON.stringify({ address, commission }),
+        body: JSON.stringify({ address, commission, signature, publicKey, nonce, chainId, signatureScheme }),
     }),
 
     // User staking info

@@ -247,7 +247,7 @@ export function useWallets() {
         fee: number,
         nonce: number,
         chainId: string,
-        txType: 'STAKE' | 'UNSTAKE' | 'DELEGATE' | 'UNDELEGATE' | 'TRANSFER'
+        txType: 'STAKE' | 'UNSTAKE' | 'DELEGATE' | 'UNDELEGATE' | 'TRANSFER' | 'CLAIM' | 'COMMISSION'
     ): Promise<{ signature: string; publicKey: string; nonce: number; chainId: string; signatureScheme: 'ed25519' }> => {
         const stored = loadWallets();
         const w = stored.find(w => w.address === from);
@@ -291,7 +291,7 @@ export function useWallets() {
         to: string,
         amount: number,
         fee: number = 0,
-        txType: 'STAKE' | 'UNSTAKE' | 'DELEGATE' | 'UNDELEGATE' | 'TRANSFER',
+        txType: 'STAKE' | 'UNSTAKE' | 'DELEGATE' | 'UNDELEGATE' | 'TRANSFER' | 'CLAIM' | 'COMMISSION',
         actionDescription?: string
     ): Promise<{ signature: string; publicKey: string; nonce: number; chainId: string; signatureScheme: 'ed25519' } | null> => {
         const description = actionDescription || `Подтвердите операцию: ${amount} LVE`;

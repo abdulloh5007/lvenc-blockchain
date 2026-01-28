@@ -118,13 +118,41 @@ export const StakingPage: React.FC = () => {
         if (!selectedWallet || !unstakeAmount) return;
         setLoading(true);
         setMessage(null);
-        const res = await staking.unstake(selectedWallet, Number(unstakeAmount));
-        if (res.success && res.data) {
-            setMessage({ type: 'success', text: `🔓 Unstake запрошен (доступно с эпохи ${res.data.effectiveEpoch})` });
-            loadData();
-            loadUserStake();
-        } else {
-            setMessage({ type: 'error', text: res.error || 'Unstake failed' });
+
+        try {
+            // Sign transaction with PIN confirmation
+            const signed = await signStakingTransactionWithPin(
+                selectedWallet,
+                'STAKE_POOL',
+                Number(unstakeAmount),
+                0,
+                'UNSTAKE',
+                `Снять со стейкинга ${unstakeAmount} LVE?`
+            );
+            if (!signed) {
+                setLoading(false);
+                return; // User cancelled
+            }
+
+            const res = await staking.unstake(
+                selectedWallet,
+                Number(unstakeAmount),
+                signed.signature,
+                signed.publicKey,
+                signed.nonce,
+                signed.chainId,
+                signed.signatureScheme
+            );
+            if (res.success && res.data) {
+                setMessage({ type: 'success', text: `🔓 Unstake запрошен (доступно с эпохи ${res.data.effectiveEpoch})` });
+                refresh();
+                loadData();
+                loadUserStake();
+            } else {
+                setMessage({ type: 'error', text: res.error || 'Unstake failed' });
+            }
+        } catch (err) {
+            setMessage({ type: 'error', text: err instanceof Error ? err.message : 'Unstake failed' });
         }
         setLoading(false);
     };
@@ -132,11 +160,40 @@ export const StakingPage: React.FC = () => {
     const handleClaim = async () => {
         if (!selectedWallet) return;
         setLoading(true);
-        const res = await staking.claim(selectedWallet);
-        if (res.success && res.data) {
-            setMessage({ type: 'success', text: res.data.message });
-            refresh();
-            loadUserStake();
+        setMessage(null);
+
+        try {
+            // Sign transaction with PIN confirmation
+            const signed = await signStakingTransactionWithPin(
+                selectedWallet,
+                'STAKE_POOL',
+                0,  // CLAIM doesn't have amount
+                0,
+                'CLAIM',
+                `Забрать доступные токены из unstake?`
+            );
+            if (!signed) {
+                setLoading(false);
+                return;
+            }
+
+            const res = await staking.claim(
+                selectedWallet,
+                signed.signature,
+                signed.publicKey,
+                signed.nonce,
+                signed.chainId,
+                signed.signatureScheme
+            );
+            if (res.success && res.data) {
+                setMessage({ type: 'success', text: res.data.message });
+                refresh();
+                loadUserStake();
+            } else {
+                setMessage({ type: 'error', text: res.error || 'Claim failed' });
+            }
+        } catch (err) {
+            setMessage({ type: 'error', text: err instanceof Error ? err.message : 'Claim failed' });
         }
         setLoading(false);
     };
@@ -190,13 +247,42 @@ export const StakingPage: React.FC = () => {
     const handleUndelegate = async (validator: string, amount: number) => {
         if (!selectedWallet) return;
         setLoading(true);
-        const res = await staking.undelegate(selectedWallet, validator, amount);
-        if (res.success) {
-            setMessage({ type: 'success', text: `🔓 Undelegated ${amount} LVE` });
-            refresh();
-            loadUserStake();
-        } else {
-            setMessage({ type: 'error', text: res.error || 'Undelegation failed' });
+        setMessage(null);
+
+        try {
+            // Sign transaction with PIN confirmation
+            const signed = await signStakingTransactionWithPin(
+                selectedWallet,
+                validator,
+                amount,
+                0,
+                'UNDELEGATE',
+                `Отменить делегирование ${amount} LVE?`
+            );
+            if (!signed) {
+                setLoading(false);
+                return;
+            }
+
+            const res = await staking.undelegate(
+                selectedWallet,
+                validator,
+                amount,
+                signed.signature,
+                signed.publicKey,
+                signed.nonce,
+                signed.chainId,
+                signed.signatureScheme
+            );
+            if (res.success) {
+                setMessage({ type: 'success', text: `🔓 Undelegated ${amount} LVE` });
+                refresh();
+                loadUserStake();
+            } else {
+                setMessage({ type: 'error', text: res.error || 'Undelegation failed' });
+            }
+        } catch (err) {
+            setMessage({ type: 'error', text: err instanceof Error ? err.message : 'Undelegation failed' });
         }
         setLoading(false);
     };

@@ -94,114 +94,165 @@ export function createStakingRoutes(blockchain: Blockchain): Router {
         }
     });
 
-    router.post('/unstake', (req: Request, res: Response) => {
-        const { address, amount } = req.body;
-        if (!address || !amount || amount <= 0) {
-            res.status(400).json({ success: false, error: 'Address and positive amount required' });
-            return;
-        }
-        const request = stakingPool.requestUnstake(address, amount);
-        if (request) {
+    router.post('/unstake', validateStakingTx('UNSTAKE'), (req: Request, res: Response) => {
+        const { address, amount, signature, publicKey, nonce, chainId } = req.body;
+
+        try {
+            // Create UNSTAKE transaction for relay
+            const tx = new Transaction(
+                address,           // fromAddress (signer)
+                'STAKE_POOL',      // toAddress (system address)
+                amount,            // amount to unstake
+                0,                 // fee
+                Date.now(),        // timestamp
+                undefined,         // id
+                nonce,             // nonce
+                chainId,           // chainId
+                'UNSTAKE',         // type
+                undefined,         // data
+                'ed25519',         // signatureScheme
+                publicKey          // publicKey
+            );
+            tx.signature = signature;
+            blockchain.addTransaction(tx);
+
+            const epochInfo = stakingPool.getEpochInfo();
+            log.info(`📊 UNSTAKE tx submitted: ${address.slice(0, 10)}... ${amount} LVE (nonce: ${nonce})`);
 
             res.json({
                 success: true,
                 data: {
-                    message: `Unstake requested: ${amount} LVE (available after epoch ${request.epochEffective})`,
-                    effectiveEpoch: request.epochEffective,
+                    message: `UNSTAKE transaction submitted. Will be processed when included in block.`,
+                    txId: tx.id,
+                    status: 'pending',
+                    effectiveEpoch: epochInfo.epoch + 1,
                     remainingStake: stakingPool.getStake(address),
                 },
             });
-        } else {
-            res.status(400).json({ success: false, error: 'Insufficient staked amount' });
+        } catch (error) {
+            res.status(400).json({ success: false, error: error instanceof Error ? error.message : 'Unstaking failed' });
         }
     });
 
-    router.post('/claim', (req: Request, res: Response) => {
-        const { address } = req.body;
-        if (!address) {
-            res.status(400).json({ success: false, error: 'Address required' });
-            return;
-        }
-        const released = stakingPool.completeUnstake(address);
-        if (released > 0) {
-            const tx = new Transaction(null, address, released, 0);
-            blockchain.addTransaction(tx);
-            storage.saveBlockchain(blockchain.toJSON());
+    router.post('/claim', validateStakingTx('CLAIM'), (req: Request, res: Response) => {
+        const { address, signature, publicKey, nonce, chainId } = req.body;
 
-            log.info(`💰 ${address.slice(0, 10)}... claimed ${released} LVE from unstake`);
+        try {
+            // Create CLAIM transaction for relay
+            const tx = new Transaction(
+                address,           // fromAddress (signer)
+                'STAKE_POOL',      // toAddress (system address)
+                0,                 // amount (claim returns available unstaked)
+                0,                 // fee
+                Date.now(),        // timestamp
+                undefined,         // id
+                nonce,             // nonce
+                chainId,           // chainId
+                'CLAIM',           // type
+                undefined,         // data
+                'ed25519',         // signatureScheme
+                publicKey          // publicKey
+            );
+            tx.signature = signature;
+            blockchain.addTransaction(tx);
+
+            log.info(`📊 CLAIM tx submitted: ${address.slice(0, 10)}... (nonce: ${nonce})`);
             res.json({
                 success: true,
-                data: { message: `Claimed ${released} LVE`, amount: released, transactionId: tx.id },
+                data: {
+                    message: `CLAIM transaction submitted. Will be processed when included in block.`,
+                    txId: tx.id,
+                    status: 'pending',
+                    pendingRequests: stakingPool.getUnstakeRequests(address),
+                },
             });
-        } else {
-            res.json({
-                success: true,
-                data: { message: 'No unstake requests ready', pendingRequests: stakingPool.getUnstakeRequests(address) },
-            });
+        } catch (error) {
+            res.status(400).json({ success: false, error: error instanceof Error ? error.message : 'Claim failed' });
         }
     });
 
     // ========== DELEGATION ==========
 
-    router.post('/delegate', (req: Request, res: Response) => {
-        const { delegator, validator, amount } = req.body;
-        if (!delegator || !validator || !amount || amount <= 0) {
-            res.status(400).json({ success: false, error: 'delegator, validator, and positive amount required' });
-            return;
-        }
+    router.post('/delegate', validateStakingTx('DELEGATE'), (req: Request, res: Response) => {
+        const { delegator, validator, amount, signature, publicKey, nonce, chainId } = req.body;
+
+        // Pre-check balance
         const availableBalance = blockchain.getAvailableBalance(delegator);
         if (availableBalance < amount) {
             res.status(400).json({ success: false, error: `Insufficient balance: ${availableBalance} < ${amount}` });
             return;
         }
-        try {
-            const success = stakingPool.delegate(delegator, validator, amount);
-            if (success) {
 
-                const epochInfo = stakingPool.getEpochInfo();
-                log.info(`📊 ${delegator.slice(0, 10)}... delegated ${amount} LVE to ${validator.slice(0, 10)}...`);
-                res.json({
-                    success: true,
-                    data: {
-                        message: `Delegated ${amount} LVE to validator (effective next epoch)`,
-                        effectiveEpoch: epochInfo.epoch + 1,
-                        delegations: stakingPool.getDelegations(delegator),
-                    },
-                });
-            } else {
-                res.status(400).json({ success: false, error: 'Delegation failed. Minimum is 10 LVE to active validator.' });
-            }
+        try {
+            // Create DELEGATE transaction for relay
+            const tx = new Transaction(
+                delegator,         // fromAddress (signer)
+                validator,         // toAddress (validator to delegate to)
+                amount,            // amount to delegate
+                0,                 // fee
+                Date.now(),        // timestamp
+                undefined,         // id
+                nonce,             // nonce
+                chainId,           // chainId
+                'DELEGATE',        // type
+                undefined,         // data
+                'ed25519',         // signatureScheme
+                publicKey          // publicKey
+            );
+            tx.signature = signature;
+            blockchain.addTransaction(tx);
+
+            const epochInfo = stakingPool.getEpochInfo();
+            log.info(`📊 DELEGATE tx submitted: ${delegator.slice(0, 10)}... -> ${validator.slice(0, 10)}... ${amount} LVE (nonce: ${nonce})`);
+
+            res.json({
+                success: true,
+                data: {
+                    message: `DELEGATE transaction submitted. Will be processed when included in block.`,
+                    txId: tx.id,
+                    status: 'pending',
+                    effectiveEpoch: epochInfo.epoch + 1,
+                    delegations: stakingPool.getDelegations(delegator),
+                },
+            });
         } catch (error) {
             res.status(400).json({ success: false, error: error instanceof Error ? error.message : 'Delegation failed' });
         }
     });
 
-    router.post('/undelegate', (req: Request, res: Response) => {
-        const { delegator, validator, amount } = req.body;
-        if (!delegator || !validator || !amount || amount <= 0) {
-            res.status(400).json({ success: false, error: 'delegator, validator, and positive amount required' });
-            return;
-        }
-        try {
-            const success = stakingPool.undelegate(delegator, validator, amount);
-            if (success) {
-                // Return undelegated funds to user
-                const tx = new Transaction(null, delegator, amount, 0);
-                blockchain.addTransaction(tx);
-                storage.saveBlockchain(blockchain.toJSON());
+    router.post('/undelegate', validateStakingTx('UNDELEGATE'), (req: Request, res: Response) => {
+        const { delegator, validator, amount, signature, publicKey, nonce, chainId } = req.body;
 
-                log.info(`🔓 ${delegator.slice(0, 10)}... undelegated ${amount} LVE from ${validator.slice(0, 10)}...`);
-                res.json({
-                    success: true,
-                    data: {
-                        message: `Undelegated ${amount} LVE`,
-                        transactionId: tx.id,
-                        remainingDelegations: stakingPool.getDelegations(delegator),
-                    },
-                });
-            } else {
-                res.status(400).json({ success: false, error: 'Insufficient delegated amount' });
-            }
+        try {
+            // Create UNDELEGATE transaction for relay
+            const tx = new Transaction(
+                delegator,         // fromAddress (signer)
+                validator,         // toAddress (validator to undelegate from)
+                amount,            // amount to undelegate
+                0,                 // fee
+                Date.now(),        // timestamp
+                undefined,         // id
+                nonce,             // nonce
+                chainId,           // chainId
+                'UNDELEGATE',      // type
+                undefined,         // data
+                'ed25519',         // signatureScheme
+                publicKey          // publicKey
+            );
+            tx.signature = signature;
+            blockchain.addTransaction(tx);
+
+            log.info(`📊 UNDELEGATE tx submitted: ${delegator.slice(0, 10)}... from ${validator.slice(0, 10)}... ${amount} LVE (nonce: ${nonce})`);
+
+            res.json({
+                success: true,
+                data: {
+                    message: `UNDELEGATE transaction submitted. Will be processed when included in block.`,
+                    txId: tx.id,
+                    status: 'pending',
+                    remainingDelegations: stakingPool.getDelegations(delegator),
+                },
+            });
         } catch (error) {
             res.status(400).json({ success: false, error: error instanceof Error ? error.message : 'Undelegation failed' });
         }
@@ -259,21 +310,40 @@ export function createStakingRoutes(blockchain: Blockchain): Router {
         });
     });
 
-    router.post('/commission', (req: Request, res: Response) => {
-        const { address, commission } = req.body;
-        if (!address || commission === undefined || commission < 0 || commission > 100) {
-            res.status(400).json({ success: false, error: 'Valid address and commission (0-100) required' });
-            return;
-        }
-        const success = stakingPool.setCommission(address, commission);
-        if (success) {
+    router.post('/commission', validateStakingTx('COMMISSION'), (req: Request, res: Response) => {
+        const { address, commission, signature, publicKey, nonce, chainId } = req.body;
+
+        try {
+            // Create COMMISSION transaction for relay
+            const tx = new Transaction(
+                address,           // fromAddress (signer/validator)
+                'STAKE_POOL',      // toAddress (system address)
+                commission,        // amount = new commission percentage
+                0,                 // fee
+                Date.now(),        // timestamp
+                undefined,         // id
+                nonce,             // nonce
+                chainId,           // chainId
+                'COMMISSION',      // type
+                undefined,         // data
+                'ed25519',         // signatureScheme
+                publicKey          // publicKey
+            );
+            tx.signature = signature;
+            blockchain.addTransaction(tx);
+
+            log.info(`📊 COMMISSION tx submitted: ${address.slice(0, 10)}... set to ${commission}% (nonce: ${nonce})`);
 
             res.json({
                 success: true,
-                data: { message: `Commission set to ${commission}%` },
+                data: {
+                    message: `COMMISSION transaction submitted. Will be processed when included in block.`,
+                    txId: tx.id,
+                    status: 'pending',
+                },
             });
-        } else {
-            res.status(400).json({ success: false, error: 'Failed to set commission. Are you a validator?' });
+        } catch (error) {
+            res.status(400).json({ success: false, error: error instanceof Error ? error.message : 'Commission update failed' });
         }
     });
 

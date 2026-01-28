@@ -7,7 +7,7 @@ import * as ed from '@noble/ed25519';
 export type SignatureScheme = 'ed25519';
 
 // Transaction types for on-chain staking
-export type TransactionType = 'TRANSFER' | 'STAKE' | 'UNSTAKE' | 'DELEGATE' | 'UNDELEGATE' | 'CLAIM_REWARD';
+export type TransactionType = 'TRANSFER' | 'STAKE' | 'UNSTAKE' | 'DELEGATE' | 'UNDELEGATE' | 'CLAIM_REWARD' | 'CLAIM' | 'COMMISSION';
 
 export interface TransactionData {
     id: string;
