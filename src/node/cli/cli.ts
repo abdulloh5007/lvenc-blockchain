@@ -1,5 +1,12 @@
 #!/usr/bin/env node
 import 'dotenv/config';
+import { webcrypto } from 'node:crypto';
+
+// Polyfill for @noble/ed25519 (requires crypto.subtle)
+if (!globalThis.crypto) {
+    // @ts-ignore
+    globalThis.crypto = webcrypto;
+}
 import { Command } from 'commander';
 import { startNode } from './commands/start.js';
 import { identityCommand } from './commands/identity.js';
