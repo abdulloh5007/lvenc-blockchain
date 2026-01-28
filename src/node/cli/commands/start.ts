@@ -293,6 +293,27 @@ export async function startNode(options: NodeOptions): Promise<void> {
                     symbol: config.blockchain.coinSymbol,
                     addressPrefix: config.blockchain.addressPrefix,
                     faucetEnabled: config.faucet.enabled,
+                    chainId: config.chainId,
+                },
+            });
+        });
+
+        // Nonce endpoint for transaction replay protection
+        const { nonceManager } = await import('../../../protocol/security/nonce-manager.js');
+        app.get('/api/nonce/:address', (req, res) => {
+            const { address } = req.params;
+            if (!address) {
+                res.status(400).json({ success: false, error: 'Address is required' });
+                return;
+            }
+            const nonceInfo = nonceManager.getNonceInfo(address);
+            res.json({
+                success: true,
+                data: {
+                    address,
+                    lastNonce: nonceInfo.lastNonce,
+                    nextNonce: nonceInfo.nextNonce,
+                    pendingCount: nonceInfo.pendingCount,
                 },
             });
         });
