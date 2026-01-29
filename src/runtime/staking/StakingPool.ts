@@ -197,25 +197,15 @@ export class StakingPool {
 
     // ========== STAKING ==========
 
+    /**
+     * Queue stake for activation at next epoch boundary.
+     * Per Protocol Invariant INV-02/03: validator set changes ONLY at epoch boundaries.
+     * Bootstrap is handled by genesis validators defined in genesis.json.
+     */
     stake(address: string, amount: number): boolean {
         if (amount < MIN_STAKE) {
             this.log.warn(`Stake too low: ${amount} < ${MIN_STAKE}`);
             return false;
-        }
-
-        // BOOTSTRAP MODE: If no active validators, first stake activates immediately
-        const activeValidators = this.getValidators();
-        if (activeValidators.length === 0) {
-            this.log.info(`● BOOTSTRAP: No validators, activating stake immediately`);
-            this.stakes.set(address, {
-                address,
-                amount,
-                stakedAt: Date.now(),
-                lastReward: Date.now(),
-                epochStaked: this.currentEpoch,
-            });
-            this.updateValidator(address);
-            return true;
         }
 
         const epochEffective = this.currentEpoch + 1;
