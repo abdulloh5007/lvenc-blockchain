@@ -18,10 +18,16 @@ import * as path from 'path';
 import * as crypto from 'crypto';
 import * as readline from 'readline';
 import * as bip39 from 'bip39';
+import HDKey from 'hdkey';
+import * as ed from '@noble/ed25519';
 import { logger } from '../../protocol/utils/logger.js';
 import { config } from '../config.js';
 import { chainParams } from '../../protocol/params/index.js';
 import { boxCenter, boxSeparator, boxTop, boxBottom, boxEmpty } from '../../protocol/utils/box.js';
+
+// BIP-44 path for validator identity (different from wallet path m/44'/607'/0'/0/0)
+// Using m/44'/607'/1'/0/0 for validator keys (account 1 instead of 0)
+const VALIDATOR_BIP44_PATH = "m/44'/607'/1'/0/0";
 
 export const UNIFIED_IDENTITY_VERSION = 2;
 export const UNIFIED_IDENTITY_FILE = 'node_identity.json';
@@ -146,22 +152,9 @@ export class UnifiedIdentity {
         // Generate 24-word mnemonic (256 bits of entropy)
         const mnemonic = bip39.generateMnemonic(256);
 
-        // Derive Ed25519 keypair from mnemonic
-        const seed = await bip39.mnemonicToSeed(mnemonic);
-        // Use first 32 bytes of seed for Ed25519
-        const seedBytes = seed.slice(0, 32);
+        // Derive keys using same pattern as Wallet but different BIP-44 path
+        const { privateKey, publicKey, address } = await this.deriveKeysFromMnemonic(mnemonic);
 
-        // Generate Ed25519 keypair from seed
-        const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519', {
-            publicKeyEncoding: { type: 'spki', format: 'der' },
-            privateKeyEncoding: { type: 'pkcs8', format: 'der' }
-        });
-
-        const pubKeyHex = publicKey.toString('hex');
-        const privKeyHex = privateKey.toString('hex');
-
-        // Derive address from public key (sha256 hash)
-        const address = this.deriveAddress(pubKeyHex);
         const fullAddress = chainParams.addressPrefix + address;
 
         this.data = {
@@ -169,11 +162,56 @@ export class UnifiedIdentity {
             mnemonic: mnemonic,
             address: address,
             fullAddress: fullAddress,
-            nodeId: pubKeyHex,
-            pub_key: { type: 'ed25519', value: pubKeyHex },
-            priv_key: { type: 'ed25519', value: privKeyHex },
+            nodeId: publicKey,
+            pub_key: { type: 'ed25519', value: publicKey },
+            priv_key: { type: 'ed25519', value: privateKey },
             createdAt: Date.now()
         };
+    }
+
+    /**
+     * Derive Ed25519 keys from mnemonic using BIP-44 path
+     * Uses same algorithm as Wallet but different derivation path
+     */
+    private async deriveKeysFromMnemonic(mnemonic: string): Promise<{
+        privateKey: string;
+        publicKey: string;
+        address: string;
+    }> {
+        const seed = bip39.mnemonicToSeedSync(mnemonic);
+        const hdkey = HDKey.fromMasterSeed(seed);
+        const child = hdkey.derive(VALIDATOR_BIP44_PATH);
+
+        if (!child.privateKey) {
+            throw new Error('Failed to derive private key from mnemonic');
+        }
+
+        // Use first 32 bytes of derived key as ed25519 seed
+        const privateKey = child.privateKey.toString('hex').substring(0, 64);
+
+        // Derive ed25519 public key using @noble/ed25519
+        const privateKeyBytes = this.hexToBytes(privateKey);
+        const publicKeyBytes = await ed.getPublicKeyAsync(privateKeyBytes);
+        const publicKey = this.bytesToHex(publicKeyBytes);
+
+        // Derive address: sha256(publicKey).substring(0, 40)
+        const address = this.deriveAddress(publicKey);
+
+        return { privateKey, publicKey, address };
+    }
+
+    // Helper: hex to bytes
+    private hexToBytes(hex: string): Uint8Array {
+        const bytes = new Uint8Array(hex.length / 2);
+        for (let i = 0; i < bytes.length; i++) {
+            bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
+        }
+        return bytes;
+    }
+
+    // Helper: bytes to hex
+    private bytesToHex(bytes: Uint8Array): string {
+        return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
     }
 
     private deriveAddress(pubKeyHex: string): string {
