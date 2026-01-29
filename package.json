@@ -1,6 +1,6 @@
 {
   "name": "lve-chain-node",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "LVE Chain - System-level encryption protocol",
   "type": "module",
   "main": "dist/node/api/server.js",
