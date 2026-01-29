@@ -40,6 +40,15 @@ export interface UnstakeRequest {
     epochEffective: number;
 }
 
+// Per PoS Protocol Spec v2: slashing detected at current block, applied at epoch boundary
+export interface PendingSlash {
+    address: string;
+    reason: string;
+    slashPercent: number;
+    epochEffective: number;
+    detectedAt: number;
+}
+
 export interface ValidatorInfo {
     address: string;
     stake: number;
@@ -79,6 +88,7 @@ export class StakingPool {
     private pendingStakes: Map<string, PendingStake> = new Map();
     private pendingDelegations: PendingDelegation[] = [];
     private pendingUnstakes: Map<string, UnstakeRequest[]> = new Map();
+    private pendingSlashes: Map<string, PendingSlash[]> = new Map(); // Slashes applied at epoch boundary
     private validators: Map<string, ValidatorInfo> = new Map();
     private currentEpoch: number = 0;
     private epochStartBlock: number = 0;
@@ -163,6 +173,22 @@ export class StakingPool {
                 validator.jailedUntilEpoch !== Number.MAX_SAFE_INTEGER &&
                 validator.jailedUntilEpoch <= this.currentEpoch) {
                 this.unjailValidator(address);
+            }
+        }
+
+        // Process pending slashes (per PoS Protocol Spec v2: applied at epoch boundary)
+        for (const [address, slashes] of this.pendingSlashes) {
+            const applicable = slashes.filter(s => s.epochEffective <= this.currentEpoch);
+            const remaining = slashes.filter(s => s.epochEffective > this.currentEpoch);
+
+            for (const slash of applicable) {
+                this.applySlash(address, slash);
+            }
+
+            if (remaining.length === 0) {
+                this.pendingSlashes.delete(address);
+            } else {
+                this.pendingSlashes.set(address, remaining);
             }
         }
 
@@ -386,26 +412,56 @@ export class StakingPool {
 
     // ========== SLASHING ==========
 
+    /**
+     * Queue a slash for application at next epoch boundary.
+     * Per PoS Protocol Spec v2: slashing detected at current block, applied at next epoch.
+     * Jailing is immediate (validator removed from selection), stake reduction is deferred.
+     */
     slash(address: string, reason: string): number {
         const stake = this.stakes.get(address);
         if (!stake) return 0;
 
         const slashAmount = Math.floor(stake.amount * (SLASH_PERCENT / 100));
-        stake.amount -= slashAmount;
-        this.stakes.set(address, stake);
+
+        // Queue slash for epoch boundary
+        const pendingSlash: PendingSlash = {
+            address,
+            reason,
+            slashPercent: SLASH_PERCENT,
+            epochEffective: this.currentEpoch + 1,
+            detectedAt: Date.now()
+        };
+
+        const existing = this.pendingSlashes.get(address) || [];
+        existing.push(pendingSlash);
+        this.pendingSlashes.set(address, existing);
 
         const validator = this.validators.get(address);
         if (validator) {
             validator.slashCount++;
             this.validators.set(address, validator);
-
-            // Auto-jail on slash
+            // Jail immediately to prevent block production (even before slash applied)
             this.jailValidator(address, reason);
         }
 
-        this.updateValidator(address);
-        this.log.warn(`⚠️ Slashed ${slashAmount} LVE from ${address.slice(0, 10)}... Reason: ${reason}`);
+        this.log.warn(`⚠️ Slash queued: ${slashAmount} LVE from ${address.slice(0, 10)}... (effective epoch ${this.currentEpoch + 1})`);
         return slashAmount;
+    }
+
+    /**
+     * Actually apply a slash (called during epoch transition)
+     * @internal
+     */
+    private applySlash(address: string, pendingSlash: PendingSlash): void {
+        const stake = this.stakes.get(address);
+        if (!stake) return;
+
+        const slashAmount = Math.floor(stake.amount * (pendingSlash.slashPercent / 100));
+        stake.amount -= slashAmount;
+        this.stakes.set(address, stake);
+        this.updateValidator(address);
+
+        this.log.warn(`🔪 Slash applied: ${slashAmount} LVE from ${address.slice(0, 10)}... Reason: ${pendingSlash.reason}`);
     }
 
     // ========== JAILING ==========

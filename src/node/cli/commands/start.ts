@@ -16,7 +16,7 @@ import { initBlockProducer, stakingPool } from '../../../runtime/staking/index.j
 import { config } from '../../config.js';
 import { boxBottom, boxCenter, boxEmpty, boxSeparator, boxTop } from '../../../protocol/utils/box.js';
 import { getRole, RoleConfig, RoleName } from '../../roles/index.js';
-import { loadGenesisConfig } from '../../../protocol/consensus/index.js';
+import { loadGenesisConfig, initValidatorKey, getValidatorKey } from '../../../protocol/consensus/index.js';
 
 import { createBlockchainRoutes } from '../../api/routes/blockchain.js';
 import { createWalletRoutes } from '../../api/routes/wallet.js';
@@ -210,15 +210,23 @@ export async function startNode(options: NodeOptions): Promise<void> {
         stakingPool.loadGenesisValidators(genesisConfig.validators);
         logger.info(`🌱 Loaded ${genesisConfig.validators.length} genesis validator(s)`);
 
-        // Check if THIS node is a genesis validator by matching consensus pubkey
-        const nodePubKey = nodeIdentity.getNodeId();
-        const matchingValidator = genesisConfig.validators.find(
-            v => v.consensusPubKey === nodePubKey
-        );
-        if (matchingValidator) {
-            isGenesisValidator = true;
-            genesisRewardAddress = matchingValidator.operatorAddress;
-            logger.info(`🎯 Node is genesis validator: ${matchingValidator.moniker || matchingValidator.operatorAddress.slice(0, 16)}...`);
+        // Load validator key for block signing (consensus key)
+        // This is separate from NodeIdentity (P2P key)
+        try {
+            const validatorKey = await initValidatorKey(options.dataDir);
+            const validatorPubKey = validatorKey.getPubKey();
+
+            // Check if THIS node is a genesis validator by matching consensus pubkey
+            const matchingValidator = genesisConfig.validators.find(
+                v => v.consensusPubKey === validatorPubKey
+            );
+            if (matchingValidator) {
+                isGenesisValidator = true;
+                genesisRewardAddress = matchingValidator.operatorAddress;
+                logger.info(`🎯 Node is genesis validator: ${matchingValidator.moniker || matchingValidator.operatorAddress.slice(0, 16)}...`);
+            }
+        } catch (error) {
+            logger.warn(`⚠️ Could not load validator key: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
     }
 

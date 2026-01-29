@@ -1,59 +1,171 @@
-# Fix Genesis Validator Block Production
+# PoS Protocol Spec v2 — Compliance Report
 
-## Problem
+> **Methodology:** For each spec requirement, verify existing code.  
+> **Rule:** EXTEND existing logic, NEVER duplicate.
 
-Genesis validators loaded from `genesis.json` have:
-- `operatorAddress` — their wallet/reward address
-- `consensusPubKey` — their Ed25519 public key for signing blocks
-- `power` — their voting power (= stake)
+---
 
-But current code in [start.ts](file:///home/abdulloh/my%20works/2026/my-blockchain/src/node/cli/commands/start.ts) requires a **separate** `rewardAddress` from `nodeIdentity.getRewardAddress()`, which is NOT set by default. This causes:
-- "Validator Setup Required" message
-- Block production **skipped** for genesis validators
-- Chicken-and-egg problem: no blocks = transactions stuck forever
+## Design Axioms
 
-## Solution
+| Axiom | Spec Requirement | Status | Evidence |
+|-------|-----------------|--------|----------|
+| 1 | Genesis defines initial trust root, MUST exist before any node starts | ✅ COMPLIANT | [loadGenesisConfig()](file:///home/abdulloh/my%20works/2026/my-blockchain/src/protocol/consensus/GenesisValidator.ts#45-63) called in start.ts before blockchain init |
+| 2 | RPC nodes NEVER participate in consensus | ✅ COMPLIANT | [rpc.ts](file:///home/abdulloh/my%20works/2026/my-blockchain/src/node/roles/rpc.ts): `blockProduction: false` |
+| 3 | All validator state changes occur ONLY at epoch boundaries | ⚠️ PARTIAL | [transitionEpoch()](file:///home/abdulloh/my%20works/2026/my-blockchain/src/runtime/staking/StakingPool.ts#107-171) handles pending, but [slash()](file:///home/abdulloh/my%20works/2026/my-blockchain/src/runtime/staking/StakingPool.ts#389-410) is immediate |
+| 4 | No duplicated staking/validator logic | ✅ COMPLIANT | Single [StakingPool](file:///home/abdulloh/my%20works/2026/my-blockchain/src/runtime/staking/StakingPool.ts#74-789) class |
 
-Genesis validators should produce blocks **automatically** without additional setup:
+---
 
-1. **Match node identity to genesis validator** by comparing `nodeIdentity.getPublicKey()` with `genesisConfig.validators[].consensusPubKey`
-2. If match found → this node IS a genesis validator → use `operatorAddress` as reward address
-3. Start block producer immediately
+## Roles
 
-## Proposed Changes
+| Role | Spec Requirement | Status | Evidence |
+|------|-----------------|--------|----------|
+| Wallet | hold_balance, send_tx, delegate, undelegate | ✅ COMPLIANT | Wallet class has these methods |
+| Wallet NEVER | block_signing, consensus | ✅ COMPLIANT | No signing in Wallet |
+| Validator | block_production, consensus_voting | ✅ COMPLIANT | [validator.ts](file:///home/abdulloh/my%20works/2026/my-blockchain/src/node/roles/validator.ts): `blockProduction: true` |
+| RPC NEVER | sign_blocks, modify_state | ✅ COMPLIANT | [rpc.ts](file:///home/abdulloh/my%20works/2026/my-blockchain/src/node/roles/rpc.ts): `blockProduction: false`, `staking: false` |
 
-### [MODIFY] [start.ts](file:///home/abdulloh/my%20works/2026/my-blockchain/src/node/cli/commands/start.ts)
+---
 
-After loading genesis validators (~line 209), add logic:
+## Genesis
 
+| Requirement | Status | Evidence |
+|-------------|--------|----------|
+| Created before network start | ✅ | [init.sh](file:///home/abdulloh/my%20works/2026/my-blockchain/runners/genesis-bootstrap/init.sh) creates before start |
+| Immutable | ✅ | No runtime modification |
+| Defines: chain_id | ✅ | `GenesisConfig.chainId` |
+| Defines: initial_balances | ✅ | `GenesisConfig.initialBalances` |
+| Defines: epoch_parameters | ✅ | `GenesisConfig.epochParams` |
+| Defines: genesis_validator_set | ✅ | `GenesisConfig.validators` |
+| NEVER: staking_transactions | ✅ | Not in genesis.json |
+| NEVER: pending_validators | ✅ | Not in genesis.json |
+| NEVER: runtime_generated_keys | ✅ | Keys generated separately |
+
+---
+
+## Validator Identity Model
+
+| Requirement | Status | Evidence |
+|-------------|--------|----------|
+| operator_address = stable identifier | ✅ | `GenesisValidator.operatorAddress` |
+| consensus_key for block_signing | ✅ | [ValidatorKey.ts](file:///home/abdulloh/my%20works/2026/my-blockchain/src/protocol/consensus/ValidatorKey.ts) exists |
+| consensus_key rotatable | ❌ MISSING | No rotation function |
+| rotation effective at epoch boundary | ❌ MISSING | No rotation logic |
+
+**Required fix:** Add key rotation (FUTURE, not blocking testnet)
+
+---
+
+## Genesis Validator
+
+| Requirement | Status | Evidence |
+|-------------|--------|----------|
+| Defined in genesis | ✅ | `genesis.json` has validators |
+| Bypasses pending | ✅ | [loadGenesisValidators()](file:///home/abdulloh/my%20works/2026/my-blockchain/src/runtime/staking/StakingPool.ts#792-825) sets `isActive: true` |
+| Can be slashed | ✅ | [slash()](file:///home/abdulloh/my%20works/2026/my-blockchain/src/runtime/staking/StakingPool.ts#389-410) works on any address |
+| Can be unstaked | ⚠️ NEEDS VERIFY | Should check if protected |
+| minimum_liveness_epochs: 1 | ⚠️ NOT ENFORCED | `epochParams.minValidatorEpochs` exists but not checked |
+
+---
+
+## Epoch Model
+
+| Requirement | Spec | Code | Status |
+|-------------|------|------|--------|
+| epoch_length_blocks | 100 | `epochDuration: 100` | ✅ COMPLIANT |
+| epoch_boundary_rule | `height % epoch_length == 0` | `height >= epochStartBlock + EPOCH_DURATION` | ⚠️ DIFFERENT |
+
+**Analysis:** Code uses "at least N blocks since epoch start" instead of modulo.  
+**Impact:** Functionally equivalent for normal operation, but not exactly per spec.
+
+---
+
+## State Transition Rules
+
+| Transition | Spec | Code | Status |
+|------------|------|------|--------|
+| Staking recorded_at | current_block | ✅ Added to `pendingStakes` | ✅ |
+| Staking effective_at | next_epoch_boundary | ✅ [transitionEpoch()](file:///home/abdulloh/my%20works/2026/my-blockchain/src/runtime/staking/StakingPool.ts#107-171) activates | ✅ |
+| Unstaking requested_at | current_block | ✅ Added to `pendingUnstakes` | ✅ |
+| Unstaking locked_for | unbonding_period | ✅ `unbondingEpochs: 3` testnet | ✅ |
+| Slashing detected_at | current_block | ✅ | ✅ |
+| Slashing applied_at | **next_epoch_boundary** | ❌ **IMMEDIATE** | ❌ VIOLATION |
+
+**CRITICAL FIX REQUIRED:**
 ```typescript
-// Check if this node is a genesis validator
-let isGenesisValidator = false;
-let genesisRewardAddress: string | null = null;
+// Current (WRONG):
+slash() { stake.amount -= slashAmount; }  // Immediate
 
-if (genesisConfig) {
-    const nodePubKey = nodeIdentity.getPublicKey();
-    const matchingValidator = genesisConfig.validators.find(
-        v => v.consensusPubKey === nodePubKey
-    );
-    if (matchingValidator) {
-        isGenesisValidator = true;
-        genesisRewardAddress = matchingValidator.operatorAddress;
-        logger.info(`🎯 Node is genesis validator: ${matchingValidator.moniker || 'unnamed'}`);
-    }
+// Should be:
+slash() {
+    this.pendingSlashes.set(address, { amount, epochEffective: this.currentEpoch + 1 });
 }
 ```
 
-Then modify block production section (~line 387-449):
-- If `isGenesisValidator` → use `genesisRewardAddress`, skip stake check, start block producer
-- If NOT genesis validator → keep existing logic (require stake)
+---
 
-## Verification
+## Validator Set Update
 
-After fix, genesis node logs should show:
-```
-🌱 Loaded 1 genesis validator(s)
-🎯 Node is genesis validator: genesis-validator
-🏭 Block producer started
-⛏️ Block #1 created by tLVE...
-```
+| Requirement | Status | Evidence |
+|-------------|--------|----------|
+| Selection: top_N_by_power | ⚠️ PARTIAL | Current: ALL with stake >= MIN |
+| Update at epoch_boundary_only | ✅ | [updateValidator()](file:///home/abdulloh/my%20works/2026/my-blockchain/src/runtime/staking/StakingPool.ts#484-516) in [transitionEpoch()](file:///home/abdulloh/my%20works/2026/my-blockchain/src/runtime/staking/StakingPool.ts#107-171) |
+| Determinism guarantee | ✅ | Same seed = same validator |
+
+**Note:** No `max_validators` limit enforced. May want to add.
+
+---
+
+## Slashing Model
+
+| Requirement | Status | Evidence |
+|-------------|--------|----------|
+| Double-sign: severe_slash + jail | ✅ | [slashDoubleSign()](file:///home/abdulloh/my%20works/2026/my-blockchain/src/runtime/staking/SlashingManager.ts#38-53) calls [slash()](file:///home/abdulloh/my%20works/2026/my-blockchain/src/runtime/staking/StakingPool.ts#389-410) + [jail()](file:///home/abdulloh/my%20works/2026/my-blockchain/src/runtime/staking/StakingPool.ts#412-440) |
+| Downtime: minor_slash_or_jail | ⚠️ DEAD CODE | [recordMissedSlot()](file:///home/abdulloh/my%20works/2026/my-blockchain/src/runtime/staking/SlashingManager.ts#53-65) exists but not called |
+
+---
+
+## Protocol Invariants
+
+| Invariant | Status |
+|-----------|--------|
+| All honest nodes derive same validator set | ✅ Deterministic VRF |
+| No key outside active set can produce block | ⚠️ NOT ENFORCED |
+| Power changes ONLY at epoch boundary | ⚠️ VIOLATED by [slash()](file:///home/abdulloh/my%20works/2026/my-blockchain/src/runtime/staking/StakingPool.ts#389-410) |
+| Genesis never modified at runtime | ✅ COMPLIANT |
+
+---
+
+## Summary: Required Fixes
+
+### Phase 1: Critical for Spec Compliance
+
+| Fix | Code Location | Change |
+|-----|---------------|--------|
+| Load ValidatorKey at startup | [start.ts](file:///home/abdulloh/my%20works/2026/my-blockchain/src/node/cli/commands/start.ts) | Add [initValidatorKey()](file:///home/abdulloh/my%20works/2026/my-blockchain/src/protocol/consensus/ValidatorKey.ts#206-213) |
+| Fix genesis validator detection | [start.ts](file:///home/abdulloh/my%20works/2026/my-blockchain/src/node/cli/commands/start.ts) | Compare ValidatorKey pubkey |
+| Defer slashing to epoch boundary | `StakingPool.slash()` | Add `pendingSlashes` queue |
+
+### Phase 2: Improve Compliance
+
+| Fix | Code Location | Change |
+|-----|---------------|--------|
+| Enable offline slashing | [BlockProducer.ts](file:///home/abdulloh/my%20works/2026/my-blockchain/src/runtime/staking/BlockProducer.ts) | Call [recordMissedSlot()](file:///home/abdulloh/my%20works/2026/my-blockchain/src/runtime/staking/SlashingManager.ts#53-65) |
+| Enforce max_validators | [updateValidator()](file:///home/abdulloh/my%20works/2026/my-blockchain/src/runtime/staking/StakingPool.ts#484-516) | Limit active set size |
+
+### Phase 3: Future (Not Blocking Testnet)
+
+- Key rotation
+- State snapshots at epoch boundary
+
+---
+
+## Final Check
+
+> **"Have I reused and extended all existing logic instead of duplicating it?"**
+
+**YES.** All proposed fixes:
+- Extend existing [StakingPool](file:///home/abdulloh/my%20works/2026/my-blockchain/src/runtime/staking/StakingPool.ts#74-789) (add `pendingSlashes`)
+- Wire up existing `SlashingManager.recordMissedSlot()`
+- Load existing [ValidatorKey](file:///home/abdulloh/my%20works/2026/my-blockchain/src/protocol/consensus/ValidatorKey.ts#32-202) singleton
+- NO new modules, NO parallel systems
