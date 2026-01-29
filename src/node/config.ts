@@ -1,4 +1,22 @@
+import { readFileSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
 const isTestnet = process.env.NETWORK_MODE !== 'mainnet';
+
+// Read version from package.json dynamically
+function getPackageVersion(): string {
+    try {
+        // Handle ESM module path resolution
+        const __filename = fileURLToPath(import.meta.url);
+        const __dirname = dirname(__filename);
+        const pkgPath = join(__dirname, '../../package.json');
+        const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'));
+        return pkg.version || '0.0.0';
+    } catch {
+        return '0.0.0';
+    }
+}
 
 // Fixed genesis configuration for network consistency
 // ALL nodes must use these values to have same genesis hash
@@ -16,8 +34,8 @@ const GENESIS_CONFIG = {
 // Protocol Version Control
 // Increment PROTOCOL_VERSION on breaking changes, update MIN_PROTOCOL_VERSION to enforce upgrades
 const VERSION_CONFIG = {
-    // Software version (semver)
-    nodeVersion: '2.1.0',
+    // Software version (from package.json)
+    nodeVersion: getPackageVersion(),
     // Protocol version (increment on breaking network changes)
     protocolVersion: 1,
     // Minimum protocol version required to connect (used for mandatory updates)
