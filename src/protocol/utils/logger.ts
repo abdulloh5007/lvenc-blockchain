@@ -1,6 +1,9 @@
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
-const colors = {
+// Disable colors when not in TTY (e.g., PM2 logs)
+const isTTY = process.stdout.isTTY ?? false;
+
+const colors = isTTY ? {
     reset: '\x1b[0m',
     bright: '\x1b[1m',
     dim: '\x1b[2m',
@@ -10,6 +13,16 @@ const colors = {
     blue: '\x1b[34m',
     magenta: '\x1b[35m',
     cyan: '\x1b[36m',
+} : {
+    reset: '',
+    bright: '',
+    dim: '',
+    red: '',
+    green: '',
+    yellow: '',
+    blue: '',
+    magenta: '',
+    cyan: '',
 };
 
 const levelColors: Record<LogLevel, string> = {
