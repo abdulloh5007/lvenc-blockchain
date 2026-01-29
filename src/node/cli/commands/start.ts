@@ -1,4 +1,6 @@
 import 'dotenv/config';
+import * as fs from 'fs';
+import * as path from 'path';
 import * as net from 'net';
 import * as readline from 'readline';
 import express, { Express } from 'express';
@@ -486,6 +488,76 @@ export async function startNode(options: NodeOptions): Promise<void> {
     // NOTE: No staking.json auto-save - state is derived from blockchain only
 
     logger.info(`\n✓ Node is running!`);
+
+    // === REAL-TIME NOTIFICATIONS ===
+    const identityPath = path.join(options.dataDir, 'identity.key');
+    let lastRewardAddress: string | null = null;
+    let lastValidatorStatus = { isActive: false, stake: 0 };
+
+    // Load initial reward address
+    try {
+        if (fs.existsSync(identityPath)) {
+            const data = JSON.parse(fs.readFileSync(identityPath, 'utf-8'));
+            lastRewardAddress = data.rewardAddress || null;
+        }
+    } catch { /* ignore */ }
+
+    // Watch identity.key for changes (reward bind)
+    if (fs.existsSync(identityPath)) {
+        fs.watch(identityPath, (eventType: fs.WatchEventType) => {
+            if (eventType === 'change') {
+                try {
+                    const data = JSON.parse(fs.readFileSync(identityPath, 'utf-8'));
+                    if (data.rewardAddress && data.rewardAddress !== lastRewardAddress) {
+                        logger.info(`🎯 Reward address bound: ${data.rewardAddress}`);
+                        lastRewardAddress = data.rewardAddress;
+                    }
+                } catch { /* ignore parse errors */ }
+            }
+        });
+    }
+
+    // Periodic validator status check (every 10 seconds)
+    const validatorKey = getValidatorKey();
+    if (validatorKey) {
+        const myAddress = validatorKey.getAddress();
+        setInterval(() => {
+            const stake = stakingPool.getStake(myAddress);
+            const pendingStake = stakingPool.getPendingStake(myAddress);
+            const validators = stakingPool.getValidators();
+            const isActive = validators.some(v => v.address === myAddress);
+            const MIN_STAKE = 100;
+
+            // Check for stake changes
+            if (stake !== lastValidatorStatus.stake) {
+                if (stake > lastValidatorStatus.stake) {
+                    logger.info(`💰 Stake updated: ${lastValidatorStatus.stake} → ${stake} LVE`);
+                } else if (stake < lastValidatorStatus.stake) {
+                    logger.info(`📉 Stake decreased: ${lastValidatorStatus.stake} → ${stake} LVE`);
+                }
+
+                if (stake < MIN_STAKE && stake > 0) {
+                    logger.info(`⚠️ Need ${MIN_STAKE - stake} more LVE to become validator`);
+                }
+                lastValidatorStatus.stake = stake;
+            }
+
+            // Check for pending stake
+            if (pendingStake > 0) {
+                logger.debug(`⏳ Pending stake: ${pendingStake} LVE (activates next epoch)`);
+            }
+
+            // Check for validator activation
+            if (isActive && !lastValidatorStatus.isActive) {
+                logger.info(`🎉 YOU ARE NOW AN ACTIVE VALIDATOR! Stake: ${stake} LVE`);
+                lastValidatorStatus.isActive = true;
+            } else if (!isActive && lastValidatorStatus.isActive) {
+                logger.warn(`⚠️ No longer active validator. Stake: ${stake} LVE`);
+                lastValidatorStatus.isActive = false;
+            }
+        }, 10000);
+    }
+
     console.log(`\n📋 Available commands: status, peers, info, help, exit\n`);
 
     // Interactive REPL
