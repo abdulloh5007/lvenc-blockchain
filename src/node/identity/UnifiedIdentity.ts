@@ -254,9 +254,11 @@ export class UnifiedIdentity {
     }
 
     private deriveAddress(pubKeyHex: string): string {
-        const pubKeyBuffer = Buffer.from(pubKeyHex, 'hex');
-        const hash = crypto.createHash('sha256').update(pubKeyBuffer).digest('hex');
-        return hash.slice(0, 40).toUpperCase();
+        // MUST match Wallet.deriveAddress exactly!
+        // Wallet uses: sha256(publicKey).substring(0, 40) where sha256 hashes the HEX STRING
+        // NOT bytes! This is important for compatibility.
+        const hash = crypto.createHash('sha256').update(pubKeyHex).digest('hex');
+        return hash.slice(0, 40);
     }
 
     // ==================== MIGRATION ====================
