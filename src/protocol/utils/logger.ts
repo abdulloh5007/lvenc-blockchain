@@ -51,7 +51,8 @@ class Logger {
         const color = levelColors[level];
         const icon = levelIcons[level];
 
-        console.log(
+        // Use stderr for logs to keep stdout clean for CLI scripting
+        console.error(
             `${colors.dim}${timestamp}${colors.reset} ${icon} ${color}[${level.toUpperCase()}]${colors.reset} ${colors.cyan}[${this.context}]${colors.reset} ${message}`,
             ...args
         );
