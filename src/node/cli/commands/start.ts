@@ -178,7 +178,7 @@ export async function startNode(options: NodeOptions): Promise<void> {
 
     // Initialize node identity (Ed25519 keypair)
     // Identity is stored in network-specific directory
-    const identityDir = `${options.dataDir}/${network}`;
+    const identityDir = options.dataDir;
     const { initNodeIdentity } = await import('../../identity/index.js');
     const nodeIdentity = await initNodeIdentity(identityDir);
     logger.info(`🔑 Node ID: ${nodeIdentity.getShortId()}`);
