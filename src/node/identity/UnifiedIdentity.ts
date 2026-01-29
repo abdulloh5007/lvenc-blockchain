@@ -23,7 +23,6 @@ import * as ed from '@noble/ed25519';
 import { logger } from '../../protocol/utils/logger.js';
 import { config } from '../config.js';
 import { chainParams } from '../../protocol/params/index.js';
-import { boxCenter, boxSeparator, boxTop, boxBottom, boxEmpty } from '../../protocol/utils/box.js';
 
 // BIP-44 path for validator identity (different from wallet path m/44'/607'/0'/0/0)
 // Using m/44'/607'/1'/0/0 for validator keys (account 1 instead of 0)
@@ -98,31 +97,67 @@ export class UnifiedIdentity {
     async showFirstRunWarning(): Promise<void> {
         if (!this.showMnemonic || !this.data?.mnemonic) return;
 
+        // Dynamic import to avoid circular dependency
+        const { warningBox, c, sym, newline, keyValue } = await import('../../protocol/utils/cli.js');
+        const chalk = (await import('chalk')).default;
+        const boxen = (await import('boxen')).default;
+
         const words = this.data.mnemonic.split(' ');
 
-        console.log('');
-        console.log('\x1b[41m\x1b[37m' + '═'.repeat(65) + '\x1b[0m');
-        console.log('\x1b[41m\x1b[37m' + boxCenter('⚠️  CRITICAL: SAVE YOUR MNEMONIC PHRASE!') + '\x1b[0m');
-        console.log('\x1b[41m\x1b[37m' + '═'.repeat(65) + '\x1b[0m');
-        console.log('');
-        console.log('\x1b[33mThis is the ONLY time you will see these words!\x1b[0m');
-        console.log('\x1b[33mWithout them, you CANNOT recover your validator stake!\x1b[0m');
-        console.log('');
-        console.log('┌────────────────────────────────────────────────────────────────┐');
-
-        // Display mnemonic in 4 rows of 6 words
+        // Format mnemonic in 4 rows of 6 words
+        const mnemonicLines: string[] = [];
         for (let row = 0; row < 4; row++) {
             const rowWords = words.slice(row * 6, (row + 1) * 6);
             const formatted = rowWords.map((w, i) => {
-                const num = (row * 6 + i + 1).toString().padStart(2, ' ');
-                return `${num}. ${w.padEnd(10)}`;
+                const num = chalk.dim((row * 6 + i + 1).toString().padStart(2, ' ') + '.');
+                return `${num} ${chalk.bold.white(w.padEnd(10))}`;
             }).join(' ');
-            console.log(`│  ${formatted}  │`);
+            mnemonicLines.push(formatted);
         }
 
-        console.log('└────────────────────────────────────────────────────────────────┘');
+        const mnemonicContent = mnemonicLines.join('\n');
+
+        // Create beautiful boxen mnemonic display
+        const mnemonicBox = boxen(mnemonicContent, {
+            padding: { top: 0, bottom: 0, left: 1, right: 1 },
+            borderStyle: 'round',
+            borderColor: 'yellow',
+            title: chalk.bold.yellow('🔐 Your 24-Word Mnemonic'),
+            titleAlignment: 'center',
+        });
+
+        // Warning header
+        const warningContent = [
+            chalk.bold.red('This is the ONLY time you will see these words!'),
+            chalk.yellow('Without them, you CANNOT recover your validator stake!'),
+        ].join('\n');
+
+        const warningHeader = boxen(warningContent, {
+            padding: 1,
+            borderStyle: 'double',
+            borderColor: 'red',
+            title: chalk.bold.red('⚠️  CRITICAL: SAVE YOUR MNEMONIC'),
+            titleAlignment: 'center',
+        });
+
+        // Address info
+        const addressInfo = boxen(
+            chalk.cyan.bold(this.getFullAddress()),
+            {
+                padding: { top: 0, bottom: 0, left: 2, right: 2 },
+                borderStyle: 'round',
+                borderColor: 'cyan',
+                title: chalk.cyan('💰 Your Validator Address'),
+                titleAlignment: 'center',
+            }
+        );
+
         console.log('');
-        console.log(`\x1b[36mYour Validator Address: ${this.getFullAddress()}\x1b[0m`);
+        console.log(warningHeader);
+        console.log('');
+        console.log(mnemonicBox);
+        console.log('');
+        console.log(addressInfo);
         console.log('');
 
         if (process.stdin.isTTY) {
@@ -130,16 +165,20 @@ export class UnifiedIdentity {
         }
     }
 
-    private waitForConfirmation(): Promise<void> {
+    private async waitForConfirmation(): Promise<void> {
+        const chalk = (await import('chalk')).default;
+
         return new Promise((resolve) => {
             const rl = readline.createInterface({
                 input: process.stdin,
                 output: process.stdout
             });
-            rl.question('\x1b[33m⚠️  Type "I SAVED IT" to confirm you backed up your mnemonic: \x1b[0m', (answer) => {
+            rl.question(chalk.yellow.bold('⚠️  Type "I SAVED IT" to confirm: '), (answer) => {
                 rl.close();
                 if (answer.trim().toUpperCase() !== 'I SAVED IT') {
-                    console.log('\x1b[31m⚠️  Please backup your mnemonic before continuing!\x1b[0m');
+                    console.log(chalk.red('⚠️  Please backup your mnemonic before continuing!'));
+                } else {
+                    console.log(chalk.green('✓ Mnemonic backup confirmed'));
                 }
                 resolve();
             });
