@@ -15,6 +15,18 @@ import { logger } from '../utils/logger.js';
 export const VALIDATOR_KEY_VERSION = 1;
 export const VALIDATOR_KEY_FILE = 'priv_validator_key.json';
 
+/**
+ * Derive validator address from public key hex.
+ * Same algorithm as ValidatorKey uses internally.
+ * @param pubKeyHex - Hex-encoded public key (DER format)
+ * @returns Address (first 40 chars of sha256 hash, uppercase)
+ */
+export function deriveAddressFromPubKey(pubKeyHex: string): string {
+    const pubKeyBuffer = Buffer.from(pubKeyHex, 'hex');
+    const hash = crypto.createHash('sha256').update(pubKeyBuffer).digest('hex');
+    return hash.slice(0, 40).toUpperCase();
+}
+
 export interface ValidatorKeyData {
     version: number;
     address: string;           // Derived from pubkey (for identification)

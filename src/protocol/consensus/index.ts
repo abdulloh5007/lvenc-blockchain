@@ -6,6 +6,7 @@ export {
     ValidatorKey,
     initValidatorKey,
     getValidatorKey,
+    deriveAddressFromPubKey,
     VALIDATOR_KEY_FILE,
     VALIDATOR_KEY_VERSION
 } from './ValidatorKey.js';

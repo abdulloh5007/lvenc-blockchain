@@ -11,6 +11,7 @@ import {
     createDefaultGenesis,
     saveGenesisConfig,
     loadGenesisConfig,
+    deriveAddressFromPubKey,
     GenesisConfig
 } from '../../../protocol/consensus/index.js';
 import { chainParams } from '../../../protocol/params/index.js';
@@ -91,9 +92,9 @@ genesisCommand
             process.exit(1);
         }
 
-        // Derive address from pubkey if not provided
+        // Derive address from pubkey using same algorithm as ValidatorKey
         const operatorAddress = options.address ||
-            (chainParams.addressPrefix + options.pubkey.slice(0, 36));
+            (chainParams.addressPrefix + deriveAddressFromPubKey(options.pubkey));
 
         // Check for duplicate
         if (genesis.validators.some(v => v.consensusPubKey === options.pubkey)) {
