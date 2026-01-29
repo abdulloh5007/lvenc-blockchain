@@ -19,6 +19,7 @@ import { config } from '../../config.js';
 import { boxBottom, boxCenter, boxEmpty, boxSeparator, boxTop } from '../../../protocol/utils/box.js';
 import { getRole, RoleConfig, RoleName } from '../../roles/index.js';
 import { loadGenesisConfig, initValidatorKey, getValidatorKey } from '../../../protocol/consensus/index.js';
+import { chainParams } from '../../../protocol/params/index.js';
 
 import { createBlockchainRoutes } from '../../api/routes/blockchain.js';
 import { createWalletRoutes } from '../../api/routes/wallet.js';
@@ -520,13 +521,24 @@ export async function startNode(options: NodeOptions): Promise<void> {
     // Periodic validator status check (every 10 seconds)
     const validatorKey = getValidatorKey();
     if (validatorKey) {
-        const myAddress = validatorKey.getAddress();
+        const myAddress = chainParams.addressPrefix + validatorKey.getAddress();
         setInterval(() => {
             const stake = stakingPool.getStake(myAddress);
             const pendingStake = stakingPool.getPendingStake(myAddress);
             const validators = stakingPool.getValidators();
             const isActive = validators.some(v => v.address === myAddress);
-            const MIN_STAKE = 100;
+            const MIN_STAKE = chainParams.staking.minValidatorSelfStake;
+
+            // Calculate VRF chances if active
+            let vrfChance = 0;
+            if (isActive && stake > 0) {
+                const totalStake = validators
+                    .filter(v => v.isActive)
+                    .reduce((sum, v) => sum + (stakingPool.getStake(v.address) || 0), 0);
+                if (totalStake > 0) {
+                    vrfChance = Math.round((stake / totalStake) * 100);
+                }
+            }
 
             // Check for stake changes
             if (stake !== lastValidatorStatus.stake) {
@@ -538,18 +550,20 @@ export async function startNode(options: NodeOptions): Promise<void> {
 
                 if (stake < MIN_STAKE && stake > 0) {
                     logger.info(`⚠️ Need ${MIN_STAKE - stake} more LVE to become validator`);
+                } else if (stake >= MIN_STAKE && isActive) {
+                    logger.info(`📊 VRF selection chance: ~${vrfChance}%`);
                 }
                 lastValidatorStatus.stake = stake;
             }
 
             // Check for pending stake
             if (pendingStake > 0) {
-                logger.debug(`⏳ Pending stake: ${pendingStake} LVE (activates next epoch)`);
+                logger.info(`⏳ Pending stake: ${pendingStake} LVE (activates next epoch)`);
             }
 
             // Check for validator activation
             if (isActive && !lastValidatorStatus.isActive) {
-                logger.info(`🎉 YOU ARE NOW AN ACTIVE VALIDATOR! Stake: ${stake} LVE`);
+                logger.info(`🎉 YOU ARE NOW AN ACTIVE VALIDATOR! Stake: ${stake} LVE (~${vrfChance}% VRF chance)`);
                 lastValidatorStatus.isActive = true;
             } else if (!isActive && lastValidatorStatus.isActive) {
                 logger.warn(`⚠️ No longer active validator. Stake: ${stake} LVE`);
