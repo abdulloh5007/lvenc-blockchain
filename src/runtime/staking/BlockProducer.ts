@@ -103,16 +103,28 @@ export class BlockProducer {
             return;
         }
 
-        try {
-            // Get validator key for Ed25519 signing (consensus key)
-            const validatorKey = getValidatorKey();
+        // Get our validator key (if we have one)
+        const validatorKey = getValidatorKey();
 
+        // Check if THIS node is the selected validator
+        if (!validatorKey) {
+            // We don't have a validator key - we're not a validator node
+            this.log.debug(`Slot ${currentSlot}: No validator key, skipping block production`);
+            return;
+        }
+
+        const myValidatorAddress = validatorKey.getAddress();
+        if (validatorAddress !== myValidatorAddress) {
+            // Not our slot - another validator should produce this block
+            this.log.debug(`Slot ${currentSlot}: Not our turn (selected: ${validatorAddress.slice(0, 12)}...)`);
+            return;
+        }
+
+        // IT'S OUR SLOT! Produce the block
+        this.log.info(`🎯 Slot ${currentSlot}: Our turn to produce block`);
+
+        try {
             const signFn = (hash: string): string => {
-                if (!validatorKey) {
-                    // Fallback to sha256 if no validator key (should not happen in production)
-                    this.log.warn('⚠️ No validator key for signing, using fallback');
-                    return sha256(validatorAddress + hash + currentSlot.toString());
-                }
                 // Create domain-separated signing data: chainId:blockIndex:blockHash
                 const signingData = createSigningData(latestBlock.index + 1, hash);
                 return validatorKey.sign(signingData);
