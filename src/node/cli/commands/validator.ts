@@ -79,14 +79,21 @@ validatorCommand
             process.exit(1);
         }
 
+        // For --pubkey, read file directly to avoid module initialization logs
+        if (options.pubkey) {
+            try {
+                const data = fs.readFileSync(keyPath, 'utf-8');
+                const key = JSON.parse(data);
+                console.log(key.pub_key.value);
+                process.exit(0);
+            } catch (error) {
+                cli.error('Failed to read validator key');
+                process.exit(1);
+            }
+        }
+
         try {
             const key = await initValidatorKey(dataDir);
-
-            if (options.pubkey) {
-                // Output only pubkey (for scripting)
-                console.log(key.getPubKey());
-                process.exit(0);
-            }
 
             console.log('');
             console.log(cli.infoBox([

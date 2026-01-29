@@ -68,7 +68,13 @@ fi
 # Step 3: Add validator to genesis
 echo ""
 msg_info "Step 3/3: Adding validator to genesis..."
-PUBKEY=$(node dist/node/cli/cli.js validator show -d "$DATA_DIR" -n "$NETWORK" --pubkey)
+# Use jq to get pubkey directly from file (avoids CLI log noise)
+if command -v jq &> /dev/null; then
+    PUBKEY=$(jq -r '.pub_key.value' "$DATA_DIR/priv_validator_key.json")
+else
+    # Fallback to grep/sed if jq not installed
+    PUBKEY=$(grep -o '"value": "[^"]*"' "$DATA_DIR/priv_validator_key.json" | head -1 | sed 's/.*: "//;s/"$//')
+fi
 node dist/node/cli/cli.js genesis add-validator \
     -d "$DATA_DIR" \
     -n "$NETWORK" \
