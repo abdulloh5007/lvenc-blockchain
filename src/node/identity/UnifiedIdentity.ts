@@ -24,9 +24,9 @@ import { logger } from '../../protocol/utils/logger.js';
 import { config } from '../config.js';
 import { chainParams } from '../../protocol/params/index.js';
 
-// BIP-44 path for validator identity (different from wallet path m/44'/607'/0'/0/0)
-// Using m/44'/607'/1'/0/0 for validator keys (account 1 instead of 0)
-const VALIDATOR_BIP44_PATH = "m/44'/607'/1'/0/0";
+// BIP-44 path - MUST match Wallet exactly for same address from mnemonic
+// Wallet uses m/44'/60'/0'/0/0 (Ethereum derivation path)
+const BIP44_PATH = "m/44'/60'/0'/0/0";
 
 export const UNIFIED_IDENTITY_VERSION = 2;
 export const UNIFIED_IDENTITY_FILE = 'node_identity.json';
@@ -219,7 +219,7 @@ export class UnifiedIdentity {
     }> {
         const seed = bip39.mnemonicToSeedSync(mnemonic);
         const hdkey = HDKey.fromMasterSeed(seed);
-        const child = hdkey.derive(VALIDATOR_BIP44_PATH);
+        const child = hdkey.derive(BIP44_PATH);
 
         if (!child.privateKey) {
             throw new Error('Failed to derive private key from mnemonic');
