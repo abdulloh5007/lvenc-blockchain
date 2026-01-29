@@ -203,9 +203,23 @@ export async function startNode(options: NodeOptions): Promise<void> {
 
     // Load genesis validators into StakingPool (critical for block production)
     const genesisConfig = loadGenesisConfig(options.dataDir);
+    let isGenesisValidator = false;
+    let genesisRewardAddress: string | null = null;
+
     if (genesisConfig && genesisConfig.validators.length > 0) {
         stakingPool.loadGenesisValidators(genesisConfig.validators);
         logger.info(`🌱 Loaded ${genesisConfig.validators.length} genesis validator(s)`);
+
+        // Check if THIS node is a genesis validator by matching consensus pubkey
+        const nodePubKey = nodeIdentity.getNodeId();
+        const matchingValidator = genesisConfig.validators.find(
+            v => v.consensusPubKey === nodePubKey
+        );
+        if (matchingValidator) {
+            isGenesisValidator = true;
+            genesisRewardAddress = matchingValidator.operatorAddress;
+            logger.info(`🎯 Node is genesis validator: ${matchingValidator.moniker || matchingValidator.operatorAddress.slice(0, 16)}...`);
+        }
     }
 
     // Initialize NFT Manager
@@ -387,65 +401,73 @@ export async function startNode(options: NodeOptions): Promise<void> {
     // Initialize block producer (PoS) - skip in bootstrap mode or if role disables it
     const blockProductionEnabled = roleConfig ? roleConfig.services.blockProduction : true;
     if (!options.bootstrapMode && blockProductionEnabled) {
-        // Validator onboarding check
-        const rewardAddress = nodeIdentity.getRewardAddress();
-        const { chainParams } = await import('../../../protocol/params/index.js');
-        const minStake = chainParams.staking.minValidatorSelfStake;
-
-        if (!rewardAddress) {
-            console.log('');
-            console.log(boxTop());
-            console.log(boxCenter('Validator Setup Required'));
-            console.log(boxSeparator());
-            console.log(boxCenter('No reward address configured!'));
-            console.log(boxEmpty());
-            console.log(boxCenter('To receive validator rewards, run:'));
-            console.log(boxEmpty());
-            console.log(boxCenter('1. Generate wallet:'));
-            console.log(boxCenter('   lve-chain reward generate'));
-            console.log(boxEmpty());
-            console.log(boxCenter('2. Or bind existing:'));
-            console.log(boxCenter('   lve-chain reward bind <address>'));
-            console.log(boxEmpty());
-            console.log(boxCenter('Then restart the validator node.'));
-            console.log(boxBottom());
-            console.log('');
-            logger.warn('⚠ Validator running without reward address - no block production');
-        } else {
-            // Check current stake
-            const stakeAmount = stakingPool.getStake(rewardAddress);
-            const shortAddr = `${rewardAddress.slice(0, 12)}...${rewardAddress.slice(-8)}`;
-
-            if (stakeAmount < minStake) {
-                console.log('');
-                console.log(boxTop());
-                console.log(boxCenter('Insufficient Stake'));
-                console.log(boxSeparator());
-                console.log(boxCenter(`Reward Address: ${shortAddr}`));
-                console.log(boxCenter(`Current Stake:  ${stakeAmount} LVE`));
-                console.log(boxCenter(`Required:       ${minStake} LVE`));
-                console.log(boxEmpty());
-                console.log(boxCenter('To become an active validator:'));
-                console.log(boxEmpty());
-                console.log(boxCenter('1. Get LVE tokens:'));
-                console.log(boxCenter('   lve-chain faucet request <address>'));
-                console.log(boxEmpty());
-                console.log(boxCenter('2. Stake LVE:'));
-                console.log(boxCenter('   POST /api/staking/stake'));
-                console.log(boxCenter(`   {"address": "...", "amount": ${minStake}}`));
-                console.log(boxEmpty());
-                console.log(boxCenter('Status: INACTIVE (not producing blocks)'));
-                console.log(boxBottom());
-                console.log('');
-                logger.warn(`⚠ Stake ${stakeAmount}/${minStake} LVE - validator inactive`);
-            } else {
-                logger.info(`✓ Validator stake: ${stakeAmount} LVE (min: ${minStake})`);
-            }
-
-            // Start block producer regardless (it will check stake internally)
+        // Genesis validators start immediately - no stake check needed
+        if (isGenesisValidator && genesisRewardAddress) {
+            logger.info(`✓ Genesis validator ready (power from genesis.json)`);
             const blockProducer = initBlockProducer(blockchain);
             blockProducer.start();
             logger.info(`🏭 Block producer started`);
+        } else {
+            // Non-genesis validators need stake
+            const rewardAddress = nodeIdentity.getRewardAddress();
+            const { chainParams } = await import('../../../protocol/params/index.js');
+            const minStake = chainParams.staking.minValidatorSelfStake;
+
+            if (!rewardAddress) {
+                console.log('');
+                console.log(boxTop());
+                console.log(boxCenter('Validator Setup Required'));
+                console.log(boxSeparator());
+                console.log(boxCenter('No reward address configured!'));
+                console.log(boxEmpty());
+                console.log(boxCenter('To receive validator rewards, run:'));
+                console.log(boxEmpty());
+                console.log(boxCenter('1. Generate wallet:'));
+                console.log(boxCenter('   lve-chain reward generate'));
+                console.log(boxEmpty());
+                console.log(boxCenter('2. Or bind existing:'));
+                console.log(boxCenter('   lve-chain reward bind <address>'));
+                console.log(boxEmpty());
+                console.log(boxCenter('Then restart the validator node.'));
+                console.log(boxBottom());
+                console.log('');
+                logger.warn('⚠ Validator running without reward address - no block production');
+            } else {
+                // Check current stake
+                const stakeAmount = stakingPool.getStake(rewardAddress);
+                const shortAddr = `${rewardAddress.slice(0, 12)}...${rewardAddress.slice(-8)}`;
+
+                if (stakeAmount < minStake) {
+                    console.log('');
+                    console.log(boxTop());
+                    console.log(boxCenter('Insufficient Stake'));
+                    console.log(boxSeparator());
+                    console.log(boxCenter(`Reward Address: ${shortAddr}`));
+                    console.log(boxCenter(`Current Stake:  ${stakeAmount} LVE`));
+                    console.log(boxCenter(`Required:       ${minStake} LVE`));
+                    console.log(boxEmpty());
+                    console.log(boxCenter('To become an active validator:'));
+                    console.log(boxEmpty());
+                    console.log(boxCenter('1. Get LVE tokens:'));
+                    console.log(boxCenter('   lve-chain faucet request <address>'));
+                    console.log(boxEmpty());
+                    console.log(boxCenter('2. Stake LVE:'));
+                    console.log(boxCenter('   POST /api/staking/stake'));
+                    console.log(boxCenter(`   {"address": "...", "amount": ${minStake}}`));
+                    console.log(boxEmpty());
+                    console.log(boxCenter('Status: INACTIVE (not producing blocks)'));
+                    console.log(boxBottom());
+                    console.log('');
+                    logger.warn(`⚠ Stake ${stakeAmount}/${minStake} LVE - validator inactive`);
+                } else {
+                    logger.info(`✓ Validator stake: ${stakeAmount} LVE (min: ${minStake})`);
+                }
+
+                // Start block producer regardless (it will check stake internally)
+                const blockProducer = initBlockProducer(blockchain);
+                blockProducer.start();
+                logger.info(`🏭 Block producer started`);
+            }
         }
     } else if (roleConfig && !blockProductionEnabled) {
         logger.info(`🔇 Block production disabled for role: ${roleConfig.name}`);

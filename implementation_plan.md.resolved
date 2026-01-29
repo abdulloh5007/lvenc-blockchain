@@ -1,0 +1,59 @@
+# Fix Genesis Validator Block Production
+
+## Problem
+
+Genesis validators loaded from `genesis.json` have:
+- `operatorAddress` — their wallet/reward address
+- `consensusPubKey` — their Ed25519 public key for signing blocks
+- `power` — their voting power (= stake)
+
+But current code in [start.ts](file:///home/abdulloh/my%20works/2026/my-blockchain/src/node/cli/commands/start.ts) requires a **separate** `rewardAddress` from `nodeIdentity.getRewardAddress()`, which is NOT set by default. This causes:
+- "Validator Setup Required" message
+- Block production **skipped** for genesis validators
+- Chicken-and-egg problem: no blocks = transactions stuck forever
+
+## Solution
+
+Genesis validators should produce blocks **automatically** without additional setup:
+
+1. **Match node identity to genesis validator** by comparing `nodeIdentity.getPublicKey()` with `genesisConfig.validators[].consensusPubKey`
+2. If match found → this node IS a genesis validator → use `operatorAddress` as reward address
+3. Start block producer immediately
+
+## Proposed Changes
+
+### [MODIFY] [start.ts](file:///home/abdulloh/my%20works/2026/my-blockchain/src/node/cli/commands/start.ts)
+
+After loading genesis validators (~line 209), add logic:
+
+```typescript
+// Check if this node is a genesis validator
+let isGenesisValidator = false;
+let genesisRewardAddress: string | null = null;
+
+if (genesisConfig) {
+    const nodePubKey = nodeIdentity.getPublicKey();
+    const matchingValidator = genesisConfig.validators.find(
+        v => v.consensusPubKey === nodePubKey
+    );
+    if (matchingValidator) {
+        isGenesisValidator = true;
+        genesisRewardAddress = matchingValidator.operatorAddress;
+        logger.info(`🎯 Node is genesis validator: ${matchingValidator.moniker || 'unnamed'}`);
+    }
+}
+```
+
+Then modify block production section (~line 387-449):
+- If `isGenesisValidator` → use `genesisRewardAddress`, skip stake check, start block producer
+- If NOT genesis validator → keep existing logic (require stake)
+
+## Verification
+
+After fix, genesis node logs should show:
+```
+🌱 Loaded 1 genesis validator(s)
+🎯 Node is genesis validator: genesis-validator
+🏭 Block producer started
+⛏️ Block #1 created by tLVE...
+```
