@@ -9,4 +9,4 @@ node dist/node/cli/cli.js start \
   --role full \
   --network testnet \
   --p2p 6001 \
-  --data ./data
+  --data ./data/testnet
