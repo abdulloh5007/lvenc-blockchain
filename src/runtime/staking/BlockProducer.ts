@@ -6,7 +6,7 @@ import { storage } from '../../protocol/storage/index.js';
 import { logger } from '../../protocol/utils/logger.js';
 import { sha256 } from '../../protocol/utils/crypto.js';
 import { chainParams } from '../../protocol/params/index.js';
-import { getValidatorKey } from '../../protocol/consensus/index.js';
+import { getUnifiedIdentity } from '../../node/identity/index.js';
 import { createSigningData } from '../../protocol/blockchain/BlockSignature.js';
 
 const SLOT_DURATION = 30000;
@@ -103,17 +103,17 @@ export class BlockProducer {
             return;
         }
 
-        // Get our validator key (if we have one)
-        const validatorKey = getValidatorKey();
+        // Get our unified identity (if initialized)
+        const identity = getUnifiedIdentity();
 
         // Check if THIS node is the selected validator
-        if (!validatorKey) {
-            // We don't have a validator key - we're not a validator node
-            this.log.debug(`Slot ${currentSlot}: No validator key, skipping block production`);
+        if (!identity) {
+            // No identity - we're not a validator node
+            this.log.debug(`Slot ${currentSlot}: No identity, skipping block production`);
             return;
         }
 
-        const myValidatorAddress = chainParams.addressPrefix + validatorKey.getAddress();
+        const myValidatorAddress = identity.getFullAddress();
         if (validatorAddress !== myValidatorAddress) {
             // Not our slot - another validator should produce this block
             this.log.debug(`Slot ${currentSlot}: Not our turn (selected: ${validatorAddress.slice(0, 12)}...)`);
@@ -127,7 +127,7 @@ export class BlockProducer {
             const signFn = (hash: string): string => {
                 // Create domain-separated signing data: chainId:blockIndex:blockHash
                 const signingData = createSigningData(latestBlock.index + 1, hash);
-                return validatorKey.sign(signingData);
+                return identity.sign(signingData);
             };
             const block = this.blockchain.createPoSBlock(validatorAddress, signFn);
             (block as { slotNumber?: number }).slotNumber = currentSlot;

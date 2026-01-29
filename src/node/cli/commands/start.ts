@@ -18,7 +18,7 @@ import { initBlockProducer, stakingPool } from '../../../runtime/staking/index.j
 import { config } from '../../config.js';
 import { boxBottom, boxCenter, boxEmpty, boxSeparator, boxTop } from '../../../protocol/utils/box.js';
 import { getRole, RoleConfig, RoleName } from '../../roles/index.js';
-import { loadGenesisConfig, initValidatorKey, getValidatorKey } from '../../../protocol/consensus/index.js';
+import { loadGenesisConfig } from '../../../protocol/consensus/index.js';
 import { chainParams } from '../../../protocol/params/index.js';
 
 import { createBlockchainRoutes } from '../../api/routes/blockchain.js';
@@ -179,15 +179,20 @@ export async function startNode(options: NodeOptions): Promise<void> {
         logger.info(`🌍 API Port: ${apiPort}`);
     }
 
-    // Initialize node identity (Ed25519 keypair)
-    // Identity is stored in network-specific directory
+    // Initialize unified node identity (Ed25519 keypair with mnemonic)
+    // This is used for: P2P, block signing, staking address
     const identityDir = options.dataDir;
-    const { initNodeIdentity } = await import('../../identity/index.js');
-    const nodeIdentity = await initNodeIdentity(identityDir);
-    logger.info(`🔑 Node ID: ${nodeIdentity.getShortId()}`);
+    const { initUnifiedIdentity, getUnifiedIdentity } = await import('../../identity/index.js');
+    const nodeIdentity = await initUnifiedIdentity(identityDir);
+    logger.info(`🔑 Node ID: ${nodeIdentity.getShortAddress()}`);
 
-    // Show first-run warning if new identity
+    // Show mnemonic warning for new identity (CRITICAL!)
     await nodeIdentity.showFirstRunWarning();
+
+    // Log validator address for staking
+    if (roleConfig?.name === 'validator') {
+        logger.info(`💰 Validator address: ${nodeIdentity.getFullAddress()}`);
+    }
 
     // Initialize blockchain
     const blockchain = new Blockchain();
@@ -213,39 +218,20 @@ export async function startNode(options: NodeOptions): Promise<void> {
         stakingPool.loadGenesisValidators(genesisConfig.validators);
         logger.info(`🌱 Loaded ${genesisConfig.validators.length} genesis validator(s)`);
 
-        // Load validator key for block signing (consensus key)
-        // This is separate from NodeIdentity (P2P key)
-        try {
-            const validatorKey = await initValidatorKey(options.dataDir);
-            const validatorPubKey = validatorKey.getPubKey();
-
-            // Check if THIS node is a genesis validator by matching consensus pubkey
-            const matchingValidator = genesisConfig.validators.find(
-                v => v.consensusPubKey === validatorPubKey
-            );
-            if (matchingValidator) {
-                isGenesisValidator = true;
-                genesisRewardAddress = matchingValidator.operatorAddress;
-                logger.info(`🎯 Node is genesis validator: ${matchingValidator.moniker || matchingValidator.operatorAddress.slice(0, 16)}...`);
-            }
-        } catch (error) {
-            logger.warn(`⚠️ Could not load validator key: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        // Check if THIS node is a genesis validator using UnifiedIdentity pubkey
+        const nodePubKey = nodeIdentity.getPubKey();
+        const matchingValidator = genesisConfig.validators.find(
+            v => v.consensusPubKey === nodePubKey
+        );
+        if (matchingValidator) {
+            isGenesisValidator = true;
+            genesisRewardAddress = matchingValidator.operatorAddress;
+            logger.info(`🎯 Node is genesis validator: ${matchingValidator.moniker || matchingValidator.operatorAddress.slice(0, 16)}...`);
         }
     }
 
     // Initialize NFT Manager
     const nftManager = new NFTManager();
-
-    // Initialize validator key for validator role (even if not genesis)
-    // This allows any node with a validator key to participate in block production
-    if (roleConfig?.name === 'validator' && !getValidatorKey()) {
-        try {
-            await initValidatorKey(options.dataDir);
-            logger.info(`🔐 Validator key loaded for block signing`);
-        } catch (error) {
-            logger.debug(`No validator key found (optional for non-genesis validators)`);
-        }
-    }
 
     // Initialize P2P server (skip in API-only mode or if role disables P2P)
     const p2pEnabled = roleConfig ? roleConfig.services.p2p !== false : true;
@@ -530,9 +516,9 @@ export async function startNode(options: NodeOptions): Promise<void> {
     }
 
     // Periodic validator status check (every 10 seconds)
-    const validatorKey = getValidatorKey();
-    if (validatorKey) {
-        const myAddress = chainParams.addressPrefix + validatorKey.getAddress();
+    // Use unified identity for address
+    if (roleConfig?.name === 'validator') {
+        const myAddress = nodeIdentity.getFullAddress();
         setInterval(() => {
             const stake = stakingPool.getStake(myAddress);
             const pendingStake = stakingPool.getPendingStake(myAddress);
