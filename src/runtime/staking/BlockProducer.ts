@@ -113,7 +113,7 @@ export class BlockProducer {
             return;
         }
 
-        const myValidatorAddress = validatorKey.getAddress();
+        const myValidatorAddress = chainParams.addressPrefix + validatorKey.getAddress();
         if (validatorAddress !== myValidatorAddress) {
             // Not our slot - another validator should produce this block
             this.log.debug(`Slot ${currentSlot}: Not our turn (selected: ${validatorAddress.slice(0, 12)}...)`);
