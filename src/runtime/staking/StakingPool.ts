@@ -80,6 +80,7 @@ const SLASH_PERCENT = chainParams.staking.slashPercent;
 const UNBONDING_EPOCHS = chainParams.staking.unbondingEpochs;
 const JAIL_DURATION_EPOCHS = chainParams.staking.jailDurationEpochs;
 const MAX_JAIL_COUNT = chainParams.staking.maxJailCount;
+const MIN_ACTIVE_VALIDATORS = chainParams.staking.minActiveValidators;
 
 export class StakingPool {
     private stakes: Map<string, StakeInfo> = new Map();
@@ -112,6 +113,44 @@ export class StakingPool {
 
     shouldTransitionEpoch(currentBlockIndex: number): boolean {
         return currentBlockIndex >= this.epochStartBlock + EPOCH_DURATION;
+    }
+
+    /**
+     * Simulate post-epoch validator set for liveness checking.
+     * Returns projected active state of each validator after epoch transition.
+     */
+    private simulatePostEpochValidators(): { address: string; wouldBeActive: boolean }[] {
+        const result: { address: string; wouldBeActive: boolean }[] = [];
+
+        for (const [address, validator] of this.validators) {
+            let stake = this.stakes.get(address)?.amount || 0;
+
+            // Simulate pending stake additions
+            const pendingStake = this.pendingStakes.get(address);
+            if (pendingStake && pendingStake.epochEffective <= this.currentEpoch + 1) {
+                stake += pendingStake.amount;
+            }
+
+            // Simulate pending slashes
+            const pendingSlash = this.pendingSlashes.get(address);
+            if (pendingSlash) {
+                for (const s of pendingSlash) {
+                    if (s.epochEffective <= this.currentEpoch + 1) {
+                        stake -= Math.floor(stake * (s.slashPercent / 100));
+                    }
+                }
+            }
+
+            // Would be active if stake >= MIN and not permanently jailed
+            const wouldBeUnjailed = !validator.isJailed ||
+                (validator.jailedUntilEpoch !== Number.MAX_SAFE_INTEGER &&
+                    validator.jailedUntilEpoch <= this.currentEpoch + 1);
+            const wouldBeActive = stake >= MIN_STAKE && wouldBeUnjailed;
+
+            result.push({ address, wouldBeActive });
+        }
+
+        return result;
     }
 
     transitionEpoch(newBlockIndex: number): void {
@@ -230,6 +269,19 @@ export class StakingPool {
         if (!stake || stake.amount < amount) {
             this.log.warn(`Insufficient stake for unstake: ${stake?.amount || 0} < ${amount}`);
             return null;
+        }
+
+        // LIVENESS PROTECTION: Would this unstake deactivate a validator?
+        const wouldDeactivate = (stake.amount - amount) < MIN_STAKE;
+        if (wouldDeactivate) {
+            // Simulate post-epoch to check if we'd violate liveness
+            const postEpochActive = this.simulatePostEpochValidators()
+                .filter(v => v.wouldBeActive && v.address !== address).length;
+
+            if (postEpochActive < MIN_ACTIVE_VALIDATORS) {
+                this.log.warn(`🛡️ LIVENESS: Cannot unstake - would leave ${postEpochActive} validators (min: ${MIN_ACTIVE_VALIDATORS})`);
+                return null;
+            }
         }
 
         // Unbonding period: funds locked for UNBONDING_EPOCHS

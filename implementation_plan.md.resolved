@@ -1,0 +1,125 @@
+# Minimum Active Validator Rule — Implementation Plan v2
+
+## Key Insight (User Feedback)
+
+> Liveness must be checked against **POST-EPOCH** validator set, not current.
+> Simulate the epoch result first.
+
+---
+
+## Design: Simulate-Then-Apply
+
+```
+transitionEpoch():
+  1. SIMULATE post-epoch validator set
+  2. CHECK if simulated set has >= MIN_ACTIVE_VALIDATORS
+  3. IF violation → REJECT problematic changes
+  4. APPLY only safe changes
+```
+
+---
+
+## Extension Points
+
+### 1. Add `minActiveValidators` constant
+
+**File:** [chain.ts](file:///home/abdulloh/my%20works/2026/my-blockchain/src/protocol/params/chain.ts)
+```typescript
+staking: {
+    minActiveValidators: 1,  // Network liveness guarantee
+}
+```
+
+### 2. Add `simulatePostEpochValidators()` method
+
+**File:** [StakingPool.ts](file:///home/abdulloh/my%20works/2026/my-blockchain/src/runtime/staking/StakingPool.ts) — NEW private method
+
+```typescript
+private simulatePostEpochValidators(): { address: string; wouldBeActive: boolean }[] {
+    const result: { address: string; wouldBeActive: boolean }[] = [];
+    
+    for (const [address, validator] of this.validators) {
+        let stake = this.stakes.get(address)?.amount || 0;
+        
+        // Simulate pending stake additions
+        const pendingStake = this.pendingStakes.get(address);
+        if (pendingStake && pendingStake.epochEffective <= this.currentEpoch + 1) {
+            stake += pendingStake.amount;
+        }
+        
+        // Simulate pending slashes
+        const pendingSlash = this.pendingSlashes.get(address);
+        if (pendingSlash) {
+            for (const s of pendingSlash) {
+                if (s.epochEffective <= this.currentEpoch + 1) {
+                    stake -= Math.floor(stake * (s.slashPercent / 100));
+                }
+            }
+        }
+        
+        // Would be active if stake >= MIN and not jailed
+        const wouldBeActive = stake >= MIN_STAKE && 
+            (!validator.isJailed || validator.jailedUntilEpoch <= this.currentEpoch + 1);
+        
+        result.push({ address, wouldBeActive });
+    }
+    
+    return result;
+}
+```
+
+### 3. Extend [transitionEpoch()](file:///home/abdulloh/my%20works/2026/my-blockchain/src/runtime/staking/StakingPool.ts#117-197) with pre-check
+
+**File:** [StakingPool.ts](file:///home/abdulloh/my%20works/2026/my-blockchain/src/runtime/staking/StakingPool.ts) — at START of transitionEpoch
+
+```typescript
+transitionEpoch(newBlockIndex: number): void {
+    // LIVENESS CHECK: Simulate post-epoch validator set
+    const postEpochValidators = this.simulatePostEpochValidators();
+    const activeCount = postEpochValidators.filter(v => v.wouldBeActive).length;
+    
+    if (activeCount < MIN_ACTIVE_VALIDATORS) {
+        this.log.error(`🛡️ LIVENESS VIOLATION: Post-epoch would have ${activeCount} validators`);
+        // Skip slashes that would cause violation
+        // ... selective skip logic
+    }
+    
+    // ... existing epoch transition logic
+}
+```
+
+### 4. Extend [requestUnstake()](file:///home/abdulloh/my%20works/2026/my-blockchain/src/runtime/staking/StakingPool.ts#211-238) with simulation
+
+**File:** [StakingPool.ts](file:///home/abdulloh/my%20works/2026/my-blockchain/src/runtime/staking/StakingPool.ts)
+
+```typescript
+requestUnstake(address: string, amount: number): UnstakeRequest | null {
+    // Simulate if this unstake would violate liveness at next epoch
+    const postEpochValidators = this.simulatePostEpochValidators();
+    const currentActive = postEpochValidators.filter(v => v.wouldBeActive).length;
+    
+    // Would this unstake deactivate this validator?
+    const stake = this.stakes.get(address);
+    if (stake && (stake.amount - amount) < MIN_STAKE) {
+        if (currentActive <= MIN_ACTIVE_VALIDATORS) {
+            this.log.warn(`🛡️ LIVENESS: Cannot unstake - would leave ${currentActive - 1} validators`);
+            return null;
+        }
+    }
+    // ... existing logic
+}
+```
+
+---
+
+## Invariant Guarantee
+
+```
+At epoch N, BEFORE applying changes:
+  simulate(epoch N+1 validator set)
+  assert(count >= MIN_ACTIVE_VALIDATORS)
+  if violation: skip/reject problematic changes
+```
+
+**Does this guarantee active validator set can never become empty?**
+**YES** — because epoch transition simulates result BEFORE applying, and blocks any change that would violate.

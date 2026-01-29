@@ -39,7 +39,8 @@ export const chainParams = {
 
     // Staking parameters
     staking: {
-        minValidatorSelfStake: 100,  // Minimum self-stake to become validator
+        minActiveValidators: 1,       // Network liveness: minimum active validators
+        minValidatorSelfStake: 100,   // Minimum self-stake to become validator
         minDelegation: 10,            // Minimum delegation amount
         slashPercent: 50,             // Slash percentage for violations
         defaultCommission: 10,        // Default validator commission %
