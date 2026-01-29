@@ -236,6 +236,17 @@ export async function startNode(options: NodeOptions): Promise<void> {
     // Initialize NFT Manager
     const nftManager = new NFTManager();
 
+    // Initialize validator key for validator role (even if not genesis)
+    // This allows any node with a validator key to participate in block production
+    if (roleConfig?.name === 'validator' && !getValidatorKey()) {
+        try {
+            await initValidatorKey(options.dataDir);
+            logger.info(`🔐 Validator key loaded for block signing`);
+        } catch (error) {
+            logger.debug(`No validator key found (optional for non-genesis validators)`);
+        }
+    }
+
     // Initialize P2P server (skip in API-only mode or if role disables P2P)
     const p2pEnabled = roleConfig ? roleConfig.services.p2p !== false : true;
     let p2pServer: P2PServer | null = null;
