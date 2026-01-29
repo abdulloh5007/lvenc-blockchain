@@ -1,6 +1,7 @@
 #!/bin/bash
 # =========================================================
-# LVE Chain — Genesis Bootstrap Script
+# LVE Chain — Genesis Bootstrap Script (v2)
+# Uses UnifiedIdentity for single identity + validator key
 # =========================================================
 
 set -e
@@ -28,12 +29,21 @@ echo "     Power:    $VALIDATOR_POWER"
 echo "     Moniker:  $VALIDATOR_MONIKER"
 echo ""
 
-# Check if fully initialized
-if [ -f "$DATA_DIR/genesis.json" ] && [ -f "$DATA_DIR/priv_validator_key.json" ]; then
+# Check if fully initialized (new format: node_identity.json)
+if [ -f "$DATA_DIR/genesis.json" ] && [ -f "$DATA_DIR/node_identity.json" ]; then
     msg_warn "Genesis already fully initialized!"
     echo ""
     node dist/node/cli/cli.js genesis show -d "$DATA_DIR" -n "$NETWORK"
     echo "  💡 To reinitialize, delete $DATA_DIR"
+    exit 0
+fi
+
+# Also check old format for migration
+if [ -f "$DATA_DIR/genesis.json" ] && [ -f "$DATA_DIR/priv_validator_key.json" ]; then
+    msg_warn "Old genesis format detected. Will migrate on next start."
+    echo ""
+    node dist/node/cli/cli.js genesis show -d "$DATA_DIR" -n "$NETWORK"
+    echo "  💡 Run start.sh to auto-migrate to new format"
     exit 0
 fi
 
@@ -54,27 +64,46 @@ else
     msg_warn "Step 1/3: Genesis already exists, skipping..."
 fi
 
-# Step 2: Create Validator Key
-if [ ! -f "$DATA_DIR/priv_validator_key.json" ]; then
+# Step 2: Create Node Identity (new unified format)
+# We need to trigger identity creation via a quick start that exits
+if [ ! -f "$DATA_DIR/node_identity.json" ]; then
     echo ""
-    msg_info "Step 2/3: Creating validator key..."
-    node dist/node/cli/cli.js validator init \
-        -d "$DATA_DIR" \
-        -n "$NETWORK"
+    msg_info "Step 2/3: Creating node identity..."
+    
+    # Create identity by running identity init command or triggering it
+    # Since UnifiedIdentity auto-creates on start, we do a minimal init
+    node -e "
+const { initUnifiedIdentity } = require('./dist/node/identity/index.js');
+const { chainParams } = require('./dist/protocol/params/index.js');
+(async () => {
+    process.env.LVE_NETWORK = '${NETWORK}';
+    const identity = await initUnifiedIdentity('${DATA_DIR}');
+    console.log('');
+    console.log('  ╭────────────────────────────────────────────────────────╮');
+    console.log('  │  🔑 Node Identity Created                              │');
+    console.log('  ├────────────────────────────────────────────────────────┤');
+    console.log('  │  Address:  ' + identity.getFullAddress().padEnd(45) + '│');
+    console.log('  │  PubKey:   ' + (identity.getPubKey().slice(0, 40) + '...').padEnd(45) + '│');
+    console.log('  ╰────────────────────────────────────────────────────────╯');
+    console.log('');
+})().catch(e => { console.error(e); process.exit(1); });
+"
 else
-    msg_warn "Step 2/3: Validator key already exists, skipping..."
+    msg_warn "Step 2/3: Node identity already exists, skipping..."
 fi
 
 # Step 3: Add validator to genesis
 echo ""
 msg_info "Step 3/3: Adding validator to genesis..."
-# Use jq to get pubkey directly from file (avoids CLI log noise)
+
+# Get pubkey from node_identity.json
 if command -v jq &> /dev/null; then
-    PUBKEY=$(jq -r '.pub_key.value' "$DATA_DIR/priv_validator_key.json")
+    PUBKEY=$(jq -r '.pub_key.value' "$DATA_DIR/node_identity.json")
 else
     # Fallback to grep/sed if jq not installed
-    PUBKEY=$(grep -o '"value": "[^"]*"' "$DATA_DIR/priv_validator_key.json" | head -1 | sed 's/.*: "//;s/"$//')
+    PUBKEY=$(grep -o '"value": "[^"]*"' "$DATA_DIR/node_identity.json" | head -1 | sed 's/.*: "//;s/"$//')
 fi
+
 node dist/node/cli/cli.js genesis add-validator \
     -d "$DATA_DIR" \
     -n "$NETWORK" \
@@ -85,9 +114,10 @@ node dist/node/cli/cli.js genesis add-validator \
 echo ""
 quick_box "✅ Genesis Bootstrap Complete!" \
     "genesis.json: $DATA_DIR/genesis.json" \
-    "validator_key: $DATA_DIR/priv_validator_key.json"
+    "node_identity: $DATA_DIR/node_identity.json"
 echo ""
-msg_warn "IMPORTANT: Backup your priv_validator_key.json!"
+msg_warn "IMPORTANT: Backup your node_identity.json!"
+msg_warn "          It contains your validator private key!"
 echo ""
 echo "  ➜ Next: ./runners/genesis-bootstrap/start.sh"
 echo ""
