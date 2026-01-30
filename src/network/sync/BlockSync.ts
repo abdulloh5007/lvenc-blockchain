@@ -10,6 +10,8 @@ import { config } from '../../node/config.js';
 import { logger } from '../../protocol/utils/logger.js';
 import { processBlockPoolOperations, poolStateManager } from '../../runtime/pool/index.js';
 import { storage } from '../../protocol/storage/index.js';
+import { getBlockProducer } from '../../runtime/staking/BlockProducer.js';
+import { sha256 } from '../../protocol/utils/crypto.js';
 
 export class BlockSync {
     private blockchain: Blockchain;
@@ -128,6 +130,13 @@ export class BlockSync {
             if (block.previousHash === latestLocal.hash && block.index === latestLocal.index + 1) {
                 this.blockchain.chain.push(block);
                 logger.info(`+ Received and added block ${block.index}`);
+
+                // Notify block producer for liveness tracking
+                const blockProducer = getBlockProducer();
+                if (blockProducer && (block as any).slotNumber && block.validator) {
+                    const signature = sha256(block.hash + block.validator + (block as any).slotNumber.toString());
+                    blockProducer.markBlockReceived((block as any).slotNumber, block.validator, signature);
+                }
 
                 // Process pool operations in this block
                 if (block.transactions && block.transactions.length > 0) {

@@ -77,6 +77,7 @@ const MIN_DELEGATION = chainParams.staking.minDelegation;
 const EPOCH_DURATION = chainParams.staking.epochDuration;
 const DEFAULT_COMMISSION = chainParams.staking.defaultCommission;
 const SLASH_PERCENT = chainParams.staking.slashPercent;
+const DOWNTIME_SLASH_PERCENT = chainParams.staking.downtimeSlashPercent;
 const UNBONDING_EPOCHS = chainParams.staking.unbondingEpochs;
 const JAIL_DURATION_EPOCHS = chainParams.staking.jailDurationEpochs;
 const MAX_JAIL_COUNT = chainParams.staking.maxJailCount;
@@ -504,6 +505,41 @@ export class StakingPool {
         this.updateValidator(address);
 
         this.log.warn(`🔪 Slash applied: ${slashAmount} LVE from ${address.slice(0, 10)}... Reason: ${pendingSlash.reason}`);
+    }
+
+    /**
+     * Slash for downtime (lighter penalty than double-sign)
+     * Uses DOWNTIME_SLASH_PERCENT instead of full SLASH_PERCENT
+     */
+    slashForDowntime(address: string, reason: string): number {
+        const stake = this.stakes.get(address);
+        if (!stake) return 0;
+
+        const slashAmount = Math.floor(stake.amount * (DOWNTIME_SLASH_PERCENT / 100));
+
+        // Queue slash for epoch boundary with reduced percent
+        const pendingSlash: PendingSlash = {
+            address,
+            reason,
+            slashPercent: DOWNTIME_SLASH_PERCENT,
+            epochEffective: this.currentEpoch + 1,
+            detectedAt: Date.now()
+        };
+
+        const existing = this.pendingSlashes.get(address) || [];
+        existing.push(pendingSlash);
+        this.pendingSlashes.set(address, existing);
+
+        const validator = this.validators.get(address);
+        if (validator) {
+            validator.slashCount++;
+            this.validators.set(address, validator);
+            // Jail immediately
+            this.jailValidator(address, reason);
+        }
+
+        this.log.warn(`⏰ Downtime slash queued: ${slashAmount} LVE from ${address.slice(0, 10)}... (effective epoch ${this.currentEpoch + 1})`);
+        return slashAmount;
     }
 
     // ========== JAILING ==========

@@ -16,6 +16,8 @@ export class BlockProducer {
     private intervalId: NodeJS.Timeout | null = null;
     private isRunning = false;
     private lastProducedSlot = -1;
+    private lastProcessedSlot = -1;  // Track which slot we last checked
+    private receivedBlocksForSlot: Map<number, boolean> = new Map();  // slot -> block received
     private log = logger.child('BlockProducer');
 
     constructor(blockchain: Blockchain) {
@@ -52,6 +54,22 @@ export class BlockProducer {
 
     private produceBlockForSlot(): void {
         const currentSlot = vrfSelector.getCurrentSlot();
+
+        // Check if previous slot was missed (liveness tracking)
+        if (this.lastProcessedSlot >= 0 && currentSlot > this.lastProcessedSlot) {
+            for (let slot = this.lastProcessedSlot; slot < currentSlot; slot++) {
+                const blockReceived = this.receivedBlocksForSlot.get(slot) || false;
+                slashingManager.checkSlotTimeout(slot, blockReceived);
+            }
+            // Cleanup old entries
+            for (const [slot] of this.receivedBlocksForSlot) {
+                if (slot < currentSlot - 100) {
+                    this.receivedBlocksForSlot.delete(slot);
+                }
+            }
+        }
+        this.lastProcessedSlot = currentSlot;
+
         if (currentSlot <= this.lastProducedSlot) {
             this.log.debug(`Slot ${currentSlot} already processed`);
             return;
@@ -103,6 +121,9 @@ export class BlockProducer {
             return;
         }
 
+        // Record expected validator for liveness tracking
+        slashingManager.recordExpectedValidator(currentSlot, validatorAddress);
+
         // Get our unified identity (if initialized)
         const identity = getUnifiedIdentity();
 
@@ -132,15 +153,18 @@ export class BlockProducer {
             const block = this.blockchain.createPoSBlock(validatorAddress, signFn);
             (block as { slotNumber?: number }).slotNumber = currentSlot;
 
-            // Record block signature for double-sign detection
+            // Record block signature for double-sign detection and liveness tracking
             const blockSignature = sha256(block.hash + validatorAddress + currentSlot.toString());
-            const isValidSignature = slashingManager.recordBlockSignature(currentSlot, validatorAddress, blockSignature);
+            const isValidSignature = slashingManager.recordBlockSigned(currentSlot, validatorAddress, blockSignature);
 
             if (!isValidSignature) {
                 this.log.error(`🔪 Double-sign detected for validator ${validatorAddress.slice(0, 12)}... at slot ${currentSlot}!`);
                 // Block is rejected, validator already slashed
                 return;
             }
+
+            // Mark that we produced a block for this slot
+            this.receivedBlocksForSlot.set(currentSlot, true);
 
             // Get base reward
             const baseReward = this.blockchain.getCurrentReward();
@@ -192,6 +216,16 @@ export class BlockProducer {
             epoch: epochInfo.epoch,
             epochProgress: Math.min(100, Math.round((blocksInEpoch / epochDuration) * 100)),
         };
+    }
+
+    /**
+     * Called by Blockchain when a block is received from a peer
+     * Used for liveness tracking - mark that this slot had a block produced
+     */
+    markBlockReceived(slot: number, validator: string, signature: string): void {
+        this.receivedBlocksForSlot.set(slot, true);
+        // Also record in slashing manager for double-sign detection
+        slashingManager.recordBlockSigned(slot, validator, signature);
     }
 }
 
