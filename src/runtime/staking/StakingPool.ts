@@ -1,6 +1,7 @@
 import { logger } from '../../protocol/utils/logger.js';
 import { sha256 } from '../../protocol/utils/crypto.js';
 import { chainParams } from '../../protocol/params/index.js';
+import { config } from '../../node/config.js';
 import type { GenesisValidator } from '../../protocol/consensus/index.js';
 
 // Interfaces
@@ -904,6 +905,21 @@ export class StakingPool {
      * Apply delegation from transaction (internal)
      */
     applyDelegateFromTx(delegator: string, validator: string, amount: number): void {
+        // Check concentration limit - prevent one validator from having >33% of total stake
+        const totalNetwork = this.getTotalStaked() + this.getTotalDelegated();
+        if (totalNetwork > 0) {
+            const validatorInfo = this.validators.get(validator);
+            const validatorWeight = (validatorInfo?.stake || 0) +
+                (this.validatorDelegations.get(validator) || 0) +
+                amount;
+            const concentration = (validatorWeight / totalNetwork) * 100;
+
+            if (concentration > config.staking.maxConcentration) {
+                this.log.warn(`⚠️ Delegation rejected: would exceed ${config.staking.maxConcentration}% concentration limit`);
+                throw new Error(`Delegation would exceed ${config.staking.maxConcentration}% concentration limit`);
+            }
+        }
+
         const delegation: Delegation = {
             delegator,
             validator,

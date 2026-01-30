@@ -89,6 +89,14 @@ export const config = {
         feePercent: 0.3,            // 0.3% swap fee
         burnPercent: 30,            // 30% of fees burned
     },
+    // Staking configuration
+    staking: {
+        minValidatorStake: 100,       // Min self-stake to become validator (100 LVE)
+        maxConcentration: 33,         // Max % of total stake for one validator (33%)
+        minCommission: 0,             // Min commission % (0%)
+        maxCommission: 30,            // Max commission % (30%)
+        epochDuration: 100,           // Blocks per epoch
+    },
     storage: {
         dataDir: isTestnet ? './data/testnet' : './data/mainnet',
         blocksFile: 'blocks.json',

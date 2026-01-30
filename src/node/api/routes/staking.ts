@@ -4,6 +4,7 @@ import { stakingPool } from '../../../runtime/staking/index.js';
 import { storage } from '../../../protocol/storage/index.js';
 import { logger } from '../../../protocol/utils/logger.js';
 import { validateStakingTx } from '../middleware/tx-validation.js';
+import { config } from '../../config.js';
 
 export function createStakingRoutes(blockchain: Blockchain): Router {
     const router = Router();
@@ -285,6 +286,13 @@ export function createStakingRoutes(blockchain: Blockchain): Router {
                 totalStaked: stakingPool.getTotalStaked(),
                 totalDelegated: stakingPool.getTotalDelegated(),
                 count: validators.length,
+                // Staking limits for frontend display
+                limits: {
+                    maxConcentration: config.staking.maxConcentration,
+                    minCommission: config.staking.minCommission,
+                    maxCommission: config.staking.maxCommission,
+                    minValidatorStake: config.staking.minValidatorStake,
+                },
             },
         });
     });
@@ -312,6 +320,25 @@ export function createStakingRoutes(blockchain: Blockchain): Router {
 
     router.post('/commission', validateStakingTx('COMMISSION'), (req: Request, res: Response) => {
         const { address, commission, signature, publicKey, nonce, chainId } = req.body;
+
+        // Validate commission limits
+        const minCommission = config.staking?.minCommission ?? 0;
+        const maxCommission = config.staking?.maxCommission ?? 30;
+
+        if (commission < minCommission) {
+            res.status(400).json({
+                success: false,
+                error: `Commission cannot be below ${minCommission}%`
+            });
+            return;
+        }
+        if (commission > maxCommission) {
+            res.status(400).json({
+                success: false,
+                error: `Commission cannot exceed ${maxCommission}%`
+            });
+            return;
+        }
 
         try {
             // Create COMMISSION transaction for relay
