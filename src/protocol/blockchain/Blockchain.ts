@@ -409,6 +409,7 @@ export class Blockchain {
 
     /**
      * Get TOTAL balance from blockchain (raw, not considering staking)
+     * Note: STAKE/UNSTAKE transactions are excluded because they're tracked separately via stakingPool
      */
     getTotalBalance(address: string): number {
         // Check cache first
@@ -418,6 +419,13 @@ export class Blockchain {
         let balance = 0;
         for (const block of this.chain) {
             for (const tx of block.transactions) {
+                // Skip staking transactions - they're tracked separately via stakingPool
+                // This prevents double-counting: STAKE deducted from chain + deducted from getBalance()
+                if (tx.type === 'STAKE' || tx.type === 'UNSTAKE' ||
+                    tx.type === 'DELEGATE' || tx.type === 'UNDELEGATE') {
+                    continue;
+                }
+
                 if (tx.fromAddress === address) {
                     balance -= tx.amount;
                 }
