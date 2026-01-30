@@ -135,6 +135,11 @@ export class BlockSync {
 
             if (block.previousHash === latestLocal.hash && block.index === latestLocal.index + 1) {
                 this.blockchain.chain.push(block);
+
+                // CRITICAL: Apply staking changes from this block in real-time!
+                // Without this, validator status doesn't update on receiving nodes
+                this.blockchain.applyBlockStakingChanges(block);
+
                 logger.info(`+ Received and added block ${block.index}`);
 
                 // Notify block producer for liveness tracking
