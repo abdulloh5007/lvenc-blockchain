@@ -8,14 +8,14 @@ interface PoolInfo {
     initialized: boolean;
     reserves: {
         lve: number;
-        uzs: number;
+        usdt: number;
     };
     price: {
         lvePerUsdt: number;
-        uzsPerEdu: number;
+        usdtPerEdu: number;
     };
     tvl: {
-        totalUZS: number;
+        totalUSDT: number;
     };
 }
 
@@ -32,7 +32,7 @@ const Swap: React.FC = () => {
     const { wallets, signSwapTransactionWithPin } = useWallets();
     const wallet = wallets[0]; // Use first wallet
     const [poolInfo, setPoolInfo] = useState<PoolInfo | null>(null);
-    const [tokenIn, setTokenIn] = useState<'LVE' | 'UZS'>('LVE');
+    const [tokenIn, setTokenIn] = useState<'LVE' | 'USDT'>('LVE');
     const [amountIn, setAmountIn] = useState<string>('');
     const [quote, setQuote] = useState<QuoteResult | null>(null);
     const [loading, setLoading] = useState(false);
@@ -87,7 +87,7 @@ const Swap: React.FC = () => {
     }, [fetchQuote]);
 
     const flipTokens = () => {
-        setTokenIn(tokenIn === 'LVE' ? 'UZS' : 'LVE');
+        setTokenIn(tokenIn === 'LVE' ? 'USDT' : 'LVE');
         setAmountIn('');
         setQuote(null);
     };
@@ -136,7 +136,7 @@ const Swap: React.FC = () => {
 
             const data = await res.json();
             if (data.success) {
-                const tokenOut = tokenIn === 'LVE' ? 'UZS' : 'LVE';
+                const tokenOut = tokenIn === 'LVE' ? 'USDT' : 'LVE';
                 setSuccess(`✅ Swapped ${amount} ${tokenIn} → ${data.data.amountOut.toFixed(4)} ${tokenOut}`);
                 setAmountIn('');
                 setQuote(null);
@@ -151,7 +151,7 @@ const Swap: React.FC = () => {
         }
     };
 
-    const tokenOut = tokenIn === 'LVE' ? 'UZS' : 'LVE';
+    const tokenOut = tokenIn === 'LVE' ? 'USDT' : 'LVE';
 
     return (
         <div className="swap-page">
@@ -164,8 +164,8 @@ const Swap: React.FC = () => {
                 {/* Pool Info */}
                 {poolInfo && poolInfo.initialized && (
                     <div className="pool-info-bar">
-                        <span>1 LVE = {poolInfo.price.uzsPerEdu.toFixed(4)} UZS</span>
-                        <span>TVL: ${poolInfo.tvl.totalUZS.toFixed(2)}</span>
+                        <span>1 LVE = {poolInfo.price.usdtPerEdu.toFixed(4)} USDT</span>
+                        <span>TVL: ${poolInfo.tvl.totalUSDT.toFixed(2)}</span>
                     </div>
                 )}
 
@@ -256,8 +256,8 @@ const Swap: React.FC = () => {
                             <span>{poolInfo.reserves.lve.toLocaleString()}</span>
                         </div>
                         <div className="reserve-row">
-                            <span>UZS</span>
-                            <span>{poolInfo.reserves.uzs.toLocaleString()}</span>
+                            <span>USDT</span>
+                            <span>{poolInfo.reserves.usdt.toLocaleString()}</span>
                         </div>
                     </div>
                 )}
