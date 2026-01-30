@@ -28,8 +28,8 @@ if [ ! -f "$DATA_DIR/genesis.json" ]; then
     exit 1
 fi
 
-if [ ! -f "$DATA_DIR/priv_validator_key.json" ]; then
-    msg_err "Validator key not found!"
+if [ ! -f "$DATA_DIR/node_identity.json" ]; then
+    msg_err "Node identity not found!"
     echo "   ➜ Run: ./runners/genesis-bootstrap/init.sh"
     exit 1
 fi
