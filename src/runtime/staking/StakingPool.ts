@@ -826,7 +826,10 @@ export class StakingPool {
      * This is the ONLY source of truth for staking state
      * Genesis validators are automatically reloaded from stored genesisValidators
      */
-    rebuildFromChain(chain: { transactions: { type?: string; fromAddress: string | null; toAddress: string; amount: number; data?: string }[] }[]): void {
+    rebuildFromChain(chain: {
+        transactions: { type?: string; fromAddress: string | null; toAddress: string; amount: number; data?: string }[];
+        validator?: string;  // PoS block validator
+    }[]): void {
         // Store genesis validators before clear
         const savedGenesisValidators = this.genesisValidators;
 
@@ -839,8 +842,15 @@ export class StakingPool {
 
         let stakeTxCount = 0;
         let delegateTxCount = 0;
+        const blocksCreatedMap = new Map<string, number>();
 
         for (const block of chain) {
+            // Count blocks created per validator (skip genesis block index 0)
+            if (block.validator) {
+                const current = blocksCreatedMap.get(block.validator) || 0;
+                blocksCreatedMap.set(block.validator, current + 1);
+            }
+
             for (const tx of block.transactions) {
                 if (!tx.type) continue;  // Skip legacy transactions
 
@@ -862,8 +872,18 @@ export class StakingPool {
             }
         }
 
+        // Apply blocksCreated to validators
+        for (const [validatorAddress, count] of blocksCreatedMap) {
+            const validator = this.validators.get(validatorAddress);
+            if (validator) {
+                validator.blocksCreated = count;
+                this.validators.set(validatorAddress, validator);
+            }
+        }
+
         const genesisCount = savedGenesisValidators.length;
-        logger.info(`Rebuilt staking state: ${genesisCount} genesis, ${stakeTxCount} stakes, ${delegateTxCount} delegations`);
+        const totalBlocks = Array.from(blocksCreatedMap.values()).reduce((a, b) => a + b, 0);
+        logger.info(`Rebuilt staking state: ${genesisCount} genesis, ${stakeTxCount} stakes, ${delegateTxCount} delegations, ${totalBlocks} blocks counted`);
     }
 
     /**
