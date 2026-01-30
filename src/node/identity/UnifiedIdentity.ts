@@ -400,11 +400,28 @@ export class UnifiedIdentity {
 
     // ==================== SIGNING (for blocks) ====================
 
+    async signAsync(message: string): Promise<string> {
+        if (!this.data) throw new Error('Identity not initialized');
+
+        const privateKeyBytes = this.hexToBytes(this.data.priv_key.value);
+        const messageBytes = new TextEncoder().encode(message);
+        const signature = await ed.signAsync(messageBytes, privateKeyBytes);
+        return this.bytesToHex(signature);
+    }
+
+    // Sync version for compatibility - uses cached signature capability
     sign(message: string): string {
         if (!this.data) throw new Error('Identity not initialized');
 
+        // For sync signing, we use Node.js crypto with raw key
+        // Ed25519 in Node.js 18+ supports raw format
+        const privateKeyBytes = Buffer.from(this.data.priv_key.value, 'hex');
         const privateKeyObj = crypto.createPrivateKey({
-            key: Buffer.from(this.data.priv_key.value, 'hex'),
+            key: Buffer.concat([
+                // Ed25519 PKCS8 prefix for 32-byte raw key
+                Buffer.from('302e020100300506032b657004220420', 'hex'),
+                privateKeyBytes
+            ]),
             format: 'der',
             type: 'pkcs8'
         });
@@ -413,12 +430,30 @@ export class UnifiedIdentity {
         return signature.toString('hex');
     }
 
+    async verifyAsync(message: string, signature: string): Promise<boolean> {
+        if (!this.data) return false;
+
+        try {
+            const publicKeyBytes = this.hexToBytes(this.data.pub_key.value);
+            const messageBytes = new TextEncoder().encode(message);
+            const signatureBytes = this.hexToBytes(signature);
+            return await ed.verifyAsync(signatureBytes, messageBytes, publicKeyBytes);
+        } catch {
+            return false;
+        }
+    }
+
     verify(message: string, signature: string): boolean {
         if (!this.data) return false;
 
         try {
+            const publicKeyBytes = Buffer.from(this.data.pub_key.value, 'hex');
             const publicKeyObj = crypto.createPublicKey({
-                key: Buffer.from(this.data.pub_key.value, 'hex'),
+                key: Buffer.concat([
+                    // Ed25519 SPKI prefix for 32-byte raw key
+                    Buffer.from('302a300506032b6570032100', 'hex'),
+                    publicKeyBytes
+                ]),
                 format: 'der',
                 type: 'spki'
             });
