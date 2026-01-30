@@ -618,20 +618,34 @@ export class StakingPool {
 
     private updateValidator(address: string): void {
         const stake = this.stakes.get(address);
+        const existing = this.validators.get(address);
+        const oldStake = existing?.stake || 0;
+        const newStake = stake?.amount || 0;
+        const wasActive = existing?.isActive || false;
+
         if (!stake || stake.amount < MIN_STAKE) {
-            const validator = this.validators.get(address);
-            if (validator) {
-                validator.isActive = false;
-                this.validators.set(address, validator);
+            if (existing) {
+                existing.isActive = false;
+                this.validators.set(address, existing);
+                if (wasActive) {
+                    this.log.warn(`📉 Validator ${address.slice(0, 12)}... deactivated (stake ${newStake}/${MIN_STAKE} LVE)`);
+                }
             }
             return;
         }
 
-        const existing = this.validators.get(address);
         if (existing) {
             existing.stake = stake.amount;
             existing.isActive = true;
             this.validators.set(address, existing);
+
+            // Log stake changes
+            if (oldStake !== newStake) {
+                this.log.info(`💰 Stake changed: ${address.slice(0, 12)}... ${oldStake} → ${newStake} LVE`);
+            }
+            if (!wasActive && existing.isActive) {
+                this.log.info(`🎉 NEW ACTIVE VALIDATOR: ${address.slice(0, 12)}... with ${newStake} LVE`);
+            }
         } else {
             this.validators.set(address, {
                 address,
@@ -646,6 +660,7 @@ export class StakingPool {
                 jailedUntilEpoch: 0,
                 jailCount: 0,
             });
+            this.log.info(`🎉 NEW ACTIVE VALIDATOR: ${address.slice(0, 12)}... with ${newStake} LVE`);
         }
     }
 
