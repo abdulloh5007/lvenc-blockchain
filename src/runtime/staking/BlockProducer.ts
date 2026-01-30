@@ -75,6 +75,12 @@ export class BlockProducer {
             return;
         }
 
+        // Don't produce blocks until fully synced with network
+        if (!this.blockchain.isReadyToProduceBlocks()) {
+            this.log.debug('Waiting for initial sync before producing blocks...');
+            return;
+        }
+
         const validators = stakingPool.getValidators().filter(v => v.isActive);
         if (validators.length === 0) {
             this.log.debug('No active validators, skipping slot');

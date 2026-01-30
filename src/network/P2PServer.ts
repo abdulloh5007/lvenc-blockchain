@@ -309,7 +309,7 @@ export class P2PServer {
 
         // Request more peers if below minimum
         if (stats.connected < MIN_PEERS) {
-            logger.info(`📡 Below minimum peers (${stats.connected}/${MIN_PEERS}), requesting more...`);
+            logger.debug(`📡 Below minimum peers (${stats.connected}/${MIN_PEERS}), requesting more...`);
             this.broadcast({ type: MessageType.QUERY_PEERS, data: null });
 
             // Try bootstrap nodes

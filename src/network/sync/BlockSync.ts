@@ -46,6 +46,7 @@ export class BlockSync {
                 // Can directly append
                 this.blockchain.chain.push(latestReceived);
                 logger.info(`✅ Added new block ${latestReceived.index}`);
+                this.blockchain.markAsSynced();  // Synced after adding block
             } else if (gap > config.sync.chunkSize) {
                 // Large gap - use chunk sync
                 logger.info(`📡 Large gap (${gap} blocks) - using chunk sync`);
@@ -59,7 +60,11 @@ export class BlockSync {
             } else {
                 // Replace entire chain
                 this.blockchain.replaceChain(receivedBlocks);
+                this.blockchain.markAsSynced();  // Synced after chain replace
             }
+        } else {
+            // Already synced - local is at or ahead of network
+            this.blockchain.markAsSynced();
         }
     }
 

@@ -52,9 +52,9 @@ export class PeerDiscovery {
 
             try {
                 await this.connectCallback(seed);
-                logger.info(`🌱 Connected to bootstrap: ${seed}`);
+                logger.debug(`🌱 Reconnected to bootstrap: ${seed}`);
             } catch {
-                logger.warn(`⚠️ Failed to connect to bootstrap: ${seed}`);
+                // Silent fail - bootstrap nodes may be temporarily unavailable
             }
         }
     }

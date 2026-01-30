@@ -21,6 +21,9 @@ export class Blockchain {
     public lastFinalizedIndex: number;
     private balanceCache: Map<string, number>;
     private static readonly FINALITY_DEPTH = 32;
+    private static readonly INITIAL_SYNC_DELAY = 10000; // Wait 10 seconds for initial sync
+    private startTime: number;
+    private isSynced: boolean = false;
     public onBlockMined?: (block: Block) => void;
     public onTransactionAdded?: (tx: Transaction) => void;
     constructor() {
@@ -30,6 +33,7 @@ export class Blockchain {
         this.balanceCache = new Map();
         this.lastFinalizedIndex = 0;
         this.chain = [];
+        this.startTime = Date.now();
     }
 
     /**
@@ -85,6 +89,28 @@ export class Blockchain {
      */
     getBlockByIndex(index: number): Block | undefined {
         return this.chain[index];
+    }
+
+    /**
+     * Check if node is ready to produce blocks
+     * Waits for initial sync period before allowing block production
+     */
+    isReadyToProduceBlocks(): boolean {
+        const elapsed = Date.now() - this.startTime;
+        if (elapsed < Blockchain.INITIAL_SYNC_DELAY) {
+            return false; // Still in initial sync period
+        }
+        return this.isSynced;
+    }
+
+    /**
+     * Mark blockchain as synced (call after initial sync completes)
+     */
+    markAsSynced(): void {
+        if (!this.isSynced) {
+            this.isSynced = true;
+            logger.info('✅ Blockchain synced and ready to produce blocks');
+        }
     }
 
     /**

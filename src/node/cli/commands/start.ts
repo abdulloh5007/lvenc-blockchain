@@ -412,6 +412,7 @@ export async function startNode(options: NodeOptions): Promise<void> {
         // Genesis validators start immediately - no stake check needed
         if (isGenesisValidator && genesisRewardAddress) {
             logger.info(`✓ Genesis validator ready (power from genesis.json)`);
+            blockchain.markAsSynced();  // Genesis node is always synced (it IS the chain)
             const blockProducer = initBlockProducer(blockchain);
             blockProducer.start();
             logger.info(`🏭 Block producer started`);
