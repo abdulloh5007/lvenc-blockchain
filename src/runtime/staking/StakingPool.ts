@@ -92,6 +92,7 @@ export class StakingPool {
     private pendingUnstakes: Map<string, UnstakeRequest[]> = new Map();
     private pendingSlashes: Map<string, PendingSlash[]> = new Map(); // Slashes applied at epoch boundary
     private validators: Map<string, ValidatorInfo> = new Map();
+    private genesisValidators: GenesisValidator[] = [];  // Stored for rebuild
     private currentEpoch: number = 0;
     private epochStartBlock: number = 0;
     private epochStartTime: number = Date.now();
@@ -822,9 +823,18 @@ export class StakingPool {
     /**
      * Rebuild staking state from blockchain transactions
      * This is the ONLY source of truth for staking state
+     * Genesis validators are automatically reloaded from stored genesisValidators
      */
     rebuildFromChain(chain: { transactions: { type?: string; fromAddress: string | null; toAddress: string; amount: number; data?: string }[] }[]): void {
+        // Store genesis validators before clear
+        const savedGenesisValidators = this.genesisValidators;
+
         this.clearAll();
+
+        // Reload genesis validators (they have no on-chain STAKE tx)
+        if (savedGenesisValidators.length > 0) {
+            this.loadGenesisValidators(savedGenesisValidators);
+        }
 
         let stakeTxCount = 0;
         let delegateTxCount = 0;
@@ -851,7 +861,8 @@ export class StakingPool {
             }
         }
 
-        logger.info(`Rebuilt staking state: ${stakeTxCount} stakes, ${delegateTxCount} delegations`);
+        const genesisCount = savedGenesisValidators.length;
+        logger.info(`Rebuilt staking state: ${genesisCount} genesis, ${stakeTxCount} stakes, ${delegateTxCount} delegations`);
     }
 
     /**
@@ -941,8 +952,12 @@ export class StakingPool {
     /**
      * Load genesis validators (bypass pending queue, active from block 0)
      * Called once during blockchain initialization
+     * Also stores them for automatic reload on rebuildFromChain
      */
     loadGenesisValidators(validators: GenesisValidator[]): void {
+        // Store for later rebuild
+        this.genesisValidators = validators;
+
         for (const gv of validators) {
             // Create stake entry
             this.stakes.set(gv.operatorAddress, {
