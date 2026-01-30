@@ -984,6 +984,8 @@ export class StakingPool {
             });
 
             this.log.info(`🌱 Genesis validator loaded: ${gv.operatorAddress.slice(0, 12)}... (power: ${gv.power})`);
+            this.log.info(`💰 Stake changed: ${gv.operatorAddress.slice(0, 12)}... 0 → ${gv.power.toLocaleString()} LVE`);
+            this.log.info(`🎉 NEW ACTIVE VALIDATOR: ${gv.operatorAddress.slice(0, 12)}... with ${gv.power} LVE`);
         }
     }
 
