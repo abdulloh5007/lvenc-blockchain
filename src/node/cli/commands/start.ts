@@ -229,6 +229,26 @@ export async function startNode(options: NodeOptions): Promise<void> {
         }
     }
 
+    // Subscribe to staking changes to show real-time updates for THIS node
+    const myRewardAddress = nodeIdentity.getRewardAddress();
+    blockchain.onStakingChange = (address, type, amount) => {
+        // Only show detailed info if it's OUR address
+        if (address === myRewardAddress) {
+            const totalStake = stakingPool.getStake(address);
+            const minRequired = 100; // chainParams.staking.minValidatorSelfStake
+            const isActive = totalStake >= minRequired;
+            const statusIcon = isActive ? '🟢' : '🟡';
+            const statusText = isActive ? 'ACTIVE VALIDATOR' : `Need ${minRequired - totalStake} more LVE`;
+
+            console.log('');
+            console.log(`${statusIcon} YOUR NODE STAKING UPDATE:`);
+            console.log(`   ${type === 'STAKE' ? '⬆️' : '⬇️'} ${type}: ${type === 'UNSTAKE' ? '-' : '+'}${amount} LVE`);
+            console.log(`   📊 Total Stake: ${totalStake} LVE`);
+            console.log(`   📋 Status: ${statusText}`);
+            console.log('');
+        }
+    };
+
     // Initialize NFT Manager
     const nftManager = new NFTManager();
 

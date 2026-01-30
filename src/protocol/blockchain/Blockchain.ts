@@ -25,6 +25,7 @@ export class Blockchain {
     private isSynced: boolean = false;
     public onBlockMined?: (block: Block) => void;
     public onTransactionAdded?: (tx: Transaction) => void;
+    public onStakingChange?: (address: string, type: 'STAKE' | 'UNSTAKE' | 'DELEGATE' | 'UNDELEGATE', amount: number) => void;
     constructor() {
         this.difficulty = config.blockchain.difficulty;
         this.validatorReward = config.blockchain.validatorReward;
@@ -122,15 +123,19 @@ export class Blockchain {
             if (tx.type === 'STAKE' && tx.fromAddress) {
                 stakingPool.applyStakeFromTx(tx.fromAddress, tx.amount);
                 logger.info(`✅ STAKE applied (real-time): ${tx.fromAddress.slice(0, 12)}... +${tx.amount} LVE`);
+                this.onStakingChange?.(tx.fromAddress, 'STAKE', tx.amount);
             } else if (tx.type === 'UNSTAKE' && tx.fromAddress) {
                 stakingPool.applyUnstakeFromTx(tx.fromAddress, tx.amount);
                 logger.info(`✅ UNSTAKE applied (real-time): ${tx.fromAddress.slice(0, 12)}... -${tx.amount} LVE`);
+                this.onStakingChange?.(tx.fromAddress, 'UNSTAKE', tx.amount);
             } else if (tx.type === 'DELEGATE' && tx.fromAddress && tx.data) {
                 stakingPool.applyDelegateFromTx(tx.fromAddress, tx.data, tx.amount);
                 logger.info(`✅ DELEGATE applied (real-time): ${tx.fromAddress.slice(0, 12)}... delegated ${tx.amount} LVE`);
+                this.onStakingChange?.(tx.fromAddress, 'DELEGATE', tx.amount);
             } else if (tx.type === 'UNDELEGATE' && tx.fromAddress && tx.data) {
                 stakingPool.applyUndelegateFromTx(tx.fromAddress, tx.data, tx.amount);
                 logger.info(`✅ UNDELEGATE applied (real-time): ${tx.fromAddress.slice(0, 12)}... undelegated ${tx.amount} LVE`);
+                this.onStakingChange?.(tx.fromAddress, 'UNDELEGATE', tx.amount);
             }
         }
     }
@@ -545,6 +550,15 @@ export class Blockchain {
 
         // Rebuild staking state from chain transactions (on-chain staking)
         stakingPool.rebuildFromChain(newChain);
+
+        // Notify about staking state after chain replace (for UI updates)
+        // Emit a synthetic STAKE event for any address with stake
+        if (this.onStakingChange) {
+            const allValidators = stakingPool.getAllValidators();
+            for (const v of allValidators) {
+                this.onStakingChange(v.address, 'STAKE', v.stake);
+            }
+        }
 
         logger.info(`🔄 Chain replaced with ${newChain.length} blocks`);
         return true;
