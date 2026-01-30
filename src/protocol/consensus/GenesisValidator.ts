@@ -46,7 +46,7 @@ export function loadGenesisConfig(dataDir: string): GenesisConfig | null {
     const genesisPath = path.join(dataDir, 'genesis.json');
 
     if (!fs.existsSync(genesisPath)) {
-        log.warn('No genesis.json found, using default genesis');
+        log.debug('No genesis.json found (will sync from peers)');
         return null;
     }
 
