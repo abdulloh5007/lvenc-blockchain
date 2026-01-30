@@ -2,9 +2,8 @@ import { Block, BlockData } from './Block.js';
 import { Transaction, TransactionData } from './Transaction.js';
 import { config } from '../../node/config.js';
 import { logger } from '../utils/logger.js';
-import { SafeMath, acquireTxLock, releaseTxLock, validateTransaction, addCheckpoint, validateAgainstCheckpoint, validateBlockTimestamp } from '../security/index.js';
+import { SafeMath, acquireTxLock, releaseTxLock, addCheckpoint } from '../security/index.js';
 import { stakingPool } from '../../runtime/staking/index.js';
-import { verifyBlockSignature } from './BlockSignature.js';
 
 export interface BlockchainData {
     chain: BlockData[];
@@ -110,6 +109,29 @@ export class Blockchain {
         if (!this.isSynced) {
             this.isSynced = true;
             logger.info('✅ Blockchain synced and ready to produce blocks');
+        }
+    }
+
+    /**
+     * Apply staking changes from a single block in real-time
+     * This is called when we create a block OR receive a block from peers
+     * Prevents duplicate application by tracking processed blocks
+     */
+    applyBlockStakingChanges(block: Block): void {
+        for (const tx of block.transactions) {
+            if (tx.type === 'STAKE' && tx.fromAddress) {
+                stakingPool.applyStakeFromTx(tx.fromAddress, tx.amount);
+                logger.info(`✅ STAKE applied (real-time): ${tx.fromAddress.slice(0, 12)}... +${tx.amount} LVE`);
+            } else if (tx.type === 'UNSTAKE' && tx.fromAddress) {
+                stakingPool.applyUnstakeFromTx(tx.fromAddress, tx.amount);
+                logger.info(`✅ UNSTAKE applied (real-time): ${tx.fromAddress.slice(0, 12)}... -${tx.amount} LVE`);
+            } else if (tx.type === 'DELEGATE' && tx.fromAddress && tx.data) {
+                stakingPool.applyDelegateFromTx(tx.fromAddress, tx.data, tx.amount);
+                logger.info(`✅ DELEGATE applied (real-time): ${tx.fromAddress.slice(0, 12)}... delegated ${tx.amount} LVE`);
+            } else if (tx.type === 'UNDELEGATE' && tx.fromAddress && tx.data) {
+                stakingPool.applyUndelegateFromTx(tx.fromAddress, tx.data, tx.amount);
+                logger.info(`✅ UNDELEGATE applied (real-time): ${tx.fromAddress.slice(0, 12)}... undelegated ${tx.amount} LVE`);
+            }
         }
     }
 
@@ -318,23 +340,25 @@ export class Blockchain {
         this.pendingTransactions = remainingTx;
         this.updateBalanceCache();
 
-        // Process staking transactions from the new block
-        // This is where staking state changes are applied (on-chain staking)
+        // Log staking transactions included in this block (for info only)
+        // NOTE: Staking state is applied via:
+        //   1. rebuildFromChain() on node restart
+        //   2. applyBlockStakingChanges() when receiving blocks from peers
+        // This prevents duplicate application when we create AND sync the same block
         for (const tx of txToInclude) {
             if (tx.type === 'STAKE' && tx.fromAddress) {
-                stakingPool.applyStakeFromTx(tx.fromAddress, tx.amount);
-                logger.info(`📊 STAKE applied: ${tx.fromAddress.slice(0, 12)}... staked ${tx.amount} LVE`);
+                logger.info(`📊 STAKE included in block: ${tx.fromAddress.slice(0, 12)}... staked ${tx.amount} LVE`);
             } else if (tx.type === 'UNSTAKE' && tx.fromAddress) {
-                stakingPool.applyUnstakeFromTx(tx.fromAddress, tx.amount);
-                logger.info(`📊 UNSTAKE applied: ${tx.fromAddress.slice(0, 12)}... unstaked ${tx.amount} LVE`);
+                logger.info(`📊 UNSTAKE included in block: ${tx.fromAddress.slice(0, 12)}... unstaked ${tx.amount} LVE`);
             } else if (tx.type === 'DELEGATE' && tx.fromAddress && tx.data) {
-                stakingPool.applyDelegateFromTx(tx.fromAddress, tx.data, tx.amount);
-                logger.info(`📊 DELEGATE applied: ${tx.fromAddress.slice(0, 12)}... delegated ${tx.amount} LVE`);
+                logger.info(`📊 DELEGATE included in block: ${tx.fromAddress.slice(0, 12)}... delegated ${tx.amount} LVE`);
             } else if (tx.type === 'UNDELEGATE' && tx.fromAddress && tx.data) {
-                stakingPool.applyUndelegateFromTx(tx.fromAddress, tx.data, tx.amount);
-                logger.info(`📊 UNDELEGATE applied: ${tx.fromAddress.slice(0, 12)}... undelegated ${tx.amount} LVE`);
+                logger.info(`📊 UNDELEGATE included in block: ${tx.fromAddress.slice(0, 12)}... undelegated ${tx.amount} LVE`);
             }
         }
+
+        // Apply staking changes from the block we just created (real-time update)
+        this.applyBlockStakingChanges(block);
 
         this.updateFinality();
         logger.info(`🏦 PoS Block ${block.index} validated! Reward: ${totalReward} ${config.blockchain.coinSymbol}`);

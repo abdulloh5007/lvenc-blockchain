@@ -45,6 +45,7 @@ export class BlockSync {
             if (latestLocal.hash === latestReceived.previousHash) {
                 // Can directly append
                 this.blockchain.chain.push(latestReceived);
+                this.blockchain.applyBlockStakingChanges(latestReceived);  // Real-time staking update
                 logger.info(`✅ Added new block ${latestReceived.index}`);
                 this.blockchain.markAsSynced();  // Synced after adding block
             } else if (gap > config.sync.chunkSize) {
