@@ -108,6 +108,13 @@ export class Blockchain {
             throw new Error('Cannot add invalid transaction');
         }
 
+        // Check for duplicate transaction by ID (prevent double-submission via P2P)
+        const existingById = this.pendingTransactions.find(tx => tx.id === transaction.id);
+        if (existingById) {
+            logger.debug(`Transaction ${transaction.id.slice(0, 12)}... already in pending pool`);
+            return false;
+        }
+
         // Anti-double-stake: Prevent multiple STAKE transactions from same address in pending pool
         if (transaction.type === 'STAKE' && transaction.fromAddress) {
             const existingStake = this.pendingTransactions.find(
