@@ -57,8 +57,12 @@ export const PinProvider: React.FC<PinProviderProps> = ({ children }) => {
     const unlock = useCallback((pin: string): boolean => {
         const data = encryption.unlockWallet(pin);
         if (data !== null) {
-            setIsLocked(false);
-            setDecryptedData(data);
+            // Delay the state change to allow modal animation to show
+            // Animation takes ~900ms (400ms loading + 500ms success)
+            setTimeout(() => {
+                setIsLocked(false);
+                setDecryptedData(data);
+            }, 900);
             return true;
         }
         return false;
