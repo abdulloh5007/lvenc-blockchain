@@ -16,8 +16,7 @@ import { logger } from '../../../protocol/utils/logger.js';
 import { NFTManager } from '../../../runtime/nft/index.js';
 import { initBlockProducer, stakingPool } from '../../../runtime/staking/index.js';
 import { config } from '../../config.js';
-import { boxBottom, boxCenter, boxEmpty, boxSeparator, boxTop } from '../../../protocol/utils/box.js';
-import { c, successBox, infoBox } from '../../../protocol/utils/cli.js';
+import { c, successBox, infoBox, warningBox } from '../../../protocol/utils/cli.js';
 import { getRole, RoleConfig, RoleName } from '../../roles/index.js';
 import { loadGenesisConfig } from '../../../protocol/consensus/index.js';
 import { chainParams } from '../../../protocol/params/index.js';
@@ -118,17 +117,15 @@ export async function startNode(options: NodeOptions): Promise<void> {
     const versionLine = `${mode} ${version}`;
 
     console.log('');
-    console.log('╔═══════════════════════════════════════════════════════════╗');
-    console.log(boxEmpty());
-    console.log(boxCenter('██╗     ██╗   ██╗███████╗███╗   ██╗ ██████╗'));
-    console.log(boxCenter('██║     ██║   ██║██╔════╝████╗  ██║██╔════╝'));
-    console.log(boxCenter('██║     ██║   ██║█████╗  ██╔██╗ ██║██║     '));
-    console.log(boxCenter('██║     ╚██╗ ██╔╝██╔══╝  ██║╚██╗██║██║     '));
-    console.log(boxCenter('███████╗ ╚████╔╝ ███████╗██║ ╚████║╚██████╗'));
-    console.log(boxCenter('╚══════╝  ╚═══╝  ╚══════╝╚═╝  ╚═══╝ ╚═════╝'));
-    console.log(boxEmpty());
-    console.log(boxCenter(versionLine));
-    console.log('╚═══════════════════════════════════════════════════════════╝');
+    const banner = [
+        '██╗     ██╗   ██╗███████╗███╗   ██╗ ██████╗',
+        '██║     ██║   ██║██╔════╝████╗  ██║██╔════╝',
+        '██║     ██║   ██║█████╗  ██╔██╗ ██║██║     ',
+        '██║     ╚██╗ ██╔╝██╔══╝  ██║╚██╗██║██║     ',
+        '███████╗ ╚████╔╝ ███████╗██║ ╚████║╚██████╗',
+        '╚══════╝  ╚═══╝  ╚══════╝╚═╝  ╚═══╝ ╚═════╝',
+    ].join('\n');
+    console.log(infoBox(banner, versionLine));
     console.log('');
 
     // Interactive network selection if not specified via CLI
@@ -227,22 +224,7 @@ export async function startNode(options: NodeOptions): Promise<void> {
         if (matchingValidator) {
             isGenesisValidator = true;
             genesisRewardAddress = matchingValidator.operatorAddress;
-
-            // Display beautiful validator status box
             const validatorName = matchingValidator.moniker || 'Genesis Validator';
-            const stake = matchingValidator.power || 1000;
-
-            console.log();
-            console.log(successBox(
-                `${c.label('Moniker:')}      ${c.value(validatorName)}\n` +
-                `${c.label('Address:')}      ${c.value(matchingValidator.operatorAddress)}\n` +
-                `${c.label('Stake:')}        ${c.success(`${stake} ${config.blockchain.coinSymbol}`)}\n` +
-                `${c.label('Status:')}       ${c.success('✓ ACTIVE')}\n` +
-                `${c.label('Stake Change:')} ${c.muted('0')} → ${c.success(stake.toString())} ${config.blockchain.coinSymbol}`,
-                '🎯 Genesis Validator Activated'
-            ));
-            console.log();
-
             logger.info(`🎯 Node is genesis validator: ${validatorName}`);
         }
     }
@@ -441,21 +423,16 @@ export async function startNode(options: NodeOptions): Promise<void> {
 
             if (!rewardAddress) {
                 console.log('');
-                console.log(boxTop());
-                console.log(boxCenter('Validator Setup Required'));
-                console.log(boxSeparator());
-                console.log(boxCenter('No reward address configured!'));
-                console.log(boxEmpty());
-                console.log(boxCenter('To receive validator rewards, run:'));
-                console.log(boxEmpty());
-                console.log(boxCenter('1. Generate wallet:'));
-                console.log(boxCenter('   lve-chain reward generate'));
-                console.log(boxEmpty());
-                console.log(boxCenter('2. Or bind existing:'));
-                console.log(boxCenter('   lve-chain reward bind <address>'));
-                console.log(boxEmpty());
-                console.log(boxCenter('Then restart the validator node.'));
-                console.log(boxBottom());
+                console.log(warningBox(
+                    'No reward address configured!\n\n' +
+                    'To receive validator rewards, run:\n\n' +
+                    '1. Generate wallet:\n' +
+                    '   lve-chain reward generate\n\n' +
+                    '2. Or bind existing:\n' +
+                    '   lve-chain reward bind <address>\n\n' +
+                    'Then restart the validator node.',
+                    '⚠️ Validator Setup Required'
+                ));
                 console.log('');
                 logger.warn('⚠ Validator running without reward address - no block production');
             } else {
@@ -465,24 +442,19 @@ export async function startNode(options: NodeOptions): Promise<void> {
 
                 if (stakeAmount < minStake) {
                     console.log('');
-                    console.log(boxTop());
-                    console.log(boxCenter('Insufficient Stake'));
-                    console.log(boxSeparator());
-                    console.log(boxCenter(`Reward Address: ${shortAddr}`));
-                    console.log(boxCenter(`Current Stake:  ${stakeAmount} LVE`));
-                    console.log(boxCenter(`Required:       ${minStake} LVE`));
-                    console.log(boxEmpty());
-                    console.log(boxCenter('To become an active validator:'));
-                    console.log(boxEmpty());
-                    console.log(boxCenter('1. Get LVE tokens:'));
-                    console.log(boxCenter('   lve-chain faucet request <address>'));
-                    console.log(boxEmpty());
-                    console.log(boxCenter('2. Stake LVE:'));
-                    console.log(boxCenter('   POST /api/staking/stake'));
-                    console.log(boxCenter(`   {"address": "...", "amount": ${minStake}}`));
-                    console.log(boxEmpty());
-                    console.log(boxCenter('Status: INACTIVE (not producing blocks)'));
-                    console.log(boxBottom());
+                    console.log(warningBox(
+                        `Reward Address: ${shortAddr}\n` +
+                        `Current Stake:  ${stakeAmount} LVE\n` +
+                        `Required:       ${minStake} LVE\n\n` +
+                        'To become an active validator:\n\n' +
+                        '1. Get LVE tokens:\n' +
+                        '   lve-chain faucet request <address>\n\n' +
+                        '2. Stake LVE:\n' +
+                        '   POST /api/staking/stake\n' +
+                        `   {"address": "...", "amount": ${minStake}}\n\n` +
+                        'Status: INACTIVE (not producing blocks)',
+                        '⚠️ Insufficient Stake'
+                    ));
                     console.log('');
                     logger.warn(`⚠ Stake ${stakeAmount}/${minStake} LVE - validator inactive`);
                 } else {
@@ -630,32 +602,29 @@ export async function startNode(options: NodeOptions): Promise<void> {
                 const infoIsValidator = infoStake >= infoMinStake;
 
                 console.log('');
-                console.log(boxTop());
-                console.log(boxCenter('Node Info'));
-                console.log(boxSeparator());
-                console.log(boxCenter(`Network:       ${network}`));
-                console.log(boxCenter(`API Port:      ${apiPort}`));
-                console.log(boxCenter(`P2P Port:      ${p2pPort}`));
-                console.log(boxCenter(`Latest Block:  #${blockchain.getLatestBlock().index}`));
-                console.log(boxSeparator());
-                console.log(boxCenter('Validator Status'));
-                console.log(boxSeparator());
+                let nodeInfoContent =
+                    `Network:       ${network}\n` +
+                    `API Port:      ${apiPort}\n` +
+                    `P2P Port:      ${p2pPort}\n` +
+                    `Latest Block:  #${blockchain.getLatestBlock().index}\n\n` +
+                    '─── Validator Status ───\n';
+
                 if (infoRewardAddr) {
                     const shortAddr = `${infoRewardAddr.slice(0, 12)}...${infoRewardAddr.slice(-8)}`;
-                    console.log(boxCenter(`Reward Address: ${shortAddr}`));
-                    console.log(boxCenter(`Staked:         ${infoStake} LVE`));
-                    console.log(boxCenter(`Min Required:   ${infoMinStake} LVE`));
+                    nodeInfoContent += `Reward Address: ${shortAddr}\n`;
+                    nodeInfoContent += `Staked:         ${infoStake} LVE\n`;
+                    nodeInfoContent += `Min Required:   ${infoMinStake} LVE\n`;
                     if (infoIsValidator) {
-                        console.log(boxCenter(`Status:         ACTIVE VALIDATOR`));
+                        nodeInfoContent += `Status:         ACTIVE VALIDATOR`;
                     } else {
-                        console.log(boxCenter(`Remaining:      ${infoRemaining} LVE`));
-                        console.log(boxCenter(`Status:         INACTIVE`));
+                        nodeInfoContent += `Remaining:      ${infoRemaining} LVE\n`;
+                        nodeInfoContent += `Status:         INACTIVE`;
                     }
                 } else {
-                    console.log(boxCenter('Reward Address: Not configured'));
-                    console.log(boxCenter('Run: lve-chain reward generate'));
+                    nodeInfoContent += 'Reward Address: Not configured\n';
+                    nodeInfoContent += 'Run: lve-chain reward generate';
                 }
-                console.log(boxBottom());
+                console.log(infoBox(nodeInfoContent, 'ℹ️ Node Info'));
                 console.log('');
                 break;
 

@@ -10,7 +10,7 @@ import * as crypto from 'crypto';
 import * as readline from 'readline';
 import { logger } from '../../protocol/utils/logger.js';
 import { config } from '../config.js';
-import { boxCenter, boxSeparator, boxTop, boxBottom } from '../../protocol/utils/box.js';
+import { warningBox } from '../../protocol/utils/cli.js';
 
 export const IDENTITY_VERSION = 1;
 export const IDENTITY_ALGO = 'ed25519';
@@ -68,15 +68,13 @@ export class NodeIdentity {
             : this.identityPath;
 
         console.log('');
-        console.log(boxTop());
-        console.log(boxCenter('⚠️  IMPORTANT: Node Identity Created'));
-        console.log(boxSeparator());
-        console.log(boxCenter(`Node ID: ${nodeIdShort}`));
-        console.log(boxCenter(`Backup:  ${backupPath}`));
-        console.log(boxSeparator());
-        console.log(boxCenter('This key controls your validator rewards!'));
-        console.log(boxCenter('Keep it safe and never share your private key.'));
-        console.log(boxBottom());
+        console.log(warningBox(
+            `Node ID: ${nodeIdShort}\n` +
+            `Backup:  ${backupPath}\n\n` +
+            'This key controls your validator rewards!\n' +
+            'Keep it safe and never share your private key.',
+            '⚠️ IMPORTANT: Node Identity Created'
+        ));
         console.log('');
 
         // Wait for acknowledgment in interactive mode
