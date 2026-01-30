@@ -59,7 +59,30 @@ export class Blockchain {
      */
     loadFromData(data: BlockchainData): void {
         this.chain = data.chain.map(blockData => Block.fromJSON(blockData));
-        this.pendingTransactions = data.pendingTransactions.map(tx => Transaction.fromJSON(tx));
+
+        // Get all transaction IDs that are already in the chain
+        const chainTxIds = new Set<string>();
+        for (const block of this.chain) {
+            for (const tx of block.transactions) {
+                chainTxIds.add(tx.id);
+            }
+        }
+
+        // Filter out pending transactions that are already in the chain
+        // This prevents duplicate STAKE/UNSTAKE on restart
+        const pendingTxs = data.pendingTransactions.map(tx => Transaction.fromJSON(tx));
+        this.pendingTransactions = pendingTxs.filter(tx => {
+            if (chainTxIds.has(tx.id)) {
+                logger.debug(`Skipping already-applied tx: ${tx.id.slice(0, 12)}... (${tx.type})`);
+                return false;
+            }
+            return true;
+        });
+
+        if (pendingTxs.length !== this.pendingTransactions.length) {
+            logger.info(`🧹 Cleaned ${pendingTxs.length - this.pendingTransactions.length} already-applied pending tx`);
+        }
+
         this.difficulty = data.difficulty;
         this.validatorReward = data.validatorReward;
         this.updateBalanceCache();
