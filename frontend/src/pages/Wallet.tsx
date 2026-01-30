@@ -4,6 +4,7 @@ import { Card, Button, Input, SeedImportModal } from '../components';
 import { useWallets } from '../hooks';
 import { useI18n } from '../contexts';
 import { transaction, blockchain, faucet, networkApi } from '../api/client';
+import { formatBalance } from '../utils/format';
 import type { FeeInfo } from '../api/client';
 import './Wallet.css';
 const formatAddress = (addr: string) => `${addr.substring(0, 12)}...${addr.substring(addr.length - 8)}`;
@@ -125,7 +126,7 @@ export const WalletPage: React.FC = () => {
                                             <div className="wallet-address font-mono">{formatAddress(w.address)}</div>
                                         </div>
                                         <div className="wallet-balance">
-                                            <span className="balance-value">{w.balance?.toLocaleString() || 0}</span>
+                                            <span className="balance-value">{formatBalance(w.balance || 0)}</span>
                                             <span className="balance-symbol">LVE</span>
                                         </div>
                                         <div className="wallet-actions">

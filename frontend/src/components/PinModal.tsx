@@ -29,6 +29,7 @@ export const PinModal: React.FC<PinModalProps> = ({
     const [stage, setStage] = useState<'create' | 'confirm'>('create');
     const [isError, setIsError] = useState<boolean>(false);
     const [isSuccess, setIsSuccess] = useState<boolean>(false);
+    const [isLoading, setIsLoading] = useState<boolean>(false);
     const [shaking, setShaking] = useState<boolean>(false);
     const [activeKey, setActiveKey] = useState<string | null>(null);
     const [processing, setProcessing] = useState<boolean>(false);
@@ -69,10 +70,18 @@ export const PinModal: React.FC<PinModalProps> = ({
     }, []);
 
     const triggerSuccess = useCallback((callback: () => void) => {
-        setIsSuccess(true);
         setProcessing(true);
+        setIsLoading(true);
+
+        // Show loading animation for 400ms
         setTimeout(() => {
-            callback();
+            setIsLoading(false);
+            setIsSuccess(true);
+
+            // Show success state for 500ms before callback
+            setTimeout(() => {
+                callback();
+            }, 500);
         }, 400);
     }, []);
 
@@ -198,7 +207,7 @@ export const PinModal: React.FC<PinModalProps> = ({
                         {[0, 1, 2, 3].map((i) => (
                             <div
                                 key={i}
-                                className={`pin-dot ${i < pin.length ? 'filled' : ''} ${isError ? 'error' : ''} ${isSuccess ? 'success' : ''}`}
+                                className={`pin-dot ${i < pin.length ? 'filled' : ''} ${isError ? 'error' : ''} ${isSuccess ? 'success' : ''} ${isLoading ? 'loading' : ''}`}
                             />
                         ))}
                     </div>

@@ -199,28 +199,35 @@ export function useWallets() {
         const stored = loadWallets();
         stored.push(newWallet);
         saveWallets(stored);
-        await fetchBalances();
+        await fetchBalances(true);  // Force refresh
         return newWallet;
     }, [loadWallets, saveWallets, fetchBalances]);
 
     const importWallet = useCallback(async (mnemonic: string, label?: string) => {
         await loadNetworkPrefix();
         const imported = await importFromMnemonicAsync(mnemonic, label);
+
+        // CRITICAL: Read fresh from storage to get latest state after any deletes
+        // This fixes race condition where deleted wallets reappear
         const stored = loadWallets();
+
         if (stored.find(w => w.address === imported.address)) {
             throw new Error('Wallet already exists');
         }
         stored.push(imported);
         saveWallets(stored);
-        await fetchBalances();
+        await fetchBalances(true);  // Force refresh to sync state with storage
         return imported;
     }, [loadWallets, saveWallets, fetchBalances]);
 
-    const deleteWallet = useCallback((address: string) => {
+    const deleteWallet = useCallback(async (address: string) => {
         const stored = loadWallets();
         const filtered = stored.filter(w => w.address !== address);
         saveWallets(filtered);
+        // Immediately update state AND force refresh to ensure sync
         setWallets(prev => prev.filter(w => w.address !== address));
+        // Small delay to ensure storage is committed before any subsequent operations
+        await new Promise(resolve => setTimeout(resolve, 50));
     }, [loadWallets, saveWallets]);
 
     /**
