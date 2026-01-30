@@ -70,23 +70,22 @@ if [ ! -f "$DATA_DIR/node_identity.json" ]; then
     echo ""
     msg_info "Step 2/3: Creating node identity..."
     
-    # Create identity by running identity init command or triggering it
-    # Since UnifiedIdentity auto-creates on start, we do a minimal init
-    node -e "
-const { initUnifiedIdentity } = require('./dist/node/identity/index.js');
-const { chainParams } = require('./dist/protocol/params/index.js');
-(async () => {
-    process.env.LVE_NETWORK = '${NETWORK}';
-    const identity = await initUnifiedIdentity('${DATA_DIR}');
-    console.log('');
-    console.log('  ╭────────────────────────────────────────────────────────╮');
-    console.log('  │  🔑 Node Identity Created                              │');
-    console.log('  ├────────────────────────────────────────────────────────┤');
-    console.log('  │  Address:  ' + identity.getFullAddress().padEnd(45) + '│');
-    console.log('  │  PubKey:   ' + (identity.getPubKey().slice(0, 40) + '...').padEnd(45) + '│');
-    console.log('  ╰────────────────────────────────────────────────────────╯');
-    console.log('');
-})().catch(e => { console.error(e); process.exit(1); });
+    # Create identity by running identity init command
+    # Use dynamic import since this is an ES module
+    node --input-type=module -e "
+import { initUnifiedIdentity } from './dist/node/identity/index.js';
+import { chainParams } from './dist/protocol/params/index.js';
+
+process.env.LVE_NETWORK = '${NETWORK}';
+const identity = await initUnifiedIdentity('${DATA_DIR}');
+console.log('');
+console.log('  ╭────────────────────────────────────────────────────────╮');
+console.log('  │  🔑 Node Identity Created                              │');
+console.log('  ├────────────────────────────────────────────────────────┤');
+console.log('  │  Address:  ' + identity.getFullAddress().padEnd(45) + '│');
+console.log('  │  PubKey:   ' + (identity.getPubKey().slice(0, 40) + '...').padEnd(45) + '│');
+console.log('  ╰────────────────────────────────────────────────────────╯');
+console.log('');
 "
 else
     msg_warn "Step 2/3: Node identity already exists, skipping..."

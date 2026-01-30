@@ -17,14 +17,15 @@ export const VALIDATOR_KEY_FILE = 'priv_validator_key.json';
 
 /**
  * Derive validator address from public key hex.
- * Same algorithm as ValidatorKey uses internally.
- * @param pubKeyHex - Hex-encoded public key (DER format)
- * @returns Address (first 40 chars of sha256 hash, uppercase)
+ * Same algorithm as UnifiedIdentity and Wallet use.
+ * @param pubKeyHex - Hex-encoded public key
+ * @returns Address (first 40 chars of sha256 hash of hex string, lowercase)
  */
 export function deriveAddressFromPubKey(pubKeyHex: string): string {
-    const pubKeyBuffer = Buffer.from(pubKeyHex, 'hex');
-    const hash = crypto.createHash('sha256').update(pubKeyBuffer).digest('hex');
-    return hash.slice(0, 40).toUpperCase();
+    // MUST match UnifiedIdentity.deriveAddress and Wallet.deriveAddress exactly!
+    // Hash the HEX STRING directly (not bytes) for compatibility
+    const hash = crypto.createHash('sha256').update(pubKeyHex).digest('hex');
+    return hash.slice(0, 40);
 }
 
 export interface ValidatorKeyData {
