@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { wallet, networkApi } from '../api/client';
 import { usePinContext } from '../contexts';
 import * as ed from '@noble/ed25519';
@@ -122,6 +122,10 @@ export function useWallets() {
     const [loading, setLoading] = useState(true);
     const [error] = useState<string | null>(null);
 
+    // Prevent parallel API calls that cause 429 rate limiting
+    const isFetchingRef = useRef(false);
+    const lastFetchRef = useRef(0);
+
     // Load wallets from encrypted storage
     const loadWallets = useCallback((): LocalWallet[] => {
         try {
@@ -137,38 +141,56 @@ export function useWallets() {
         saveData(JSON.stringify(walletList));
     }, [saveData]);
 
-    const fetchBalances = useCallback(async () => {
-        await loadNetworkPrefix();
-        const stored = loadWallets();
-
-        if (stored.length === 0) {
-            setWallets([]);
-            setLoading(false);
+    const fetchBalances = useCallback(async (force = false) => {
+        // Prevent parallel API calls (causes 429 errors)
+        if (isFetchingRef.current) {
             return;
         }
 
-        // Use batch API to get all balances in one request
-        // This prevents 429 rate limiting when user has many wallets
-        const addresses = stored.map(w => w.address);
-        const res = await wallet.getBatchBalances(addresses);
-
-        if (res.success && res.data) {
-            const balanceMap = new Map(res.data.balances.map(b => [b.address, b.balance]));
-            const withBalances: WalletWithBalance[] = stored.map(w => ({
-                ...w,
-                balance: balanceMap.get(w.address) || 0
-            }));
-            setWallets(withBalances);
-        } else {
-            // Fallback: set wallets without balance update on error
-            const withBalances: WalletWithBalance[] = stored.map(w => ({
-                ...w,
-                balance: wallets.find(existing => existing.address === w.address)?.balance || 0
-            }));
-            setWallets(withBalances);
+        // Throttle: minimum 5 seconds between calls (unless forced)
+        const now = Date.now();
+        if (!force && now - lastFetchRef.current < 5000) {
+            return;
         }
 
-        setLoading(false);
+        isFetchingRef.current = true;
+        lastFetchRef.current = now;
+
+        try {
+            await loadNetworkPrefix();
+            const stored = loadWallets();
+
+            if (stored.length === 0) {
+                setWallets([]);
+                setLoading(false);
+                return;
+            }
+
+            // Use batch API to get all balances in one request
+            // This prevents 429 rate limiting when user has many wallets
+            const addresses = stored.map(w => w.address);
+            const res = await wallet.getBatchBalances(addresses);
+
+            if (res.success && res.data) {
+                const balanceMap = new Map(res.data.balances.map(b => [b.address, b.balance]));
+                const withBalances: WalletWithBalance[] = stored.map(w => ({
+                    ...w,
+                    balance: balanceMap.get(w.address) || 0
+                }));
+                setWallets(withBalances);
+            } else {
+                // Fallback: set wallets without balance update on error
+                const withBalances: WalletWithBalance[] = stored.map(w => ({
+                    ...w,
+                    balance: wallets.find(existing => existing.address === w.address)?.balance || 0
+                }));
+                setWallets(withBalances);
+            }
+
+            setLoading(false);
+        } finally {
+            isFetchingRef.current = false;
+        }
     }, [loadWallets, wallets]);
 
     const createWallet = useCallback(async (label?: string, wordCount: 12 | 24 = 24) => {
@@ -500,11 +522,14 @@ export function useWallets() {
     }, [confirmPin, signSwapTransaction]);
 
     useEffect(() => {
-        fetchBalances();
-        // Poll every 30 seconds instead of 10 to reduce API load
-        const interval = setInterval(fetchBalances, 30000);
+        // Initial fetch with force=true to bypass throttle
+        fetchBalances(true);
+
+        // Poll every 30 seconds
+        const interval = setInterval(() => fetchBalances(), 30000);
         return () => clearInterval(interval);
-    }, [fetchBalances]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // Empty dependency - we use refs internally for throttling
 
     return {
         wallets,
