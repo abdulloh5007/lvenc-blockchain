@@ -17,6 +17,7 @@ import { NFTManager } from '../../../runtime/nft/index.js';
 import { initBlockProducer, stakingPool } from '../../../runtime/staking/index.js';
 import { config } from '../../config.js';
 import { boxBottom, boxCenter, boxEmpty, boxSeparator, boxTop } from '../../../protocol/utils/box.js';
+import { c, successBox, infoBox } from '../../../protocol/utils/cli.js';
 import { getRole, RoleConfig, RoleName } from '../../roles/index.js';
 import { loadGenesisConfig } from '../../../protocol/consensus/index.js';
 import { chainParams } from '../../../protocol/params/index.js';
@@ -226,7 +227,23 @@ export async function startNode(options: NodeOptions): Promise<void> {
         if (matchingValidator) {
             isGenesisValidator = true;
             genesisRewardAddress = matchingValidator.operatorAddress;
-            logger.info(`🎯 Node is genesis validator: ${matchingValidator.moniker || matchingValidator.operatorAddress.slice(0, 16)}...`);
+
+            // Display beautiful validator status box
+            const validatorName = matchingValidator.moniker || 'Genesis Validator';
+            const stake = matchingValidator.power || 1000;
+
+            console.log();
+            console.log(successBox(
+                `${c.label('Moniker:')}      ${c.value(validatorName)}\n` +
+                `${c.label('Address:')}      ${c.value(matchingValidator.operatorAddress)}\n` +
+                `${c.label('Stake:')}        ${c.success(`${stake} ${config.blockchain.coinSymbol}`)}\n` +
+                `${c.label('Status:')}       ${c.success('✓ ACTIVE')}\n` +
+                `${c.label('Stake Change:')} ${c.muted('0')} → ${c.success(stake.toString())} ${config.blockchain.coinSymbol}`,
+                '🎯 Genesis Validator Activated'
+            ));
+            console.log();
+
+            logger.info(`🎯 Node is genesis validator: ${validatorName}`);
         }
     }
 
