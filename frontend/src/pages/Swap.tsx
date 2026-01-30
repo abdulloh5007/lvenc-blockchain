@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { ArrowUpDown, Droplets, AlertCircle, Wallet, RefreshCw, Loader, TrendingDown, Percent, DollarSign } from 'lucide-react';
 import { useWallets } from '../hooks';
+import { CustomSelect } from '../components/CustomSelect';
 import './Swap.css';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
@@ -29,8 +31,17 @@ interface QuoteResult {
 }
 
 const Swap: React.FC = () => {
-    const { wallets, signSwapTransactionWithPin } = useWallets();
-    const wallet = wallets[0]; // Use first wallet
+    const { wallets, signSwapTransactionWithPin, refresh } = useWallets();
+
+    // Wallet selection
+    const [selectedWalletIndex, setSelectedWalletIndex] = useState(0);
+    const selectedWallet = wallets[selectedWalletIndex] || null;
+
+    // USDT balance (mock for testnet)
+    const [usdtBalance, setUsdtBalance] = useState(0);
+    const [faucetLoading, setFaucetLoading] = useState(false);
+    const [faucetMessage, setFaucetMessage] = useState<string | null>(null);
+
     const [poolInfo, setPoolInfo] = useState<PoolInfo | null>(null);
     const [tokenIn, setTokenIn] = useState<'LVE' | 'USDT'>('LVE');
     const [amountIn, setAmountIn] = useState<string>('');
@@ -38,6 +49,26 @@ const Swap: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
+
+    // Create wallet options for CustomSelect
+    const walletOptions = wallets.map((w, i) => ({
+        value: String(i),
+        label: `${w.label || `Wallet ${i + 1}`} (${w.address.slice(0, 10)}...)`
+    }));
+
+    // Fetch USDT balance
+    const fetchUsdtBalance = useCallback(async () => {
+        if (!selectedWallet) return;
+        try {
+            const res = await fetch(`${API_BASE}/faucet/balance/${selectedWallet.address}`);
+            const data = await res.json();
+            if (data.success) {
+                setUsdtBalance(data.data.balance);
+            }
+        } catch {
+            console.error('Failed to fetch USDT balance');
+        }
+    }, [selectedWallet]);
 
     // Fetch pool info
     const fetchPoolInfo = useCallback(async () => {
@@ -75,11 +106,44 @@ const Swap: React.FC = () => {
         }
     }, [tokenIn, amountIn]);
 
+    // Request USDT from faucet
+    const requestFaucet = async () => {
+        if (!selectedWallet) return;
+
+        setFaucetLoading(true);
+        setFaucetMessage(null);
+
+        try {
+            const res = await fetch(`${API_BASE}/faucet/usdt`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ address: selectedWallet.address }),
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                setFaucetMessage(`+${data.data.amount} USDT received!`);
+                setUsdtBalance(data.data.balance);
+            } else {
+                setFaucetMessage(data.error);
+            }
+        } catch {
+            setFaucetMessage('Faucet request failed');
+        } finally {
+            setFaucetLoading(false);
+            setTimeout(() => setFaucetMessage(null), 3000);
+        }
+    };
+
     useEffect(() => {
         fetchPoolInfo();
         const interval = setInterval(fetchPoolInfo, 10000);
         return () => clearInterval(interval);
     }, [fetchPoolInfo]);
+
+    useEffect(() => {
+        fetchUsdtBalance();
+    }, [fetchUsdtBalance, selectedWallet]);
 
     useEffect(() => {
         const debounce = setTimeout(fetchQuote, 300);
@@ -92,8 +156,27 @@ const Swap: React.FC = () => {
         setQuote(null);
     };
 
+    // Balance validation
+    const getAvailableBalance = () => {
+        if (tokenIn === 'LVE') {
+            return selectedWallet?.balance || 0;
+        }
+        return usdtBalance;
+    };
+
+    const hasInsufficientBalance = () => {
+        const amount = parseFloat(amountIn) || 0;
+        return amount > getAvailableBalance();
+    };
+
     const handleSwap = async () => {
-        if (!wallet || !quote) return;
+        if (!selectedWallet || !quote) return;
+
+        // Balance check
+        if (hasInsufficientBalance()) {
+            setError(`Insufficient ${tokenIn} balance`);
+            return;
+        }
 
         setLoading(true);
         setError(null);
@@ -105,8 +188,8 @@ const Swap: React.FC = () => {
 
             // Sign transaction client-side
             const signed = await signSwapTransactionWithPin(
-                wallet.address,
-                tokenIn === 'LVE' ? 'LVE' : 'USDT',
+                selectedWallet.address,
+                tokenIn,
                 amount,
                 minAmountOut
             );
@@ -122,8 +205,8 @@ const Swap: React.FC = () => {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    from: wallet.address,
-                    tokenIn: tokenIn === 'LVE' ? 'LVE' : 'USDT',
+                    from: selectedWallet.address,
+                    tokenIn: tokenIn,
                     amountIn: amount,
                     minAmountOut,
                     signature: signed.signature,
@@ -137,10 +220,12 @@ const Swap: React.FC = () => {
             const data = await res.json();
             if (data.success) {
                 const tokenOut = tokenIn === 'LVE' ? 'USDT' : 'LVE';
-                setSuccess(`✅ Swapped ${amount} ${tokenIn} → ${data.data.amountOut.toFixed(4)} ${tokenOut}`);
+                setSuccess(`Swapped ${amount} ${tokenIn} → ${data.data.amountOut.toFixed(4)} ${tokenOut}`);
                 setAmountIn('');
                 setQuote(null);
                 fetchPoolInfo();
+                fetchUsdtBalance();
+                refresh(); // Refresh LVE balances
             } else {
                 setError(data.error || 'Swap failed');
             }
@@ -157,21 +242,67 @@ const Swap: React.FC = () => {
         <div className="swap-page">
             <div className="swap-container">
                 <div className="swap-header">
-                    <h2>💱 Swap</h2>
-                    <span className="swap-fee">Fee: 0.3%</span>
+                    <h2><ArrowUpDown size={24} /> Swap</h2>
+                    <span className="swap-fee"><Percent size={14} /> 0.3% Fee</span>
                 </div>
+
+                {/* Wallet Selector */}
+                <div className="wallet-selector">
+                    <label><Wallet size={14} /> Select Wallet</label>
+                    {wallets.length === 0 ? (
+                        <div className="no-wallet">
+                            <AlertCircle size={16} />
+                            No wallets found. Create one first.
+                        </div>
+                    ) : (
+                        <CustomSelect
+                            options={walletOptions}
+                            value={String(selectedWalletIndex)}
+                            onChange={(v) => setSelectedWalletIndex(Number(v))}
+                            placeholder="Select wallet..."
+                        />
+                    )}
+                </div>
+
+                {/* Balance Display */}
+                {selectedWallet && (
+                    <div className="balance-display">
+                        <div className="balance-row">
+                            <span>LVE Balance:</span>
+                            <span className="balance-value">{selectedWallet.balance.toLocaleString()} LVE</span>
+                        </div>
+                        <div className="balance-row">
+                            <span>USDT Balance:</span>
+                            <span className="balance-value">{usdtBalance.toLocaleString()} USDT</span>
+                            <button
+                                className="faucet-button"
+                                onClick={requestFaucet}
+                                disabled={faucetLoading}
+                            >
+                                {faucetLoading ? <Loader size={14} className="spin" /> : <Droplets size={14} />}
+                                <span>Get USDT</span>
+                            </button>
+                        </div>
+                        {faucetMessage && (
+                            <div className={`faucet-message ${faucetMessage.includes('received') ? 'success' : 'error'}`}>
+                                {faucetMessage}
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 {/* Pool Info */}
                 {poolInfo && poolInfo.initialized && (
                     <div className="pool-info-bar">
-                        <span>1 LVE = {poolInfo.price.usdtPerEdu.toFixed(4)} USDT</span>
-                        <span>TVL: ${poolInfo.tvl.totalUSDT.toFixed(2)}</span>
+                        <span><RefreshCw size={14} /> 1 LVE = {poolInfo.price.usdtPerEdu.toFixed(4)} USDT</span>
+                        <span><DollarSign size={14} /> TVL: ${poolInfo.tvl.totalUSDT.toLocaleString()}</span>
                     </div>
                 )}
 
                 {!poolInfo?.initialized && (
                     <div className="pool-not-initialized">
-                        ⚠️ Pool not initialized. Use CLI to add initial liquidity.
+                        <AlertCircle size={18} />
+                        Pool not initialized. Use CLI to add initial liquidity.
                     </div>
                 )}
 
@@ -179,22 +310,33 @@ const Swap: React.FC = () => {
                 <div className="swap-card">
                     {/* Input */}
                     <div className="swap-input-container">
-                        <label>From</label>
-                        <div className="swap-input">
+                        <label>
+                            From
+                            <span className="available-balance">
+                                Available: {getAvailableBalance().toLocaleString()} {tokenIn}
+                            </span>
+                        </label>
+                        <div className={`swap-input ${hasInsufficientBalance() ? 'insufficient' : ''}`}>
                             <input
                                 type="number"
                                 placeholder="0.0"
                                 value={amountIn}
                                 onChange={(e) => setAmountIn(e.target.value)}
-                                disabled={!poolInfo?.initialized}
+                                disabled={!poolInfo?.initialized || !selectedWallet}
                             />
                             <button className="token-select">{tokenIn}</button>
                         </div>
+                        {hasInsufficientBalance() && amountIn && (
+                            <div className="insufficient-warning">
+                                <AlertCircle size={12} />
+                                Insufficient {tokenIn} balance
+                            </div>
+                        )}
                     </div>
 
                     {/* Flip Button */}
                     <button className="flip-button" onClick={flipTokens}>
-                        ⇅
+                        <ArrowUpDown size={18} />
                     </button>
 
                     {/* Output */}
@@ -215,17 +357,17 @@ const Swap: React.FC = () => {
                     {quote && (
                         <div className="quote-details">
                             <div className="quote-row">
-                                <span>Rate</span>
+                                <span><RefreshCw size={12} /> Rate</span>
                                 <span>
                                     1 {tokenIn} = {(quote.amountOut / quote.amountIn).toFixed(6)} {tokenOut}
                                 </span>
                             </div>
                             <div className="quote-row">
-                                <span>Fee</span>
+                                <span><Percent size={12} /> Fee</span>
                                 <span>{quote.fee.toFixed(6)} {tokenIn}</span>
                             </div>
                             <div className="quote-row">
-                                <span>Price Impact</span>
+                                <span><TrendingDown size={12} /> Price Impact</span>
                                 <span className={quote.priceImpact > 5 ? 'high-impact' : ''}>
                                     {quote.priceImpact.toFixed(2)}%
                                 </span>
@@ -234,16 +376,24 @@ const Swap: React.FC = () => {
                     )}
 
                     {/* Error/Success Messages */}
-                    {error && <div className="swap-error">{error}</div>}
+                    {error && <div className="swap-error"><AlertCircle size={16} /> {error}</div>}
                     {success && <div className="swap-success">{success}</div>}
 
                     {/* Swap Button */}
                     <button
                         className="swap-button"
                         onClick={handleSwap}
-                        disabled={!wallet || !quote || loading || !poolInfo?.initialized}
+                        disabled={!selectedWallet || !quote || loading || !poolInfo?.initialized || hasInsufficientBalance()}
                     >
-                        {loading ? 'Processing...' : !wallet ? 'Connect Wallet' : 'Swap'}
+                        {loading ? (
+                            <><Loader size={18} className="spin" /> Processing...</>
+                        ) : !selectedWallet ? (
+                            'Select Wallet'
+                        ) : hasInsufficientBalance() ? (
+                            `Insufficient ${tokenIn}`
+                        ) : (
+                            <>Swap</>
+                        )}
                     </button>
                 </div>
 
