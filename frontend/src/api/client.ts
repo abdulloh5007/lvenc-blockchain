@@ -110,6 +110,14 @@ export interface WalletInfo {
 export const wallet = {
     getBalance: (address: string) => fetchApi<{ address: string; balance: number; symbol: string }>(`/wallet/${address}/balance`),
     getTransactions: (address: string) => fetchApi<{ address: string; transactions: Transaction[]; count: number }>(`/wallet/${address}/transactions`),
+    // Batch get balances for multiple addresses in one request
+    getBatchBalances: (addresses: string[]) => fetchApi<{
+        balances: { address: string; balance: number }[];
+        symbol: string
+    }>('/wallet/batch-balances', {
+        method: 'POST',
+        body: JSON.stringify({ addresses }),
+    }),
 };
 
 // Transactions

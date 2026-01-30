@@ -140,15 +140,36 @@ export function useWallets() {
     const fetchBalances = useCallback(async () => {
         await loadNetworkPrefix();
         const stored = loadWallets();
-        const withBalances: WalletWithBalance[] = await Promise.all(
-            stored.map(async (w) => {
-                const res = await wallet.getBalance(w.address);
-                return { ...w, balance: res.data?.balance || 0 };
-            })
-        );
-        setWallets(withBalances);
+
+        if (stored.length === 0) {
+            setWallets([]);
+            setLoading(false);
+            return;
+        }
+
+        // Use batch API to get all balances in one request
+        // This prevents 429 rate limiting when user has many wallets
+        const addresses = stored.map(w => w.address);
+        const res = await wallet.getBatchBalances(addresses);
+
+        if (res.success && res.data) {
+            const balanceMap = new Map(res.data.balances.map(b => [b.address, b.balance]));
+            const withBalances: WalletWithBalance[] = stored.map(w => ({
+                ...w,
+                balance: balanceMap.get(w.address) || 0
+            }));
+            setWallets(withBalances);
+        } else {
+            // Fallback: set wallets without balance update on error
+            const withBalances: WalletWithBalance[] = stored.map(w => ({
+                ...w,
+                balance: wallets.find(existing => existing.address === w.address)?.balance || 0
+            }));
+            setWallets(withBalances);
+        }
+
         setLoading(false);
-    }, [loadWallets]);
+    }, [loadWallets, wallets]);
 
     const createWallet = useCallback(async (label?: string, wordCount: 12 | 24 = 24) => {
         await loadNetworkPrefix();
@@ -480,7 +501,8 @@ export function useWallets() {
 
     useEffect(() => {
         fetchBalances();
-        const interval = setInterval(fetchBalances, 10000);
+        // Poll every 30 seconds instead of 10 to reduce API load
+        const interval = setInterval(fetchBalances, 30000);
         return () => clearInterval(interval);
     }, [fetchBalances]);
 

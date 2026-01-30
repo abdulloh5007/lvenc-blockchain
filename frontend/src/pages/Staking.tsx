@@ -105,6 +105,12 @@ export const StakingPage: React.FC = () => {
                 refresh();
                 loadData();
                 loadUserStake();
+                // Real-time update: check again after 5 seconds when block should be created
+                setTimeout(() => {
+                    loadData();
+                    loadUserStake();
+                    refresh();
+                }, 5000);
             } else {
                 setMessage({ type: 'error', text: res.error || 'Staking failed' });
             }
@@ -148,6 +154,7 @@ export const StakingPage: React.FC = () => {
                 refresh();
                 loadData();
                 loadUserStake();
+                setTimeout(() => { loadData(); loadUserStake(); refresh(); }, 5000);
             } else {
                 setMessage({ type: 'error', text: res.error || 'Unstake failed' });
             }
