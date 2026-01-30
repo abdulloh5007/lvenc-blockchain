@@ -176,7 +176,14 @@ export class BlockProducer {
             const baseReward = this.blockchain.getCurrentReward();
 
             // Distribute rewards proportionally
-            const { validator: validatorReward, delegators } = stakingPool.distributeRewards(validatorAddress, baseReward);
+            const { validator: validatorRewardAmount, delegators } = stakingPool.distributeRewards(validatorAddress, baseReward);
+
+            // Create reward transaction for VALIDATOR
+            if (validatorRewardAmount >= 0.01) {
+                const validatorRewardTx = new Transaction(null, validatorAddress, validatorRewardAmount, 0);
+                this.blockchain.addTransaction(validatorRewardTx);
+                this.log.debug(`💰 Validator reward: ${validatorRewardAmount.toFixed(4)} LVE to ${validatorAddress.slice(0, 12)}...`);
+            }
 
             // Create reward transactions for delegators
             for (const [delegator, amount] of delegators) {
