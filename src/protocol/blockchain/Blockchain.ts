@@ -48,7 +48,6 @@ export class Blockchain {
             const genesis = Block.createGenesisBlock(
                 config.blockchain.genesisAmount,
                 faucetAddress,
-                0, // Difficulty 0 for PoS
                 config.genesis?.timestamp || 0,
                 config.genesis?.faucetPublicKey
             );
@@ -285,10 +284,7 @@ export class Blockchain {
             blockIndex,
             Date.now(),
             [rewardTx, ...txToInclude],
-            this.getLatestBlock().hash,
-            0,
-            undefined,
-            'pos'
+            this.getLatestBlock().hash
         );
         block.signAsValidator(validatorAddress, signFn);
         this.chain.push(block);
@@ -414,11 +410,7 @@ export class Blockchain {
         if (block.hash !== block.calculateHash()) return { valid: false, error: 'Invalid hash' };
         if (!block.hasValidTransactions()) return { valid: false, error: 'Invalid transactions' };
 
-        if (block.consensusType === 'pos') {
-            if (!block.validator || !block.signature) {
-                return { valid: false, error: 'Missing validator or signature' };
-            }
-
+        if (block.validator && block.signature) {
             try {
                 const message = Buffer.from(block.hash, 'hex');
                 const signature = Buffer.from(block.signature, 'hex');
@@ -437,6 +429,11 @@ export class Blockchain {
             } catch (err) {
                 return { valid: false, error: `Signature verification failed` };
             }
+        } else {
+            // In pure PoS, unsigned blocks are invalid (except maybe Genesis which is special cased or pre-signed)
+            // But wait, Genesis block in verifyIncomingChain check?
+            if (block.index === 0) return { valid: true }; // Genesis is valid
+            return { valid: false, error: 'Missing validator or signature' };
         }
         return { valid: true };
     }
