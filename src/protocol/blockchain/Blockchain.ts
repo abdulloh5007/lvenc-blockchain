@@ -3,6 +3,7 @@ import { Block, BlockData } from './Block.js';
 import { Transaction, TransactionData } from './Transaction.js';
 import { config } from '../../node/config.js';
 import { logger } from '../utils/logger.js';
+import { chainParams } from '../params/index.js';
 import { SafeMath, acquireTxLock, releaseTxLock, addCheckpoint } from '../security/index.js';
 import { stakingPool, StakingPool } from '../../runtime/staking/index.js';
 
@@ -412,7 +413,6 @@ export class Blockchain {
 
         if (block.validator && block.signature) {
             try {
-                const message = Buffer.from(block.hash, 'hex');
                 const signature = Buffer.from(block.signature, 'hex');
                 const pool = contextPool || stakingPool;
                 const validatorInfo = pool.getValidators().find(v => v.address === block.validator);
@@ -421,7 +421,12 @@ export class Blockchain {
                 if (!validatorInfo.publicKey) return { valid: false, error: 'Validator public key not found' };
 
                 const publicKey = Buffer.from(validatorInfo.publicKey, 'hex');
-                const isValid = await ed.verifyAsync(signature, message, publicKey);
+                const signingData = `${chainParams.chainId}:${block.index}:${block.hash}`;
+                let isValid = await ed.verifyAsync(signature, Buffer.from(signingData), publicKey);
+                if (!isValid) {
+                    // Legacy fallback: some nodes may have signed raw hash bytes
+                    isValid = await ed.verifyAsync(signature, Buffer.from(block.hash, 'hex'), publicKey);
+                }
 
                 if (!isValid) return { valid: false, error: 'Invalid cryptographic signature' };
                 if (validatorInfo.isJailed) return { valid: false, error: 'Block signed by jailed validator' };

@@ -1210,6 +1210,7 @@ export class StakingPool {
             // Create stake entry
             this.stakes.set(gv.operatorAddress, {
                 address: gv.operatorAddress,
+                publicKey: gv.consensusPubKey,
                 amount: gv.power,
                 stakedAt: 0,  // Genesis time
                 lastReward: 0,
@@ -1219,6 +1220,7 @@ export class StakingPool {
             // Create validator entry (immediately active)
             this.validators.set(gv.operatorAddress, {
                 address: gv.operatorAddress,
+                publicKey: gv.consensusPubKey,
                 stake: gv.power,
                 delegatedStake: 0,
                 commission: DEFAULT_COMMISSION,

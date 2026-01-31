@@ -24,6 +24,7 @@ export class P2PServer {
     private blockchain: Blockchain;
     private port: number;
     private bootstrapMode: boolean;
+    private genesisSyncRequested: boolean = false;
 
     // Modules
     private peerManager: PeerManager;
@@ -262,6 +263,13 @@ export class P2PServer {
             return;
         }
 
+        // AUTO-SYNC GENESIS: If genesis.json is missing or empty on a fresh node, request it
+        if (this.shouldRequestGenesis(currentBlockHeight)) {
+            logger.info('✨ Missing genesis.json on fresh node. Requesting from peer...');
+            this.send(socket, { type: MessageType.QUERY_GENESIS, data: null });
+            return; // Wait for genesis sync
+        }
+
         peer.verified = true;
         this.peerManager.adjustScore(socket, 10);
 
@@ -386,6 +394,30 @@ export class P2PServer {
             logger.info('P2P Server closed');
         }
     }
+
+    private shouldRequestGenesis(currentBlockHeight: number): boolean {
+        if (this.genesisSyncRequested) return false;
+        if (currentBlockHeight > 1) return false;
+
+        const genesisPath = path.join(config.storage.dataDir, 'genesis.json');
+        if (!fs.existsSync(genesisPath)) {
+            this.genesisSyncRequested = true;
+            return true;
+        }
+
+        try {
+            const data = JSON.parse(fs.readFileSync(genesisPath, 'utf-8')) as { validators?: unknown[] };
+            if (!data?.validators || data.validators.length === 0) {
+                this.genesisSyncRequested = true;
+                return true;
+            }
+        } catch {
+            this.genesisSyncRequested = true;
+            return true;
+        }
+
+        return false;
+    }
     // ==================== GENESIS SYNC ====================
 
     private handleQueryGenesis(socket: WebSocket): void {
@@ -439,4 +471,3 @@ export class P2PServer {
         }
     }
 }
-
