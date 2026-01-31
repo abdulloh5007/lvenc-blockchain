@@ -105,7 +105,7 @@ export class HandshakeHandler {
         // Verify genesis hash
         if (data.genesisHash !== this.genesisHash) {
             logger.warn(`🚫 Wrong genesis: ${data.genesisHash}`);
-            return { verified: false, error: VersionErrorCode.ERR_MALFORMED_PROTOCOL };
+            return { verified: false, error: VersionErrorCode.ERR_GENESIS_MISMATCH };
         }
 
         return { verified: true, status: NodeVersionStatus.UP_TO_DATE };

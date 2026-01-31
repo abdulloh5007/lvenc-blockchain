@@ -4,12 +4,14 @@
  */
 
 import WebSocket, { WebSocketServer, RawData } from 'ws';
+import * as fs from 'fs';
+import * as path from 'path';
 import { Blockchain, Block, Transaction } from '../protocol/blockchain/index.js';
 import { logger } from '../protocol/utils/logger.js';
 import { config } from '../node/config.js';
 
 // Modules
-import { MessageType, P2PMessage, HandshakeData, ChunkSyncRequest, ChunkSyncResponse, VersionRejectData } from './types.js';
+import { MessageType, P2PMessage, HandshakeData, ChunkSyncRequest, ChunkSyncResponse, VersionRejectData, VersionErrorCode } from './types.js';
 import { BOOTSTRAP_NODES, PEER_MAINTENANCE_INTERVAL_MS, RECONNECT_INTERVAL_MS, MIN_PEERS } from './constants.js';
 import { PeerManager, PeerDiscovery } from './peers/index.js';
 import { HandshakeHandler } from './protocol/index.js';
@@ -216,6 +218,14 @@ export class P2PServer {
                 case MessageType.VERSION_REJECT:
                     this.handshake.handleVersionReject(message.data as VersionRejectData);
                     break;
+
+                case MessageType.QUERY_GENESIS:
+                    this.handleQueryGenesis(socket);
+                    break;
+
+                case MessageType.RESPONSE_GENESIS:
+                    this.handleGenesisResponse(message.data);
+                    break;
             }
         } catch (error) {
             logger.error('Failed to parse message:', error);
@@ -238,6 +248,16 @@ export class P2PServer {
         );
 
         if (!result.verified) {
+            // AUTO-SYNC GENESIS: If mismatch and we are fresh (height 0 or 1), try to sync genesis
+            if (result.error === VersionErrorCode.ERR_GENESIS_MISMATCH) {
+                const isFresh = currentBlockHeight <= 1;
+                if (isFresh && config.version.protocolVersion >= data.minProtocolVersion) {
+                    logger.info('✨ Detected Genesis Mismatch on fresh node. Attempting to sync genesis from peer...');
+                    this.send(socket, { type: MessageType.QUERY_GENESIS, data: null });
+                    return; // Don't close socket
+                }
+            }
+
             socket.close();
             return;
         }
@@ -366,4 +386,57 @@ export class P2PServer {
             logger.info('P2P Server closed');
         }
     }
+    // ==================== GENESIS SYNC ====================
+
+    private handleQueryGenesis(socket: WebSocket): void {
+        const genesisPath = path.join(config.storage.dataDir, 'genesis.json');
+        try {
+            if (fs.existsSync(genesisPath)) {
+                const content = JSON.parse(fs.readFileSync(genesisPath, 'utf-8'));
+                this.send(socket, { type: MessageType.RESPONSE_GENESIS, data: content });
+                logger.info('📤 Sent genesis.json to peer');
+            } else {
+                logger.warn('⚠️ Peer requested genesis but local genesis.json missing');
+            }
+        } catch (err) {
+            logger.error('Failed to read genesis.json:', err);
+        }
+    }
+
+    private handleGenesisResponse(data: unknown): void {
+        try {
+            const genesisConfig = data as any;
+            if (!genesisConfig || !genesisConfig.chainId) {
+                logger.warn('⛔ Received invalid genesis data');
+                return;
+            }
+
+            logger.info(`📥 Received genesis for chain: ${genesisConfig.chainId}`);
+            logger.info('🔄 Restarting node to apply new genesis...');
+
+            // Save to disk
+            if (!fs.existsSync(config.storage.dataDir)) {
+                fs.mkdirSync(config.storage.dataDir, { recursive: true });
+            }
+
+            const genesisPath = path.join(config.storage.dataDir, 'genesis.json');
+            fs.writeFileSync(genesisPath, JSON.stringify(genesisConfig, null, 2));
+
+            // Clear chain data
+            const blocksPath = path.join(config.storage.dataDir, 'blocks.json');
+            const poolPath = path.join(config.storage.dataDir, 'pool.json');
+
+            if (fs.existsSync(blocksPath)) fs.unlinkSync(blocksPath);
+            if (fs.existsSync(poolPath)) fs.unlinkSync(poolPath);
+
+            logger.info('✅ Genesis synchronized! RESTARTING NODE...');
+
+            // Exit to restart
+            process.exit(0);
+
+        } catch (err) {
+            logger.error('Failed to save genesis:', err);
+        }
+    }
 }
+

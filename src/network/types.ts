@@ -33,6 +33,10 @@ export enum MessageType {
     QUERY_BLOCKS_FROM = 'QUERY_BLOCKS_FROM',
     RESPONSE_BLOCKS = 'RESPONSE_BLOCKS',
 
+    // Genesis Sync
+    QUERY_GENESIS = 'QUERY_GENESIS',
+    RESPONSE_GENESIS = 'RESPONSE_GENESIS',
+
     // Version Control
     VERSION_REJECT = 'VERSION_REJECT',
     VERSION_ANNOUNCEMENT = 'VERSION_ANNOUNCEMENT',  // Network-wide version broadcast
@@ -44,6 +48,7 @@ export enum VersionErrorCode {
     ERR_MIN_PROTOCOL = 'ERR_MIN_PROTOCOL',           // Protocol version below minimum
     ERR_GRACE_EXPIRED = 'ERR_GRACE_EXPIRED',         // Grace period expired
     ERR_MALFORMED_PROTOCOL = 'ERR_MALFORMED_PROTOCOL', // Invalid protocol messages
+    ERR_GENESIS_MISMATCH = 'ERR_GENESIS_MISMATCH',   // Genesis hash mismatch (critical)
 }
 
 // ==================== NODE STATUS FLAGS ====================
