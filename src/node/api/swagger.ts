@@ -5,14 +5,15 @@ const options: swaggerJsdoc.Options = {
         openapi: '3.0.0',
         info: {
             title: 'LVE Chain API',
-            version: '1.2.0',
+            version: '1.3.0',
             description: `
 ## LVE Chain - Educational Blockchain Network
 
 Децентрализованная блокчейн-сеть с Proof-of-Stake консенсусом.
 
 ### Особенности:
-- **Proof-of-Stake** консинсус с VRF выбором валидаторов
+- **Proof-of-Stake** консенсус с VRF выбором валидаторов
+- **Enterprise Security**: Stateful Replay Verification и защита от Long Range Attack
 - **NFT** поддержка с IPFS хранилищем
 - **HD кошельки** с BIP39 мнемониками
 - **Стейкинг** с делегированием
@@ -220,6 +221,7 @@ const options: swaggerJsdoc.Options = {
                     type: 'object',
                     properties: {
                         address: { type: 'string', description: 'Validator address' },
+                        publicKey: { type: 'string', description: 'Ed25519 public key' },
                         stake: { type: 'number', description: 'Total stake (own + delegated)' },
                         commission: { type: 'number', description: 'Commission rate (0-100%)' },
                         blocksProduced: { type: 'integer' },
@@ -662,6 +664,7 @@ const options: swaggerJsdoc.Options = {
                                     properties: {
                                         address: { type: 'string' },
                                         amount: { type: 'number' },
+                                        publicKey: { type: 'string', description: 'Validator public key (optional)' },
                                     },
                                     required: ['address', 'amount'],
                                 },

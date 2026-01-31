@@ -3,7 +3,8 @@ import { Transaction, TransactionData } from './Transaction.js';
 import { config } from '../../node/config.js';
 import { logger } from '../utils/logger.js';
 import { SafeMath, acquireTxLock, releaseTxLock, addCheckpoint } from '../security/index.js';
-import { stakingPool } from '../../runtime/staking/index.js';
+import { stakingPool, StakingPool } from '../../runtime/staking/index.js';
+import * as ed from '@noble/ed25519';
 
 export interface BlockchainData {
     chain: BlockData[];
@@ -579,6 +580,127 @@ export class Blockchain {
             }
         }
 
+        return true;
+    }
+
+    /**
+     * SECURITY: Cryptographically verify a block signature
+     * Critical protection against fake chain attacks
+     */
+    /**
+     * SECURITY: Cryptographically verify a block signature
+     * Critical protection against fake chain attacks
+     */
+    async validateNewBlock(block: Block, contextPool?: StakingPool): Promise<{ valid: boolean; error?: string }> {
+        // 1. Basic structural checks
+        if (block.hash !== block.calculateHash()) return { valid: false, error: 'Invalid hash' };
+        if (!block.hasValidTransactions()) return { valid: false, error: 'Invalid transactions' };
+
+        // 2. PoS Validation
+        if (block.consensusType === 'pos') {
+            if (!block.validator || !block.signature) {
+                return { valid: false, error: 'Missing validator or signature' };
+            }
+
+            // A. Verify Ed25519 signature
+            // Signature is over the block hash
+            try {
+                const message = Buffer.from(block.hash, 'hex');
+                const signature = Buffer.from(block.signature, 'hex');
+
+                // Use context pool (sandbox) if provided, otherwise global pool
+                const pool = contextPool || stakingPool;
+
+                // Need public key! But block mostly contains address. 
+                // We must look up the validator's public key from the staking pool.
+                const validatorInfo = pool.getValidators().find(v => v.address === block.validator);
+
+                if (!validatorInfo) {
+                    // Warning: Validator not found in current set.
+                    // During sync, this is possible (historical validator).
+                    // But for TIP blocks, this is suspicious.
+                    // For strict security, we should maintain history of validator sets.
+                    // For now, we will allow if signature verifies against the RECOVERED key (if we could recover it)
+                    // OR if we skip this check for historical blocks.
+
+                    // CRITICAL: We cannot verify signature without public key!
+                    // If we don't have the public key, we cannot verify.
+                    // Attack Vector: Attacker sends block signed by unknown key.
+
+                    // Check if we have the pubkey in the updated validator list or recent TXs?
+                    // For now, check if we can verify strict auth:
+                    return { valid: false, error: 'Unknown validator public key' };
+                }
+
+                // Verify using validator's public key
+                if (!validatorInfo.publicKey) {
+                    return { valid: false, error: 'Validator public key not found' };
+                }
+                const publicKey = Buffer.from(validatorInfo.publicKey, 'hex');
+                const isValid = await ed.verifyAsync(signature, message, publicKey);
+
+                if (!isValid) {
+                    return { valid: false, error: 'Invalid cryptographic signature' };
+                }
+
+                // B. Verify Validator Authorization (Anti-Spoofing)
+                if (validatorInfo.isJailed) {
+                    return { valid: false, error: 'Block signed by jailed validator' };
+                }
+
+            } catch (err) {
+                return { valid: false, error: `Signature verification failed: ${err}` };
+            }
+        }
+
+        return { valid: true };
+    }
+
+    /**
+     * STATEFUL REPLAY VERIFICATION
+     * Decentralized verification of long chains.
+     * Replays history in a sandbox without trusting centralized snapshots.
+     * Prevents Long Range Attacks by checking signature validity at each historical point.
+     */
+    async verifyIncomingChain(chain: Block[]): Promise<boolean> {
+        if (!chain || chain.length === 0) return false;
+
+        // Ensure chain starts from Genesis for full verification
+        const firstBlock = chain[0];
+        if (firstBlock.index !== 0 || firstBlock.previousHash !== '0') {
+            // We can't verify partial chains statefully without a trusted snapshot
+            logger.warn('Stateful verify requires full chain from Genesis');
+            return false;
+        }
+
+        // Create Sandbox Staking Pool (Isolated from main state)
+        const sandboxPool = new StakingPool();
+        // Load trusted genesis validators (hardcoded/config)
+        sandboxPool.loadGenesisValidators(stakingPool.getGenesisValidators());
+
+        logger.info(`🕵️ Stateful Verification of ${chain.length} blocks started...`);
+        const startTime = Date.now();
+
+        // Sequential Verification Loop
+        for (const block of chain) {
+            // Genesis is hardcoded/trusted
+            if (block.index === 0) continue;
+
+            // 1. Verify signatures using SANDBOX state
+            // This checks if the block was signed by a validator AUTHORIZED AT THAT TIME
+            // (Not "current" validators, but validators at block N-1)
+            const result = await this.validateNewBlock(block, sandboxPool);
+            if (!result.valid) {
+                logger.error(`⛔ Stateful Verify FAILED at block ${block.index}: ${result.error}`);
+                return false;
+            }
+
+            // 2. Apply block to update SANDBOX state
+            // This rotates validator sets, updates stakes, etc. for the NEXT block
+            sandboxPool.applyBlockTransactions(block);
+        }
+
+        logger.info(`✅ Stateful Verification PASSED in ${Date.now() - startTime}ms`);
         return true;
     }
 

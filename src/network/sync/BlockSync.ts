@@ -24,7 +24,7 @@ export class BlockSync {
 
     // ==================== BLOCKCHAIN RESPONSE ====================
 
-    handleBlockchainResponse(data: unknown[]): void {
+    async handleBlockchainResponse(data: unknown[]): Promise<void> {
         if (!data || data.length === 0) {
             logger.debug('📭 Received empty blockchain response');
             return;
@@ -44,6 +44,13 @@ export class BlockSync {
 
             if (latestLocal.hash === latestReceived.previousHash) {
                 // Can directly append
+                // SECURITY: Verify signature before appending
+                const validation = await this.blockchain.validateNewBlock(latestReceived);
+                if (!validation.valid) {
+                    logger.warn(`⛔ Rejected invalid block ${latestReceived.index}: ${validation.error}`);
+                    return;
+                }
+
                 this.blockchain.chain.push(latestReceived);
                 this.blockchain.applyBlockStakingChanges(latestReceived);  // Real-time staking update
                 logger.info(`✅ Added new block ${latestReceived.index}`);
@@ -60,8 +67,31 @@ export class BlockSync {
                 this.broadcast({ type: MessageType.QUERY_ALL, data: null });
             } else {
                 // Replace entire chain
-                this.blockchain.replaceChain(receivedBlocks);
-                this.blockchain.markAsSynced();  // Synced after chain replace
+                // SECURITY: Long Range Attack Protection
+
+                // 1. Check Finality: Cannot revert finalized blocks
+                const finalizedBlock = this.blockchain.getLastFinalizedBlock();
+                if (finalizedBlock) {
+                    const receivedMatch = receivedBlocks[finalizedBlock.index];
+                    if (!receivedMatch || receivedMatch.hash !== finalizedBlock.hash) {
+                        logger.warn(`⛔ SECURITY: Detected Deep Reorg attempt! Peer tried to rewrite finalized block #${finalizedBlock.index}`);
+                        return; // Reject chain
+                    }
+                }
+
+                // 2. Verify signatures via STATEFUL REPLAY (Decentralized Check)
+                // This ensures validators were valid AT THE TIME they signed the blocks.
+                // It replays the history in a sandbox without relying on current state.
+                const isValid = await this.blockchain.verifyIncomingChain(receivedBlocks);
+                if (!isValid) {
+                    logger.warn(`⛔ REJECTED: Chain failed stateful cryptographic verification`);
+                    return;
+                }
+
+                if (this.blockchain.replaceChain(receivedBlocks)) {
+                    logger.info('✅ Chain replaced successfully');
+                    this.blockchain.markAsSynced();
+                }
             }
         } else {
             // Already synced - local is at or ahead of network
@@ -89,7 +119,7 @@ export class BlockSync {
         send({ type: MessageType.RESPONSE_BLOCKS, data: response });
     }
 
-    handleResponseBlocks(response: ChunkSyncResponse): void {
+    async handleResponseBlocks(response: ChunkSyncResponse): Promise<void> {
         const { blocks, hasMore, totalBlocks } = response;
 
         if (!blocks || blocks.length === 0) {
@@ -106,10 +136,19 @@ export class BlockSync {
                 const latestLocal = this.blockchain.getLatestBlock();
 
                 if (block.index === latestLocal.index + 1 && block.previousHash === latestLocal.hash) {
+                    // SECURITY: Verify block before accepting
+                    const validation = await this.blockchain.validateNewBlock(block);
+                    if (!validation.valid) {
+                        logger.warn(`⛔ Sync stopped: Invalid block ${block.index}: ${validation.error}`);
+                        break;
+                    }
+
                     this.blockchain.chain.push(block);
+                    // Update staking interactions for sync
+                    this.blockchain.applyBlockStakingChanges(block);
                 }
             } catch {
-                // Invalid block, skip
+                // Invalid block structure, skip
             }
         }
 
@@ -128,12 +167,19 @@ export class BlockSync {
 
     // ==================== NEW BLOCK ====================
 
-    handleNewBlock(data: unknown): void {
+    async handleNewBlock(data: unknown): Promise<void> {
         try {
             const block = Block.fromJSON(data as any);
             const latestLocal = this.blockchain.getLatestBlock();
 
             if (block.previousHash === latestLocal.hash && block.index === latestLocal.index + 1) {
+                // SECURITY: Validate block cryptographically before accepting
+                const validation = await this.blockchain.validateNewBlock(block);
+                if (!validation.valid) {
+                    logger.warn(`⛔ Rejected invalid block ${block.index} from peer: ${validation.error}`);
+                    return;
+                }
+
                 this.blockchain.chain.push(block);
 
                 // CRITICAL: Apply staking changes from this block in real-time!
