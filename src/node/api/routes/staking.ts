@@ -1,14 +1,51 @@
 import { Router, Request, Response } from 'express';
 import { Blockchain, Transaction } from '../../../protocol/blockchain/index.js';
 import { stakingPool } from '../../../runtime/staking/index.js';
+import { slashingManager } from '../../../runtime/staking/SlashingManager.js';
 import { storage } from '../../../protocol/storage/index.js';
 import { logger } from '../../../protocol/utils/logger.js';
 import { validateStakingTx } from '../middleware/tx-validation.js';
 import { config } from '../../config.js';
 
+
 export function createStakingRoutes(blockchain: Blockchain): Router {
     const router = Router();
     const log = logger.child('StakingAPI');
+
+    // ========== SYNC CHECK MIDDLEWARE ==========
+    // MULTI-LAYER SECURITY: Prevents stake operations before node is fully synced
+    // Layer 1: isSynced flag check
+    // Layer 2: Minimum block height check (prevents stuck sync attacks)
+    const MIN_BLOCKS_REQUIRED = 10; // Require at least 10 blocks before accepting stake txs
+
+    const requireSynced = (req: Request, res: Response, next: Function) => {
+        // Layer 1: Check sync flag
+        if (!blockchain.getIsSynced()) {
+            log.warn(`⚠️ SECURITY: Blocking ${req.method} ${req.path} - node not synced`);
+            res.status(503).json({
+                success: false,
+                error: 'Node is syncing. Please wait for synchronization to complete.',
+                code: 'NODE_SYNCING',
+                hint: 'Try again in a few seconds after sync completes.',
+            });
+            return;
+        }
+
+        // Layer 2: Check minimum block height (prevents empty chain attacks)
+        const latestBlock = blockchain.getLatestBlock();
+        if (latestBlock.index < MIN_BLOCKS_REQUIRED) {
+            log.warn(`⚠️ SECURITY: Blocking ${req.method} ${req.path} - chain too short (${latestBlock.index} < ${MIN_BLOCKS_REQUIRED})`);
+            res.status(503).json({
+                success: false,
+                error: `Chain not ready. Current height: ${latestBlock.index}, required: ${MIN_BLOCKS_REQUIRED}`,
+                code: 'CHAIN_TOO_SHORT',
+                hint: 'Wait for more blocks to be synced.',
+            });
+            return;
+        }
+
+        next();
+    };
 
     // ========== EPOCH INFO ==========
 
@@ -43,7 +80,7 @@ export function createStakingRoutes(blockchain: Blockchain): Router {
      * - Pre-validation: structure, ed25519, nonce, chainId, duplicate, rate limit
      * - Signature and staking conditions are validated by blockchain runtime during block execution
      */
-    router.post('/stake', validateStakingTx('STAKE'), (req: Request, res: Response) => {
+    router.post('/stake', requireSynced, validateStakingTx('STAKE'), (req: Request, res: Response) => {
         const { address, amount, signature, publicKey, nonce, chainId } = req.body;
 
         // Pre-check balance (optional optimization, final check is in runtime)
@@ -95,7 +132,7 @@ export function createStakingRoutes(blockchain: Blockchain): Router {
         }
     });
 
-    router.post('/unstake', validateStakingTx('UNSTAKE'), (req: Request, res: Response) => {
+    router.post('/unstake', requireSynced, validateStakingTx('UNSTAKE'), (req: Request, res: Response) => {
         const { address, amount, signature, publicKey, nonce, chainId } = req.body;
 
         try {
@@ -135,7 +172,7 @@ export function createStakingRoutes(blockchain: Blockchain): Router {
         }
     });
 
-    router.post('/claim', validateStakingTx('CLAIM'), (req: Request, res: Response) => {
+    router.post('/claim', requireSynced, validateStakingTx('CLAIM'), (req: Request, res: Response) => {
         const { address, signature, publicKey, nonce, chainId } = req.body;
 
         try {
@@ -174,7 +211,7 @@ export function createStakingRoutes(blockchain: Blockchain): Router {
 
     // ========== DELEGATION ==========
 
-    router.post('/delegate', validateStakingTx('DELEGATE'), (req: Request, res: Response) => {
+    router.post('/delegate', requireSynced, validateStakingTx('DELEGATE'), (req: Request, res: Response) => {
         const { delegator, validator, amount, signature, publicKey, nonce, chainId } = req.body;
 
         // Pre-check balance
@@ -221,7 +258,7 @@ export function createStakingRoutes(blockchain: Blockchain): Router {
         }
     });
 
-    router.post('/undelegate', validateStakingTx('UNDELEGATE'), (req: Request, res: Response) => {
+    router.post('/undelegate', requireSynced, validateStakingTx('UNDELEGATE'), (req: Request, res: Response) => {
         const { delegator, validator, amount, signature, publicKey, nonce, chainId } = req.body;
 
         try {
@@ -318,7 +355,7 @@ export function createStakingRoutes(blockchain: Blockchain): Router {
         });
     });
 
-    router.post('/commission', validateStakingTx('COMMISSION'), (req: Request, res: Response) => {
+    router.post('/commission', requireSynced, validateStakingTx('COMMISSION'), (req: Request, res: Response) => {
         const { address, commission, signature, publicKey, nonce, chainId } = req.body;
 
         // Validate commission limits
@@ -374,7 +411,97 @@ export function createStakingRoutes(blockchain: Blockchain): Router {
         }
     });
 
+    // ========== APY & REWARDS ==========
+
+    router.get('/apy', (_req: Request, res: Response) => {
+        const apyData = stakingPool.getNetworkAPY();
+        res.json({
+            success: true,
+            data: {
+                ...apyData,
+                description: 'APY calculation based on current network state',
+                formula: 'APY = (annual_block_rewards / total_staked) * 100',
+            },
+        });
+    });
+
+    router.post('/auto-compound', requireSynced, validateStakingTx('AUTO_COMPOUND'), (req: Request, res: Response) => {
+        const { address, enabled, signature, publicKey, nonce, chainId } = req.body;
+
+        try {
+            const result = stakingPool.setAutoCompound(address, enabled);
+            if (!result) {
+                res.status(400).json({ success: false, error: 'Validator not found or update failed' });
+                return;
+            }
+
+            log.info(`🔄 AUTO_COMPOUND ${enabled ? 'enabled' : 'disabled'}: ${address.slice(0, 10)}...`);
+            res.json({
+                success: true,
+                data: {
+                    message: `Auto-compound ${enabled ? 'enabled' : 'disabled'}`,
+                    address,
+                    autoCompound: enabled,
+                },
+            });
+        } catch (error) {
+            res.status(400).json({ success: false, error: error instanceof Error ? error.message : 'Auto-compound toggle failed' });
+        }
+    });
+
+    // ========== SLASHING HISTORY ==========
+    // NOTE: These routes MUST come BEFORE /:address to avoid being caught by wildcard
+
+    router.get('/slashing-history', (req: Request, res: Response) => {
+        const limit = parseInt(req.query.limit as string) || 50;
+        const evidence = slashingManager.getEvidence().slice(-limit);
+
+        res.json({
+            success: true,
+            data: {
+                count: evidence.length,
+                total: slashingManager.getEvidence().length,
+                history: evidence.map(e => ({
+                    validator: e.validator,
+                    type: e.type,
+                    slot: e.slot,
+                    timestamp: e.timestamp,
+                    penalty: e.penalty,
+                    details: e.details,
+                    date: new Date(e.timestamp).toISOString(),
+                })),
+            },
+        });
+    });
+
+    router.get('/slashing-history/:validator', (req: Request, res: Response) => {
+        const { validator } = req.params;
+        const allEvidence = slashingManager.getEvidence();
+        const filtered = allEvidence.filter(e => e.validator === validator);
+
+        // Also get liveness info
+        const liveness = slashingManager.getValidatorLiveness(validator);
+
+        res.json({
+            success: true,
+            data: {
+                validator,
+                count: filtered.length,
+                liveness,
+                history: filtered.map(e => ({
+                    type: e.type,
+                    slot: e.slot,
+                    timestamp: e.timestamp,
+                    penalty: e.penalty,
+                    details: e.details,
+                    date: new Date(e.timestamp).toISOString(),
+                })),
+            },
+        });
+    });
+
     // ========== USER INFO ==========
+    // NOTE: This wildcard route MUST come LAST
 
     router.get('/:address', (req: Request, res: Response) => {
         const { address } = req.params;

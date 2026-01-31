@@ -2,6 +2,7 @@ import { logger } from '../../protocol/utils/logger.js';
 import { sha256 } from '../../protocol/utils/crypto.js';
 import { chainParams } from '../../protocol/params/index.js';
 import { config } from '../../node/config.js';
+import { nonceManager } from '../../protocol/security/nonce-manager.js';
 import type { GenesisValidator } from '../../protocol/consensus/index.js';
 
 // Interfaces
@@ -54,7 +55,7 @@ export interface ValidatorInfo {
     address: string;
     stake: number;
     delegatedStake: number;
-    commission: number; // 0-100%
+    commission: number; // 0-100% (default from chainParams)
     blocksCreated: number;
     totalRewards: number;
     slashCount: number;
@@ -63,6 +64,10 @@ export interface ValidatorInfo {
     isJailed: boolean;
     jailedUntilEpoch: number;  // Epoch when jail ends (0 = not jailed)
     jailCount: number;          // Total times jailed
+    // Rewards system (Part 3: Industry Standard)
+    autoCompound: boolean;      // Auto-restake rewards into stake
+    customCommission?: number;  // Custom commission (overrides default)
+    totalEarned: number;        // Lifetime earnings tracking
 }
 
 export interface EpochInfo {
@@ -83,6 +88,7 @@ const UNBONDING_EPOCHS = chainParams.staking.unbondingEpochs;
 const JAIL_DURATION_EPOCHS = chainParams.staking.jailDurationEpochs;
 const MAX_JAIL_COUNT = chainParams.staking.maxJailCount;
 const MIN_ACTIVE_VALIDATORS = chainParams.staking.minActiveValidators;
+const MIN_SLASH_AMOUNT = chainParams.staking.minSlashAmount;  // Minimum slash penalty
 
 export class StakingPool {
     private stakes: Map<string, StakeInfo> = new Map();
@@ -94,6 +100,10 @@ export class StakingPool {
     private pendingSlashes: Map<string, PendingSlash[]> = new Map(); // Slashes applied at epoch boundary
     private validators: Map<string, ValidatorInfo> = new Map();
     private genesisValidators: GenesisValidator[] = [];  // Stored for rebuild
+
+    // DOUBLE-STAKE FIX: Track processed TX IDs to prevent duplicate application
+    private processedTxIds: Set<string> = new Set();
+
     private currentEpoch: number = 0;
     private epochStartBlock: number = 0;
     private epochStartTime: number = Date.now();
@@ -434,7 +444,8 @@ export class StakingPool {
         const validatorInfo = this.validators.get(validator);
         if (!validatorInfo) return { validator: 0, delegators: new Map() };
 
-        const commission = validatorInfo.commission || DEFAULT_COMMISSION;
+        // Use custom commission if set, otherwise use default
+        const commission = validatorInfo.customCommission ?? validatorInfo.commission ?? DEFAULT_COMMISSION;
         const validatorReward = totalReward * (commission / 100);
         const delegatorPool = totalReward - validatorReward;
 
@@ -449,10 +460,77 @@ export class StakingPool {
             }
         }
 
+        // Track both current rewards and lifetime earnings
         validatorInfo.totalRewards += validatorReward;
+        validatorInfo.totalEarned += validatorReward;  // Lifetime tracking
         this.validators.set(validator, validatorInfo);
 
         return { validator: validatorReward, delegators: delegatorRewards };
+    }
+
+    /**
+     * Set custom commission rate for a validator (0-100%)
+     */
+    setCommission(validatorAddress: string, commission: number): boolean {
+        if (commission < 0 || commission > 100) {
+            this.log.warn(`Invalid commission: ${commission}%. Must be 0-100.`);
+            return false;
+        }
+
+        const validator = this.validators.get(validatorAddress);
+        if (!validator) {
+            this.log.warn(`Validator not found: ${validatorAddress.slice(0, 12)}...`);
+            return false;
+        }
+
+        validator.customCommission = commission;
+        this.validators.set(validatorAddress, validator);
+        this.log.info(`💰 Commission updated: ${validatorAddress.slice(0, 12)}... → ${commission}%`);
+        return true;
+    }
+
+    /**
+     * Toggle auto-compound for a validator
+     */
+    setAutoCompound(validatorAddress: string, enabled: boolean): boolean {
+        const validator = this.validators.get(validatorAddress);
+        if (!validator) {
+            this.log.warn(`Validator not found: ${validatorAddress.slice(0, 12)}...`);
+            return false;
+        }
+
+        validator.autoCompound = enabled;
+        this.validators.set(validatorAddress, validator);
+        this.log.info(`🔄 Auto-compound ${enabled ? 'enabled' : 'disabled'}: ${validatorAddress.slice(0, 12)}...`);
+        return true;
+    }
+
+    /**
+     * Calculate network APY based on current parameters
+     * APY = (annual_rewards / total_staked) * 100
+     */
+    getNetworkAPY(): { baseAPY: number; effectiveAPY: number; blocksPerYear: number; totalStaked: number } {
+        const blocksPerYear = (365 * 24 * 60 * 60 * 1000) / chainParams.slotDuration;  // ~1,051,200 blocks
+        const currentReward = 10;  // 10 LVE per block (could be dynamic)
+        const annualRewards = blocksPerYear * currentReward;
+
+        const totalStaked = this.getTotalStaked() + this.getTotalDelegated();
+        const baseAPY = totalStaked > 0 ? (annualRewards / totalStaked) * 100 : 0;
+
+        // Average commission across validators
+        const validators = this.getValidators();
+        const avgCommission = validators.length > 0
+            ? validators.reduce((sum, v) => sum + (v.commission || DEFAULT_COMMISSION), 0) / validators.length
+            : DEFAULT_COMMISSION;
+
+        const effectiveAPY = baseAPY * (1 - avgCommission / 100);
+
+        return {
+            baseAPY: Math.round(baseAPY * 100) / 100,
+            effectiveAPY: Math.round(effectiveAPY * 100) / 100,
+            blocksPerYear: Math.round(blocksPerYear),
+            totalStaked
+        };
     }
 
     // ========== SLASHING ==========
@@ -495,18 +573,25 @@ export class StakingPool {
 
     /**
      * Actually apply a slash (called during epoch transition)
+     * Now enforces MIN_SLASH_AMOUNT for meaningful penalties
      * @internal
      */
     private applySlash(address: string, pendingSlash: PendingSlash): void {
         const stake = this.stakes.get(address);
         if (!stake) return;
 
-        const slashAmount = Math.floor(stake.amount * (pendingSlash.slashPercent / 100));
-        stake.amount -= slashAmount;
+        // Calculate slash with minimum enforcement
+        const percentSlash = Math.floor(stake.amount * (pendingSlash.slashPercent / 100));
+        const slashAmount = Math.max(percentSlash, MIN_SLASH_AMOUNT);
+
+        // Don't slash more than available stake
+        const actualSlash = Math.min(slashAmount, stake.amount);
+
+        stake.amount -= actualSlash;
         this.stakes.set(address, stake);
         this.updateValidator(address);
 
-        this.log.warn(`🔪 Slash applied: ${slashAmount} LVE from ${address.slice(0, 10)}... Reason: ${pendingSlash.reason}`);
+        this.log.warn(`🔪 Slash applied: ${actualSlash} LVE from ${address.slice(0, 10)}... (${pendingSlash.slashPercent}%, min=${MIN_SLASH_AMOUNT}) Reason: ${pendingSlash.reason}`);
     }
 
     /**
@@ -661,6 +746,8 @@ export class StakingPool {
                 isJailed: false,
                 jailedUntilEpoch: 0,
                 jailCount: 0,
+                autoCompound: false,  // Default: don't auto-compound
+                totalEarned: 0,       // Lifetime earnings
             });
             this.log.info(`🎉 NEW ACTIVE VALIDATOR: ${address.slice(0, 12)}... with ${newStake} LVE`);
         }
@@ -702,15 +789,6 @@ export class StakingPool {
             validator.blocksCreated++;
             this.validators.set(address, validator);
         }
-    }
-
-    setCommission(address: string, commission: number): boolean {
-        if (commission < 0 || commission > 100) return false;
-        const validator = this.validators.get(address);
-        if (!validator) return false;
-        validator.commission = commission;
-        this.validators.set(address, validator);
-        return true;
     }
 
     // ========== GETTERS ==========
@@ -815,6 +893,7 @@ export class StakingPool {
         this.pendingStakes.clear();
         this.pendingDelegations = [];
         this.pendingUnstakes.clear();
+        this.processedTxIds.clear();  // DOUBLE-STAKE FIX: Clear processed TX tracking
         this.currentEpoch = 0;
         this.epochStartBlock = 0;
         this.epochStartTime = Date.now();
@@ -825,9 +904,10 @@ export class StakingPool {
      * Rebuild staking state from blockchain transactions
      * This is the ONLY source of truth for staking state
      * Genesis validators are automatically reloaded from stored genesisValidators
+     * SECURITY: Also rebuilds NonceManager state from chain transactions
      */
     rebuildFromChain(chain: {
-        transactions: { type?: string; fromAddress: string | null; toAddress: string; amount: number; data?: string }[];
+        transactions: { type?: string; fromAddress: string | null; toAddress: string; amount: number; data?: string; id?: string; nonce?: number }[];
         validator?: string;  // PoS block validator
     }[]): void {
         // Store genesis validators before clear
@@ -844,6 +924,9 @@ export class StakingPool {
         let delegateTxCount = 0;
         const blocksCreatedMap = new Map<string, number>();
 
+        // SECURITY FIX: Track nonces per address for NonceManager rebuild
+        const addressNonces = new Map<string, number>();
+
         for (const block of chain) {
             // Count blocks created per validator (skip genesis block index 0)
             if (block.validator) {
@@ -852,22 +935,33 @@ export class StakingPool {
             }
 
             for (const tx of block.transactions) {
+                // SECURITY FIX: Track highest nonce per address
+                if (tx.fromAddress && tx.nonce !== undefined) {
+                    const currentNonce = addressNonces.get(tx.fromAddress) ?? -1;
+                    if (tx.nonce > currentNonce) {
+                        addressNonces.set(tx.fromAddress, tx.nonce);
+                    }
+                }
+
                 if (!tx.type) continue;  // Skip legacy transactions
 
                 if (tx.type === 'STAKE' && tx.fromAddress) {
-                    // Apply stake: fromAddress stakes amount
-                    this.applyStakeFromTx(tx.fromAddress, tx.amount);
+                    // Apply stake: fromAddress stakes amount (pass tx.id for dedup)
+                    this.applyStakeFromTx(tx.fromAddress, tx.amount, tx.id);
                     stakeTxCount++;
                 } else if (tx.type === 'UNSTAKE' && tx.fromAddress) {
                     // Apply unstake: fromAddress unstakes amount
-                    this.applyUnstakeFromTx(tx.fromAddress, tx.amount);
+                    this.applyUnstakeFromTx(tx.fromAddress, tx.amount, tx.id);
                 } else if (tx.type === 'DELEGATE' && tx.fromAddress && tx.data) {
                     // Apply delegation: fromAddress delegates amount to validator (in data)
-                    this.applyDelegateFromTx(tx.fromAddress, tx.data, tx.amount);
+                    this.applyDelegateFromTx(tx.fromAddress, tx.data, tx.amount, tx.id);
                     delegateTxCount++;
                 } else if (tx.type === 'UNDELEGATE' && tx.fromAddress && tx.data) {
                     // Apply undelegation: fromAddress undelegates amount from validator
-                    this.applyUndelegateFromTx(tx.fromAddress, tx.data, tx.amount);
+                    this.applyUndelegateFromTx(tx.fromAddress, tx.data, tx.amount, tx.id);
+                } else if (tx.type === 'COMMISSION' && tx.fromAddress) {
+                    // Apply commission change: amount = new commission percentage
+                    this.setCommission(tx.fromAddress, tx.amount);
                 }
             }
         }
@@ -881,6 +975,12 @@ export class StakingPool {
             }
         }
 
+        // SECURITY FIX: Rebuild NonceManager from chain state
+        if (addressNonces.size > 0) {
+            nonceManager.loadFromBlockchain(addressNonces);
+            logger.info(`🔒 SECURITY: Rebuilt nonces for ${addressNonces.size} addresses from chain`);
+        }
+
         const genesisCount = savedGenesisValidators.length;
         const totalBlocks = Array.from(blocksCreatedMap.values()).reduce((a, b) => a + b, 0);
         logger.info(`Rebuilt staking state: ${genesisCount} genesis, ${stakeTxCount} stakes, ${delegateTxCount} delegations, ${totalBlocks} blocks counted`);
@@ -888,8 +988,19 @@ export class StakingPool {
 
     /**
      * Apply stake from transaction (internal, no validation)
+     * @param txId Optional transaction ID for deduplication (DOUBLE-STAKE FIX)
+     * @returns true if applied, false if duplicate
      */
-    applyStakeFromTx(address: string, amount: number): void {
+    applyStakeFromTx(address: string, amount: number, txId?: string): boolean {
+        // DOUBLE-STAKE FIX: Skip if this TX was already processed
+        if (txId) {
+            if (this.processedTxIds.has(txId)) {
+                this.log.debug(`⏭️ Skipping duplicate stake TX: ${txId.slice(0, 12)}...`);
+                return false;
+            }
+            this.processedTxIds.add(txId);
+        }
+
         const existing = this.stakes.get(address);
         if (existing) {
             existing.amount += amount;
@@ -903,12 +1014,22 @@ export class StakingPool {
             });
         }
         this.updateValidator(address);
+        return true;
     }
 
     /**
      * Apply unstake from transaction (internal)
+     * @param txId Optional transaction ID for deduplication
+     * @returns true if applied, false if duplicate
      */
-    applyUnstakeFromTx(address: string, amount: number): void {
+    applyUnstakeFromTx(address: string, amount: number, txId?: string): boolean {
+        // DOUBLE-STAKE FIX: Skip if this TX was already processed
+        if (txId && this.processedTxIds.has(txId)) {
+            this.log.debug(`⏭️ Skipping duplicate unstake TX: ${txId.slice(0, 12)}...`);
+            return false;
+        }
+        if (txId) this.processedTxIds.add(txId);
+
         const existing = this.stakes.get(address);
         if (existing) {
             existing.amount = Math.max(0, existing.amount - amount);
@@ -919,12 +1040,22 @@ export class StakingPool {
                 this.updateValidator(address);
             }
         }
+        return true;
     }
 
     /**
      * Apply delegation from transaction (internal)
+     * @param txId Optional transaction ID for deduplication
+     * @returns true if applied, false if duplicate
      */
-    applyDelegateFromTx(delegator: string, validator: string, amount: number): void {
+    applyDelegateFromTx(delegator: string, validator: string, amount: number, txId?: string): boolean {
+        // DOUBLE-STAKE FIX: Skip if this TX was already processed
+        if (txId && this.processedTxIds.has(txId)) {
+            this.log.debug(`⏭️ Skipping duplicate delegate TX: ${txId.slice(0, 12)}...`);
+            return false;
+        }
+        if (txId) this.processedTxIds.add(txId);
+
         // Check concentration limit - prevent one validator from having >33% of total stake
         const totalNetwork = this.getTotalStaked() + this.getTotalDelegated();
         if (totalNetwork > 0) {
@@ -961,12 +1092,22 @@ export class StakingPool {
         const currentDel = this.validatorDelegations.get(validator) || 0;
         this.validatorDelegations.set(validator, currentDel + amount);
         this.updateValidator(validator);
+        return true;
     }
 
     /**
      * Apply undelegation from transaction (internal)
+     * @param txId Optional transaction ID for deduplication
+     * @returns true if applied, false if duplicate
      */
-    applyUndelegateFromTx(delegator: string, validator: string, amount: number): void {
+    applyUndelegateFromTx(delegator: string, validator: string, amount: number, txId?: string): boolean {
+        // DOUBLE-STAKE FIX: Skip if this TX was already processed
+        if (txId && this.processedTxIds.has(txId)) {
+            this.log.debug(`⏭️ Skipping duplicate undelegate TX: ${txId.slice(0, 12)}...`);
+            return false;
+        }
+        if (txId) this.processedTxIds.add(txId);
+
         const delegations = this.delegations.get(delegator);
         if (delegations) {
             const del = delegations.find(d => d.validator === validator);
@@ -981,6 +1122,7 @@ export class StakingPool {
         const currentDel = this.validatorDelegations.get(validator) || 0;
         this.validatorDelegations.set(validator, Math.max(0, currentDel - amount));
         this.updateValidator(validator);
+        return true;
     }
 
     // ========== GENESIS VALIDATORS ==========
@@ -1016,7 +1158,9 @@ export class StakingPool {
                 isActive: true,  // Active immediately
                 isJailed: false,
                 jailedUntilEpoch: 0,
-                jailCount: 0
+                jailCount: 0,
+                autoCompound: false,  // Default: don't auto-compound
+                totalEarned: 0,       // Lifetime earnings
             });
 
             this.log.info(`🌱 Genesis validator loaded: ${gv.operatorAddress.slice(0, 12)}... (power: ${gv.power})`);

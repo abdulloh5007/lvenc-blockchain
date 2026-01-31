@@ -16,7 +16,7 @@ const log = logger.child('TxValidation');
 
 // ========== PROTOCOL LIMITS ==========
 const MAX_TX_SIZE_BYTES = 16 * 1024;  // 16 KB max transaction size
-const VALID_TX_TYPES = ['TRANSFER', 'STAKE', 'UNSTAKE', 'DELEGATE', 'UNDELEGATE', 'CLAIM_REWARD', 'CLAIM', 'COMMISSION'] as const;
+const VALID_TX_TYPES = ['TRANSFER', 'STAKE', 'UNSTAKE', 'DELEGATE', 'UNDELEGATE', 'CLAIM_REWARD', 'CLAIM', 'COMMISSION', 'AUTO_COMPOUND'] as const;
 
 // ========== DUPLICATE TX CACHE ==========
 // In-memory cache for recent tx hashes (prevents duplicate submissions)

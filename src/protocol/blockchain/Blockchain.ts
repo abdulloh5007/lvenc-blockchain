@@ -25,7 +25,7 @@ export class Blockchain {
     private isSynced: boolean = false;
     public onBlockMined?: (block: Block) => void;
     public onTransactionAdded?: (tx: Transaction) => void;
-    public onStakingChange?: (address: string, type: 'STAKE' | 'UNSTAKE' | 'DELEGATE' | 'UNDELEGATE', amount: number) => void;
+    public onStakingChange?: (address: string, type: 'STAKE' | 'UNSTAKE' | 'DELEGATE' | 'UNDELEGATE' | 'COMMISSION', amount: number) => void;
     constructor() {
         this.difficulty = config.blockchain.difficulty;
         this.validatorReward = config.blockchain.validatorReward;
@@ -137,28 +137,51 @@ export class Blockchain {
     }
 
     /**
+     * Check if blockchain is synced (for API to block operations during sync)
+     */
+    getIsSynced(): boolean {
+        return this.isSynced;
+    }
+
+    /**
      * Apply staking changes from a single block in real-time
      * This is called when we create a block OR receive a block from peers
-     * Prevents duplicate application by tracking processed blocks
+     * DOUBLE-STAKE FIX: Now passes tx.id for deduplication
      */
     applyBlockStakingChanges(block: Block): void {
         for (const tx of block.transactions) {
             if (tx.type === 'STAKE' && tx.fromAddress) {
-                stakingPool.applyStakeFromTx(tx.fromAddress, tx.amount);
-                logger.info(`✅ STAKE applied (real-time): ${tx.fromAddress.slice(0, 12)}... +${tx.amount} LVE`);
-                this.onStakingChange?.(tx.fromAddress, 'STAKE', tx.amount);
+                // DOUBLE-STAKE FIX: Pass tx.id to prevent duplicate application
+                const applied = stakingPool.applyStakeFromTx(tx.fromAddress, tx.amount, tx.id);
+                if (applied) {
+                    logger.info(`✅ STAKE applied (real-time): ${tx.fromAddress.slice(0, 12)}... +${tx.amount} LVE`);
+                    this.onStakingChange?.(tx.fromAddress, 'STAKE', tx.amount);
+                }
             } else if (tx.type === 'UNSTAKE' && tx.fromAddress) {
-                stakingPool.applyUnstakeFromTx(tx.fromAddress, tx.amount);
-                logger.info(`✅ UNSTAKE applied (real-time): ${tx.fromAddress.slice(0, 12)}... -${tx.amount} LVE`);
-                this.onStakingChange?.(tx.fromAddress, 'UNSTAKE', tx.amount);
+                const applied = stakingPool.applyUnstakeFromTx(tx.fromAddress, tx.amount, tx.id);
+                if (applied) {
+                    logger.info(`✅ UNSTAKE applied (real-time): ${tx.fromAddress.slice(0, 12)}... -${tx.amount} LVE`);
+                    this.onStakingChange?.(tx.fromAddress, 'UNSTAKE', tx.amount);
+                }
             } else if (tx.type === 'DELEGATE' && tx.fromAddress && tx.data) {
-                stakingPool.applyDelegateFromTx(tx.fromAddress, tx.data, tx.amount);
-                logger.info(`✅ DELEGATE applied (real-time): ${tx.fromAddress.slice(0, 12)}... delegated ${tx.amount} LVE`);
-                this.onStakingChange?.(tx.fromAddress, 'DELEGATE', tx.amount);
+                const applied = stakingPool.applyDelegateFromTx(tx.fromAddress, tx.data, tx.amount, tx.id);
+                if (applied) {
+                    logger.info(`✅ DELEGATE applied (real-time): ${tx.fromAddress.slice(0, 12)}... delegated ${tx.amount} LVE`);
+                    this.onStakingChange?.(tx.fromAddress, 'DELEGATE', tx.amount);
+                }
             } else if (tx.type === 'UNDELEGATE' && tx.fromAddress && tx.data) {
-                stakingPool.applyUndelegateFromTx(tx.fromAddress, tx.data, tx.amount);
-                logger.info(`✅ UNDELEGATE applied (real-time): ${tx.fromAddress.slice(0, 12)}... undelegated ${tx.amount} LVE`);
-                this.onStakingChange?.(tx.fromAddress, 'UNDELEGATE', tx.amount);
+                const applied = stakingPool.applyUndelegateFromTx(tx.fromAddress, tx.data, tx.amount, tx.id);
+                if (applied) {
+                    logger.info(`✅ UNDELEGATE applied (real-time): ${tx.fromAddress.slice(0, 12)}... undelegated ${tx.amount} LVE`);
+                    this.onStakingChange?.(tx.fromAddress, 'UNDELEGATE', tx.amount);
+                }
+            } else if (tx.type === 'COMMISSION' && tx.fromAddress) {
+                // Apply commission change: amount = new commission percentage
+                const applied = stakingPool.setCommission(tx.fromAddress, tx.amount);
+                if (applied) {
+                    logger.info(`✅ COMMISSION applied (real-time): ${tx.fromAddress.slice(0, 12)}... → ${tx.amount}%`);
+                    this.onStakingChange?.(tx.fromAddress, 'COMMISSION', tx.amount);
+                }
             }
         }
     }

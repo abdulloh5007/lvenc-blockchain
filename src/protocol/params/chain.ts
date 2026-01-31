@@ -42,21 +42,24 @@ export const chainParams = {
         minActiveValidators: 1,       // Network liveness: minimum active validators
         minValidatorSelfStake: 100,   // Minimum self-stake to become validator
         minDelegation: 10,            // Minimum delegation amount
-        slashPercent: 50,             // Slash percentage for double-sign
+        slashPercent: 50,             // 50% slash for double-sign (Cosmos-like)
         defaultCommission: 10,        // Default validator commission %
         epochDuration: 100,           // Blocks per epoch
 
         // Unbonding period (funds locked after unstake)
         unbondingEpochs: isTestnet ? 3 : 21,  // 3 epochs testnet, 21 mainnet (~7 days)
 
-        // Jailing parameters
-        jailDurationEpochs: isTestnet ? 2 : 7,  // How long validator is jailed
+        // Jailing parameters (UPDATED: industry standards)
+        jailDurationEpochs: isTestnet ? 5 : 7,  // 5 epochs testnet, 7 mainnet
         maxJailCount: 3,                        // Max jails before permanent ban
 
         // Liveness tracking (Cosmos-style)
         signedBlocksWindow: 20,       // Track last 20 slots (10 minutes)
         minSignedPerWindow: 0.5,      // Must produce 50% of assigned slots
-        downtimeSlashPercent: 0.1,    // 0.1% slash for downtime
+
+        // Slashing penalties (UPDATED: industry standards)
+        downtimeSlashPercent: 5,      // 5% slash for downtime (was 0.1%)
+        minSlashAmount: 10,           // Minimum 10 LVE slash (prevents negligible penalties)
     },
 
     // Version protocol (for upgrade coordination)
