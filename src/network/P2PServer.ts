@@ -16,6 +16,7 @@ import { BOOTSTRAP_NODES, PEER_MAINTENANCE_INTERVAL_MS, RECONNECT_INTERVAL_MS, M
 import { PeerManager, PeerDiscovery } from './peers/index.js';
 import { HandshakeHandler } from './protocol/index.js';
 import { BlockSync } from './sync/index.js';
+import { stakingPool } from '../runtime/staking/index.js';
 
 // Types are exported from ./types.js directly
 
@@ -25,6 +26,7 @@ export class P2PServer {
     private port: number;
     private bootstrapMode: boolean;
     private genesisSyncRequested: boolean = false;
+    private pendingGenesisRequests: Map<WebSocket, 'missing' | 'mismatch'> = new Map();
 
     // Modules
     private peerManager: PeerManager;
@@ -225,7 +227,7 @@ export class P2PServer {
                     break;
 
                 case MessageType.RESPONSE_GENESIS:
-                    this.handleGenesisResponse(message.data);
+                    this.handleGenesisResponse(socket, message.data);
                     break;
             }
         } catch (error) {
@@ -254,7 +256,7 @@ export class P2PServer {
                 const isFresh = currentBlockHeight <= 1;
                 if (isFresh && config.version.protocolVersion >= data.minProtocolVersion) {
                     logger.info('✨ Detected Genesis Mismatch on fresh node. Attempting to sync genesis from peer...');
-                    this.send(socket, { type: MessageType.QUERY_GENESIS, data: null });
+                    this.requestGenesis(socket, 'mismatch');
                     return; // Don't close socket
                 }
             }
@@ -266,17 +268,11 @@ export class P2PServer {
         // AUTO-SYNC GENESIS: If genesis.json is missing or empty on a fresh node, request it
         if (this.shouldRequestGenesis(currentBlockHeight)) {
             logger.info('✨ Missing genesis.json on fresh node. Requesting from peer...');
-            this.send(socket, { type: MessageType.QUERY_GENESIS, data: null });
+            this.requestGenesis(socket, 'missing');
             return; // Wait for genesis sync
         }
 
-        peer.verified = true;
-        this.peerManager.adjustScore(socket, 10);
-
-        // Send acknowledgment and request data
-        this.send(socket, { type: MessageType.HANDSHAKE_ACK, data: null });
-        this.send(socket, { type: MessageType.QUERY_LATEST, data: null });
-        this.send(socket, { type: MessageType.QUERY_PEERS, data: null });
+        this.finalizeHandshake(socket, peer);
     }
 
     private handleNewTransaction(data: unknown): void {
@@ -418,6 +414,24 @@ export class P2PServer {
 
         return false;
     }
+
+    private requestGenesis(socket: WebSocket, reason: 'missing' | 'mismatch'): void {
+        if (this.pendingGenesisRequests.has(socket)) return;
+        this.pendingGenesisRequests.set(socket, reason);
+        this.genesisSyncRequested = true;
+        this.send(socket, { type: MessageType.QUERY_GENESIS, data: null });
+    }
+
+    private finalizeHandshake(socket: WebSocket, peer: ReturnType<PeerManager['getPeer']>): void {
+        if (!peer || peer.verified) return;
+        peer.verified = true;
+        this.peerManager.adjustScore(socket, 10);
+
+        // Send acknowledgment and request data
+        this.send(socket, { type: MessageType.HANDSHAKE_ACK, data: null });
+        this.send(socket, { type: MessageType.QUERY_LATEST, data: null });
+        this.send(socket, { type: MessageType.QUERY_PEERS, data: null });
+    }
     // ==================== GENESIS SYNC ====================
 
     private handleQueryGenesis(socket: WebSocket): void {
@@ -435,7 +449,7 @@ export class P2PServer {
         }
     }
 
-    private handleGenesisResponse(data: unknown): void {
+    private handleGenesisResponse(socket: WebSocket, data: unknown): void {
         try {
             const genesisConfig = data as any;
             if (!genesisConfig || !genesisConfig.chainId) {
@@ -444,7 +458,6 @@ export class P2PServer {
             }
 
             logger.info(`📥 Received genesis for chain: ${genesisConfig.chainId}`);
-            logger.info('🔄 Restarting node to apply new genesis...');
 
             // Save to disk
             if (!fs.existsSync(config.storage.dataDir)) {
@@ -454,7 +467,25 @@ export class P2PServer {
             const genesisPath = path.join(config.storage.dataDir, 'genesis.json');
             fs.writeFileSync(genesisPath, JSON.stringify(genesisConfig, null, 2));
 
-            // Clear chain data
+            const reason = this.pendingGenesisRequests.get(socket);
+            this.pendingGenesisRequests.delete(socket);
+
+            if (reason === 'missing') {
+                if (stakingPool.getGenesisValidators().length === 0 && genesisConfig.validators?.length > 0) {
+                    stakingPool.loadGenesisValidators(genesisConfig.validators);
+                    logger.info(`🌱 Loaded ${genesisConfig.validators.length} genesis validator(s) after sync`);
+                }
+
+                const peer = this.peerManager.getPeer(socket);
+                if (peer) {
+                    this.finalizeHandshake(socket, peer);
+                }
+
+                logger.info('✅ Genesis synchronized! Continuing without restart.');
+                return;
+            }
+
+            // Clear chain data (mismatch case)
             const blocksPath = path.join(config.storage.dataDir, 'blocks.json');
             const poolPath = path.join(config.storage.dataDir, 'pool.json');
 
@@ -462,8 +493,6 @@ export class P2PServer {
             if (fs.existsSync(poolPath)) fs.unlinkSync(poolPath);
 
             logger.info('✅ Genesis synchronized! RESTARTING NODE...');
-
-            // Exit to restart
             process.exit(0);
 
         } catch (err) {

@@ -449,7 +449,14 @@ export class Blockchain {
     async verifyIncomingChain(chain: Block[]): Promise<boolean> {
         if (!chain || chain.length === 0) return false;
         const firstBlock = chain[0];
-        if (firstBlock.index !== 0 || firstBlock.previousHash !== '0') return false;
+        if (firstBlock.index !== 0) return false;
+        if (firstBlock.previousHash !== '0' && firstBlock.previousHash !== '0'.repeat(64)) {
+            return false;
+        }
+        const localGenesis = this.chain[0];
+        if (localGenesis && firstBlock.hash !== localGenesis.hash) {
+            return false;
+        }
 
         const sandboxPool = new StakingPool();
         sandboxPool.loadGenesisValidators(stakingPool.getGenesisValidators());
