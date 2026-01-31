@@ -18,6 +18,29 @@ function getPackageVersion(): string {
     }
 }
 
+// Read economic spec
+function getEconomicSpec() {
+    try {
+        const __filename = fileURLToPath(import.meta.url);
+        const __dirname = dirname(__filename);
+        // Assuming compiled structure mirrors src, root is up 2 levels
+        // src/node/config.ts -> root/
+        // But if running from strict structure, we check typical locations
+        const specPath = join(__dirname, '../../pos_economic_spec_v1.json');
+        return JSON.parse(readFileSync(specPath, 'utf-8'));
+    } catch (e) {
+        console.warn('⚠️ Could not load pos_economic_spec_v1.json, using defaults.');
+        return {
+            economics: {
+                inflation: { rate: 0.006 },
+                epoch: { duration_blocks: 100 }
+            }
+        };
+    }
+}
+
+const ECONOMIC_SPEC = getEconomicSpec();
+
 // Fixed genesis configuration for network consistency
 // ALL nodes must use these values to have same genesis hash
 const GENESIS_CONFIG = {
@@ -61,10 +84,9 @@ export const config = {
     // Chain ID for transaction replay protection
     chainId: isTestnet ? 'lvenc-testnet-1' : 'lvenc-mainnet-1',
     blockchain: {
-        difficulty: 5,
-        validatorReward: 50,
-        halvingInterval: 100,
-        genesisAmount: 1000000,
+        // PoS Configuration
+        validatorReward: 0, // Dynamic (Inflation-based)
+        genesisAmount: 70_000_000,
         coinName: isTestnet ? 'tLVE' : 'LVE',
         coinSymbol: isTestnet ? 'tLVE' : 'LVE',
         addressPrefix: isTestnet ? 'tLVE' : 'LVE',
@@ -93,9 +115,14 @@ export const config = {
     staking: {
         minValidatorStake: 100,       // Min self-stake to become validator (100 LVE)
         maxConcentration: 33,         // Max % of total stake for one validator (33%)
-        minCommission: 0,             // Min commission % (0%)
-        maxCommission: 30,            // Max commission % (30%)
-        epochDuration: 100,           // Blocks per epoch
+        minCommission: ECONOMIC_SPEC.economics.rewards.validator_commission_min || 0,
+        maxCommission: ECONOMIC_SPEC.economics.rewards.validator_commission_max || 30,
+        epochDuration: ECONOMIC_SPEC.economics.epoch.duration_blocks || 100,
+    },
+    // New Economic Variables
+    economics: {
+        inflationRate: ECONOMIC_SPEC.economics.inflation.rate || 0.006,
+        schedule: ECONOMIC_SPEC.economics.minting_schedule || 'per_epoch'
     },
     storage: {
         dataDir: isTestnet ? './data/testnet' : './data/mainnet',

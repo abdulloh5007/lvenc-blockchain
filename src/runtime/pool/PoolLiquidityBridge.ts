@@ -13,7 +13,9 @@
  * - Starting price: 1 LVE = 50 USDT
  */
 
-import { tokenSupplyManager, ALLOCATIONS } from '../../protocol/blockchain/TokenSupplyManager.js';
+// TokenSupplyManager removed - Infinite Supply Model
+// import { tokenSupplyManager, ALLOCATIONS } from '../../protocol/blockchain/TokenSupplyManager.js';
+const ALLOCATIONS = { LIQUIDITY: 10000000 }; // Stub for legacy ref
 import { poolStateManager } from './PoolStateManager.js';
 import { tokenBurnManager } from '../../protocol/blockchain/TokenBurnManager.js';
 import { logger } from '../../protocol/utils/logger.js';
@@ -42,17 +44,8 @@ export function initializePoolFromAllocation(
         throw new Error('Pool already initialized');
     }
 
-    // Check available liquidity in allocation
-    const allocation = tokenSupplyManager.getAllocation('LIQUIDITY');
-    if (lveAmount > allocation.locked) {
-        throw new Error(`Insufficient LIQUIDITY allocation: need ${lveAmount}, have ${allocation.locked} locked`);
-    }
-
-    // Release tokens from LIQUIDITY allocation (this is NOT minting!)
-    const released = tokenSupplyManager.releaseTokens('LIQUIDITY', lveAmount, blockIndex);
-    if (!released) {
-        throw new Error('Failed to release tokens from LIQUIDITY allocation');
-    }
+    // Bypass legacy allocation check
+    // const released = tokenSupplyManager.releaseTokens('LIQUIDITY', lveAmount, blockIndex);
 
     releasedLiquidity += lveAmount;
 
@@ -85,17 +78,8 @@ export function addLiquidityFromAllocation(
         throw new Error('Pool not initialized. Use initializePoolFromAllocation first.');
     }
 
-    // Check available liquidity
-    const allocation = tokenSupplyManager.getAllocation('LIQUIDITY');
-    if (lveAmount > allocation.locked) {
-        throw new Error(`Insufficient LIQUIDITY allocation: need ${lveAmount}, have ${allocation.locked} locked`);
-    }
-
-    // Release tokens from allocation
-    const released = tokenSupplyManager.releaseTokens('LIQUIDITY', lveAmount, blockIndex);
-    if (!released) {
-        throw new Error('Failed to release tokens from LIQUIDITY allocation');
-    }
+    // Bypass legacy allocation check
+    // const released = tokenSupplyManager.releaseTokens('LIQUIDITY', lveAmount, blockIndex);
 
     releasedLiquidity += lveAmount;
 
@@ -122,7 +106,7 @@ export function recordSwapWithBurn(
     let burned = 0;
     if (tokenIn === 'LVE') {
         burned = tokenBurnManager.burnFromSwapFee(result.fee, blockIndex);
-        tokenSupplyManager.recordBurn(burned, 'CIRCULATING', blockIndex);
+        // tokenSupplyManager.recordBurn(burned, 'CIRCULATING', blockIndex);
     }
 
     return {
@@ -142,15 +126,14 @@ export function getLiquidityStatus(): {
     inPool: number;
     burned: number;
 } {
-    const allocation = tokenSupplyManager.getAllocation('LIQUIDITY');
     const poolInfo = poolStateManager.getPoolInfo();
 
     return {
         totalAllocation: ALLOCATIONS.LIQUIDITY,
-        released: allocation.released,
-        locked: allocation.locked,
+        released: releasedLiquidity,
+        locked: ALLOCATIONS.LIQUIDITY - releasedLiquidity,
         inPool: poolInfo.reserveLVE,
-        burned: allocation.burned,
+        burned: 0,
     };
 }
 

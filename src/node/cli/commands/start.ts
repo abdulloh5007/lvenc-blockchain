@@ -404,7 +404,7 @@ export async function startNode(options: NodeOptions): Promise<void> {
                     Date.now(),
                     [tx],
                     latestBlock.hash,
-                    blockchain.difficulty,
+                    0, // difficulty 0 for PoS
                     'FAUCET',
                     'pos'
                 );

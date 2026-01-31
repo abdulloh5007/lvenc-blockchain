@@ -7,7 +7,6 @@ import { logger } from '../../protocol/utils/logger.js';
 import { sha256 } from '../../protocol/utils/crypto.js';
 import { chainParams } from '../../protocol/params/index.js';
 import { getUnifiedIdentity } from '../../node/identity/index.js';
-import { createSigningData } from '../../protocol/blockchain/BlockSignature.js';
 
 const SLOT_DURATION = 30000;
 
@@ -152,8 +151,8 @@ export class BlockProducer {
 
         try {
             const signFn = (hash: string): string => {
-                // Create domain-separated signing data: chainId:blockIndex:blockHash
-                const signingData = createSigningData(latestBlock.index + 1, hash);
+                // Inline signing data creation
+                const signingData = `${chainParams.chainId}:${latestBlock.index + 1}:${hash}`;
                 return identity.sign(signingData);
             };
             const block = this.blockchain.createPoSBlock(validatorAddress, signFn);
@@ -165,34 +164,14 @@ export class BlockProducer {
 
             if (!isValidSignature) {
                 this.log.error(`🔪 Double-sign detected for validator ${validatorAddress.slice(0, 12)}... at slot ${currentSlot}!`);
-                // Block is rejected, validator already slashed
                 return;
             }
 
             // Mark that we produced a block for this slot
             this.receivedBlocksForSlot.set(currentSlot, true);
 
-            // Get base reward
-            const baseReward = this.blockchain.getCurrentReward();
-
-            // Distribute rewards proportionally
-            const { validator: validatorRewardAmount, delegators } = stakingPool.distributeRewards(validatorAddress, baseReward);
-
-            // Create reward transaction for VALIDATOR
-            if (validatorRewardAmount >= 0.01) {
-                const validatorRewardTx = new Transaction(null, validatorAddress, validatorRewardAmount, 0);
-                this.blockchain.addTransaction(validatorRewardTx);
-                this.log.debug(`💰 Validator reward: ${validatorRewardAmount.toFixed(4)} LVE to ${validatorAddress.slice(0, 12)}...`);
-            }
-
-            // Create reward transactions for delegators
-            for (const [delegator, amount] of delegators) {
-                if (amount >= 0.01) { // Minimum reward threshold
-                    const rewardTx = new Transaction(null, delegator, amount, 0);
-                    // Add to block (after creation, so it's included in next block)
-                    this.blockchain.addTransaction(rewardTx);
-                }
-            }
+            // NOTE: Rewards are handled in Blockchain.createPoSBlock (Fees only per block, Inflation per Epoch)
+            // No manual transaction creation needed here for rewards.
 
             stakingPool.recordBlockCreated(validatorAddress);
             this.lastProducedSlot = currentSlot;
@@ -202,7 +181,7 @@ export class BlockProducer {
 
 
             const epochInfo = stakingPool.getEpochInfo();
-            this.log.info(`📦 Slot ${currentSlot} | Block #${block.index} | Epoch ${epochInfo.epoch} | Validator: ${validatorAddress.slice(0, 12)}... | Delegator rewards: ${delegators.size}`);
+            this.log.info(`📦 Slot ${currentSlot} | Block #${block.index} | Epoch ${epochInfo.epoch} | Validator: ${validatorAddress.slice(0, 12)}...`);
         } catch (error) {
             this.log.error(`Block production failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }

@@ -1,0 +1,25 @@
+{
+    "protocol": "LVE-PoS-v1",
+    "economics": {
+        "supply_model": "infinite",
+        "inflation": {
+            "type": "annual_percentage",
+            "rate": 0.006,
+            "description": "0.6% annual inflation applied at epoch boundaries"
+        },
+        "minting_schedule": "per_epoch",
+        "epoch": {
+            "duration_blocks": 100,
+            "description": "Inflation is calculated and minted every 100 blocks"
+        },
+        "rewards": {
+            "validator_commission_max": 30.0,
+            "validator_commission_min": 0.0
+        }
+    },
+    "constraints": {
+        "max_supply": null,
+        "halving_enabled": false,
+        "mining_enabled": false
+    }
+}

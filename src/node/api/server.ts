@@ -288,7 +288,7 @@ app.post('/api/faucet', (req: Request, res: Response) => {
             Date.now(),
             [tx],
             latestBlock.hash,
-            blockchain.difficulty,
+            0, // difficulty 0 for PoS
             'FAUCET',
             'pos'
         );
