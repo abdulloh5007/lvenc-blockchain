@@ -558,6 +558,32 @@ const options: swaggerJsdoc.Options = {
                     responses: { 200: { description: 'Transaction history' } },
                 },
             },
+            '/wallet/batch-balances': {
+                post: {
+                    tags: ['Wallet'],
+                    summary: 'Get balances for multiple addresses',
+                    requestBody: {
+                        required: true,
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: 'object',
+                                    properties: {
+                                        addresses: {
+                                            type: 'array',
+                                            items: { type: 'string' }
+                                        }
+                                    },
+                                    required: ['addresses']
+                                }
+                            }
+                        }
+                    },
+                    responses: {
+                        200: { description: 'Batch balances returned' }
+                    }
+                },
+            },
 
             // ==================== TRANSACTION ENDPOINTS ====================
             '/transaction/send': {
@@ -576,11 +602,13 @@ const options: swaggerJsdoc.Options = {
                                         to: { type: 'string', description: 'Recipient address' },
                                         amount: { type: 'number', description: 'Amount to send' },
                                         fee: { type: 'number', description: 'Transaction fee', default: 0.01 },
-                                        signature: { type: 'string', description: 'Transaction signature' },
+                                        signature: { type: 'string', description: 'Transaction signature (Ed25519)' },
                                         publicKey: { type: 'string', description: 'Sender public key' },
                                         timestamp: { type: 'integer', description: 'Transaction timestamp' },
+                                        nonce: { type: 'integer', description: 'Replay protection nonce (required)' },
+                                        chainId: { type: 'string', description: 'Chain ID (required)' },
                                     },
-                                    required: ['from', 'to', 'amount', 'signature', 'publicKey', 'timestamp'],
+                                    required: ['from', 'to', 'amount', 'signature', 'publicKey', 'nonce', 'chainId'],
                                 },
                             },
                         },
@@ -664,9 +692,12 @@ const options: swaggerJsdoc.Options = {
                                     properties: {
                                         address: { type: 'string' },
                                         amount: { type: 'number' },
-                                        publicKey: { type: 'string', description: 'Validator public key (optional)' },
+                                        publicKey: { type: 'string', description: 'Validator public key' },
+                                        signature: { type: 'string', description: 'Ed25519 signature' },
+                                        nonce: { type: 'integer' },
+                                        chainId: { type: 'string' },
                                     },
-                                    required: ['address', 'amount'],
+                                    required: ['address', 'amount', 'publicKey', 'signature', 'nonce', 'chainId'],
                                 },
                             },
                         },

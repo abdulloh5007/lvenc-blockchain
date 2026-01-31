@@ -4,6 +4,7 @@ import { Card, Button, CustomSelect } from '../components';
 import { useWallets } from '../hooks';
 import { useI18n } from '../contexts';
 import { staking, type ValidatorInfo, type EpochInfo, type Delegation } from '../api/client';
+import { formatBalance } from '../utils/format';
 import './Staking.css';
 
 interface UserStakeInfo {
@@ -326,14 +327,14 @@ export const StakingPage: React.FC = () => {
                 <Card className="stat-card">
                     <TrendingUp size={24} />
                     <div className="stat-info">
-                        <span className="stat-value">{totalStaked.toLocaleString()} LVE</span>
+                        <span className="stat-value">{formatBalance(totalStaked)} LVE</span>
                         <span className="stat-label">{t('staking.totalStaked')}</span>
                     </div>
                 </Card>
                 <Card className="stat-card">
                     <GitBranch size={24} />
                     <div className="stat-info">
-                        <span className="stat-value">{totalDelegated.toLocaleString()} LVE</span>
+                        <span className="stat-value">{formatBalance(totalDelegated)} LVE</span>
                         <span className="stat-label">Делегировано</span>
                     </div>
                 </Card>
@@ -363,7 +364,7 @@ export const StakingPage: React.FC = () => {
                                 { value: '', label: `${t('wallet.selectWallet')}...` },
                                 ...wallets.map(w => ({
                                     value: w.address,
-                                    label: `${w.label || 'Wallet'} (${w.balance || 0} LVE)`
+                                    label: `${w.label || 'Wallet'} (${formatBalance(w.balance || 0)} LVE)`
                                 }))
                             ]}
                             value={selectedWallet}
@@ -376,17 +377,17 @@ export const StakingPage: React.FC = () => {
                         <div className="user-stake-info">
                             <div className="stake-item">
                                 <span>Ваш стейк:</span>
-                                <strong>{userStakeInfo.stake} LVE</strong>
+                                <strong>{formatBalance(userStakeInfo.stake)} LVE</strong>
                             </div>
                             {userStakeInfo.pendingStake > 0 && (
                                 <div className="stake-item pending">
                                     <span>Ожидает:</span>
-                                    <strong>{userStakeInfo.pendingStake} LVE</strong>
+                                    <strong>{formatBalance(userStakeInfo.pendingStake)} LVE</strong>
                                 </div>
                             )}
                             <div className="stake-item">
                                 <span>Делегировано:</span>
-                                <strong>{userStakeInfo.totalDelegated} LVE</strong>
+                                <strong>{formatBalance(userStakeInfo.totalDelegated)} LVE</strong>
                             </div>
                             {userStakeInfo.isValidator && (
                                 <div className="validator-badge">✅ Вы валидатор</div>
@@ -455,7 +456,7 @@ export const StakingPage: React.FC = () => {
                                         { value: '', label: 'Выберите валидатора...' },
                                         ...validators.map(v => ({
                                             value: v.address,
-                                            label: `${v.address.slice(0, 10)}... (${v.stake} LVE, ${v.commission || 10}% комиссия)`
+                                            label: `${v.address.slice(0, 10)}... (${formatBalance(v.stake)} LVE, ${v.commission || 10}% комиссия)`
                                         }))
                                     ]}
                                     value={selectedValidator}
@@ -517,7 +518,7 @@ export const StakingPage: React.FC = () => {
                                     <div className="validator-info">
                                         <span className="validator-address">{v.address.slice(0, 12)}...{v.address.slice(-8)}</span>
                                         <span className="validator-stake">
-                                            {v.stake.toLocaleString()} + {v.delegatedStake?.toLocaleString() || 0} LVE
+                                            {formatBalance(v.stake)} + {formatBalance(v.delegatedStake || 0)} LVE
                                         </span>
                                     </div>
                                     <div className="validator-stats">

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { ArrowUpDown, Droplets, AlertCircle, Wallet, RefreshCw, Loader, TrendingDown, Percent, DollarSign } from 'lucide-react';
 import { useWallets } from '../hooks';
 import { CustomSelect } from '../components/CustomSelect';
+import { formatBalance } from '../utils/format';
 import './Swap.css';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
@@ -269,11 +270,11 @@ const Swap: React.FC = () => {
                     <div className="balance-display">
                         <div className="balance-row">
                             <span>LVE Balance:</span>
-                            <span className="balance-value">{selectedWallet.balance.toLocaleString()} LVE</span>
+                            <span className="balance-value">{formatBalance(selectedWallet.balance)} LVE</span>
                         </div>
                         <div className="balance-row">
                             <span>USDT Balance:</span>
-                            <span className="balance-value">{usdtBalance.toLocaleString()} USDT</span>
+                            <span className="balance-value">{formatBalance(usdtBalance)} USDT</span>
                             <button
                                 className="faucet-button"
                                 onClick={requestFaucet}
